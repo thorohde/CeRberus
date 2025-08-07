@@ -3,7 +3,7 @@
 #' @export compute_GIs
 
 
-compute_GIs <- \(.data, .block, .dupcor, FDR_method) {
+compute_GIs <- function(.data, .block, .dupcor, FDR_method) {
   
   if (base::is.array(.data)) {
     .data <- purrr::map(rownames(.data), ~ .data[.x,,])
