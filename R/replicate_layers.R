@@ -1,7 +1,7 @@
 #' @importFrom stringr str_match
 #' @export replicate_layers
 
-replicate_layers <- \(cnames) {
+replicate_layers <- function(cnames) {
   layers <- list()  
   .x <- base::unlist(base::strsplit(paste0(gsub("_", ";", cnames), collapse = ";"), ";"))
   .x <- base::sapply(list(bio_rep = "b", tech_rep = "t", guides = "g"), \(.) {base::unique(grep(pattern = ., .x, value = T))})

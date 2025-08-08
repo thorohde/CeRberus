@@ -1,7 +1,8 @@
-
+#' @import data.table
+#' @importFrom purrr map map_dbl map_int set_names
+#' @importFrom reshape2 acast
+#' @importFrom stats as.formula
 #' @importFrom stringr str_c
-#' @importFrom purrr map map_dbl
-#' @importFrom data.table CJ setnames .SD
 #' @export make_GI_object
 
 
@@ -13,9 +14,11 @@ make_GI_object <- \(.x,
                     minimal_query_size = 50, 
                     minimal_library_size = 50) {
   
-  .x <- copy(.x)
+  .x <- data.table::copy(.x)
   
   .contrasts <- NULL
+  pair <- NULL # to prevent package environment errors
+  
   
   stopifnot(query_col %in% colnames(.x), 
             lib_col %in% colnames(.x))
@@ -23,53 +26,65 @@ make_GI_object <- \(.x,
   if (contrasts_col %in% colnames(.x)) {
     data.table::setnames(.x, old = contrasts_col, new = "contrast")
     
-    .contrasts <- .x[, unique(contrast)]
+    .contrasts <- .x[, unique(get("contrast"))]
   }
   
   
   
   data.table::setnames(.x, old = c(query_col, lib_col), new = c("query", "library"))
+  .x[, pair := stringr::str_c(get("query"), ";", get("library"))]
   
+  .rep_names <- setdiff(colnames(.x), c("contrast", "query", "library", "pair"))
   
-  
-  
-  
-  .rep_names <- setdiff(colnames(.x), c("contrast", "query", "library"))
-  
-  .query_genes <- .x[, base::unique(get("query"))]
-  .lib_genes <- .x[, base::unique(get("library"))]
-  .all_genes <- base::union(.query_genes, .lib_genes)
+  .query_genes <- .x[, unique(get("query"))]
+  .lib_genes <- .x[, unique(get("library"))]
+  .all_genes <- union(.query_genes, .lib_genes)
   .query_genes_not_in_lib <- setdiff(.query_genes, .lib_genes)
   .lib_genes_not_in_query <- setdiff(.lib_genes, .query_genes)
   
   
-  .n_query_genes <- base::length(.query_genes)
-  .n_lib_genes <- base::length(.lib_genes)
-  .n_all_genes <- base::length(.all_genes)
+  .n_query_genes <- length(.query_genes)
+  .n_lib_genes <- length(.lib_genes)
+  .n_all_genes <- length(.all_genes)
   
-  .observations_per_query <- map_int(set_names(.query_genes), \(.g) {.x[query == .g, .N]})
+  .observations_per_query <- map_int(purrr::set_names(.query_genes), \(.g) {.x[get("query") == .g, data.table::.N]})
   
   
-  .all_pairs <- .x[, unique(str_c(query, library, sep = ";"))]
-  .unique_pairs <- .x[, unique(sort_gene_pairs(query, library))]
+  .all_pairs <- .x[, unique(get("pair"))]
+  .unique_pairs <- .x[, unique(sort_gene_pairs(get("query"), get("library")))]
   
   .checks <- list(
-    gene_sets_equal = base::length(c(.query_genes_not_in_lib, .lib_genes_not_in_query)) == 0,  
+    gene_sets_equal = length(c(.query_genes_not_in_lib, .lib_genes_not_in_query)) == 0,  
     query_sufficient = .n_query_genes >= minimal_query_size, 
     library_sufficient = .n_lib_genes >= minimal_library_size, 
-    stable_library_size = sum(.observations_per_query != median(.observations_per_query, na.rm = T)) <= 10, 
-    avg_tests_per_query = median(.observations_per_query, .na.rm = T)
+    stable_library_size = sum(.observations_per_query != stats::median(.observations_per_query, na.rm = T)) <= 10, 
+    sufficient_tests_per_query = sum(.observations_per_query >= minimal_library_size) >= 0.95 * length(.observations_per_query), 
     
-    #   base::length(.all_pairs) <= 0.9*.n_query_genes*.n_lib_genes
+    
+    avg_tests_per_query = stats::median(.observations_per_query, .na.rm = T)
+    
+    
+    #   length(.all_pairs) <= 0.9*.n_query_genes*.n_lib_genes
   )
   
-  .mode <- fcase(.checks$gene_sets_equal, "symmetric", 
-                 !.checks$gene_sets_equal, "asymmetric", 
-                 #, "fixed_pairs", 
-                 # ... 
-                 default = "unknown")
+  .mode <- data.table::fcase(.checks$gene_sets_equal & 
+                               .checks$query_sufficient & 
+                               .checks$library_sufficient & 
+                               .checks$stable_library_size & 
+                               .checks$sufficient_tests_per_query, "symmetric", 
+                             !.checks$gene_sets_equal & 
+                               .checks$library_sufficient & 
+                               .checks$query_sufficient & 
+                               .checks$stable_library_size & 
+                               .checks$sufficient_tests_per_query, "asymmetric", 
+                             !.checks$library_sufficient | 
+                               !.checks$stable_library_size | 
+                               !.checks$sufficient_tests_per_query# | #avg_tests_per_query <= 50
+                             , "fixed_pairs", 
+                             # ... 
+                             default = "unknown")
   
-
+  
   
   if (.mode == "unknown") {warning("Unknown screen design! Forcing fixed pair run.")}
   
@@ -77,56 +92,22 @@ make_GI_object <- \(.x,
     .checks$library_sufficient & 
     .checks$query_sufficient
   
-  
-  if ()
-  .GI_vals <- list(.query_genes, .lib_genes, .rep_names)
-  
-  if (!is.null(.contrasts)) {
-    .GI_vals <- c(.GI_vals, list(.contrasts))
-  }
+  .GI_vals <- if (.run_queried) {c("query", "library", "replicate")} else {c("pair", "replicate")}
   
   
-  .GI_vals <- base::array(data = NA,
-                          dim = purrr::map_dbl(.GI_vals, base::length),
-                          dimnames = .GI_vals)
+  if (!is.null(.contrasts)) {.GI_vals <- c(.GI_vals, c("contrast"))}
   
+  .GI_vals <- as.formula(str_c(.GI_vals, collapse = " ~ "))
   
-  .template <- data.table::CJ(query = .query_genes, library = .lib_genes)
+  .GI_vals <- .x |> melt.data.table(measure.vars = .rep_names, 
+                                    variable.name = "replicate", 
+                                    value.name = "GI", 
+                                    variable.factor = F, 
+                                    value.factor = F) |> 
+    reshape2::acast(formula = .GI_vals, 
+                    value.var = "GI")
   
-  if (is.null(.contrasts)) {
-    
-    .d <- merge(.template, .x, by = c("query", "library"), all.x = T)
-    
-    for (.r in .rep_names) {
-      .GI_vals[,,.r] <- .d[, get(.r)]
-      
-      if (mean_positional_effects) {
-        .GI_vals[,,.r] <- makeSymmetric(.GI_vals[,,.r])
-      }
-    }
-    
-  } else {
-    
-    .x <- purrr::map(set_names(.contrasts), \(.c) {.x[contrast == .c]})
-    
-    for (.c in .contrasts) {
-      .d <- merge(.template, .x[[.c]], by = c("query", "library"), all.x = T)
-      
-      for (.r in .rep_names) {
-        .GI_vals[,,.r,.c] <- .d[, get(.r)]
-        
-        if (mean_positional_effects) {
-          .GI_vals[,,.r,.c] <- makeSymmetric(.GI_vals[,,.r,.c])
-        }
-      }
-    }
-  }
-  
-  
-  
-  
-  return(list(attributes = list(contrasts = .contrasts, 
-                                query_genes = .query_genes, 
+  return(list(attributes = list(query_genes = .query_genes, 
                                 library_genes = .lib_genes, 
                                 query_genes_not_in_lib = .query_genes_not_in_lib, 
                                 library_genes_not_in_query = .lib_genes_not_in_query, 
@@ -139,6 +120,7 @@ make_GI_object <- \(.x,
                                 unique_pairs = .unique_pairs, 
                                 rep_names = .rep_names
   ), 
+  contrasts = .contrasts, 
   checks = .checks, 
   screen_type = .mode, 
   run_queried = .run_queried, 
