@@ -117,13 +117,13 @@ make_GI_object <- \(.x,
     if (!is.null(.contrasts)) {
       .GI_vals <- purrr::map(.contrasts, \(.c) {
         .x <- .GI_vals[,,.c]
-        colnames(.x) <- str_c(colnames(.x), "_", .c); .x}) %>% 
+        colnames(.x) <- str_c(colnames(.x), "_", .c); .x}) |> 
         purrr::reduce(cbind)
       
       .rep_layers <- purrr::map(.contrasts, \(.c) {
         .x <- .rep_layers
         rownames(.x) <- str_c(rownames(.x), "_", .c)
-        .x}) %>% purrr::reduce(rbind)
+        .x}) |> purrr::reduce(rbind)
       
     }
   }

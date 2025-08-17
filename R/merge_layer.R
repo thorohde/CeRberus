@@ -3,10 +3,11 @@
 
 merge_layer <- function(GI) {
   
+  GI <- copy(GI)
   # error handling
   
   .ids <- purrr::map(unique(GI$replicate_layers[,"tech_rep"]), ~ names(which(GI$replicate_layers[,"tech_rep"] == .x)))
-  .ids <- .ids %>% set_names(str_c("t", 1:length(.ids)))
+  .ids <- .ids |> set_names(str_c("t", 1:length(.ids)))
   
   .new <- empty_array(list(rownames(GI$guide_GIs), names(.ids), 
                            dimnames(GI$guide_GIs)[[3]]))
