@@ -4,7 +4,7 @@
 
 export_GIs <- function(GI_object, filepath) {
   if (!base::dir.exists(base::dirname(filepath))) {
-    base::dir.create(base::dirname(filepath))
+    base::dir.create(base::dirname(filepath), showWarnings = F, recursive = T)
   }
   
   .output <- GI_object |> 

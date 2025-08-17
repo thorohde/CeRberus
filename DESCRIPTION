@@ -15,4 +15,5 @@ Imports:
     limma,
     purrr,
     reshape2,
-    stringr
+    stringr,
+    yaml
