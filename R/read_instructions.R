@@ -17,6 +17,11 @@ read_instructions <- function(file) {
     warning("No output directory provided. Unable to save results.")
   }
   
+  if (!"FDR" %in% names(instr) || 
+      !instr$FDR %in% c("BH", "bonferroni")) {
+    instr$FDR <- "BH"
+  }
+  
   if (!"output_prefix" %in% names(instr) || 
       instr$output_prefix == "") {
     instr$output_prefix <- gsub(".csv$|.rds$", "", 
