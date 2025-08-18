@@ -1,4 +1,5 @@
 #' @importFrom data.table fwrite rbindlist
+#' @importFrom utils menu
 #' @importFrom purrr map imap
 #' @export export_GIs
 
@@ -13,8 +14,15 @@ export_GIs <- function(GI_object, filepath) {
                              library_gene = base::rownames(.x), .x)) |>
     data.table::rbindlist()
   
-  data.table::fwrite(x = .output, 
-                     file = filepath)
+  if (file.exists(filepath)) {
+    overwrite <- utils::menu(c("Yes", "No"), title = base::paste0("Overwrite existing file '", filepath, "'?"))
+  }
+  
+  if (overwrite == 1) {
+    data.table::fwrite(x = .output, file = filepath)
+  } else {
+    message("Keeping old file.")
+  }
   
   return(NULL)
 }
