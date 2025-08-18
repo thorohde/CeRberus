@@ -18,11 +18,17 @@ read_instructions <- function(file) {
   }
   
   if (!"output_prefix" %in% names(instr) || 
-      instructions$output_prefix == "") {
-    
+      instr$output_prefix == "") {
     instr$output_prefix <- gsub(".csv$|.rds$", "", 
-                                basename(instr$scores_file))}
+                                basename(instr$scores_file))
+  }
+
+  if (!"overwrite_output" %in% names(instr) || 
+      !instr$overwrite_output %in% c("TRUE", "T", "FALSE", "F")) {
+    instr$overwrite_output <- T
+  }
   
+    
   if (endsWith(instr$output_directory, "/")) {
     warning("Please remove the trailing '/' in the output_directory path!")
     instr$output_directory <- gsub("/$", "", instr$output_directory)
