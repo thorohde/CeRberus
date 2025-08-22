@@ -9,14 +9,11 @@ build_limma_object <- function(GI_object) {
   
   if (.attr$screen_type == "unknown") {warning("Unknown screen design! Forcing fixed pair run.")}
   
-  output <- if (.attr$queried) {
-    c("query_gene", "library_gene", "replicate")
-  } else {c("pair", "replicate")}
+  output <- c(if (.attr$queried) c("query_gene", "library_gene") else c("pair"), 
+              "replicate", 
+              if (is.null(.attr$contrasts)) c() else c("contrast")
+  )
   
-  
-  if (!is.null(.attr$contrasts)) {
-    output <- c(output, c("contrast"))
-    }
   
   .dim_desc <- map_int(set_names(output), ~ which(output == .x))
   
@@ -24,8 +21,11 @@ build_limma_object <- function(GI_object) {
     reshape2::acast(formula = as.formula(paste0(output, collapse = " ~ ")), 
                     value.var = "GI")
   
+  
   setattr(output, "dim_description", .dim_desc)
-          
+  
+  walk(c("queried", "contrasts"), ~ setattr(output, .x, .attr[[.x]]))
+  
   attr(output, "replicate_layers") <- replicate_layers(dimnames(output)[[attr(output, "dim_description")[["replicate"]]]])
   
   ####

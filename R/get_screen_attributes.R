@@ -39,7 +39,8 @@ get_screen_attributes <- function(input,
   .unique_pairs <- input[, unique(sort_gene_pairs(get("query_gene"), get("library_gene")))]
   
   .attr$checks <- list(
-    gene_sets_equal = length(c(.query_genes_not_in_lib, .lib_genes_not_in_query)) == 0,  
+    gene_sets_equal = (length(.query_genes_not_in_lib) <= 0.02*.n_query_genes) & 
+      (length(.lib_genes_not_in_query) <= 0.02*.n_lib_genes), 
     query_sufficient = .n_query_genes >= minimal_query_size, 
     library_sufficient = .n_lib_genes >= minimal_library_size, 
     stable_library_size = sum(.observations_per_query != stats::median(.observations_per_query, na.rm = T)) <= 10, 
@@ -55,12 +56,12 @@ get_screen_attributes <- function(input,
   .attr$screen_type <- data.table::fcase(.attr$checks$gene_sets_equal & 
                                            .attr$checks$query_sufficient & 
                                            .attr$checks$library_sufficient & 
-                                           .attr$checks$stable_library_size & 
+                                           #.attr$checks$stable_library_size & 
                                            .attr$checks$sufficient_tests_per_query, "symmetric", 
                                          !.attr$checks$gene_sets_equal & 
                                            .attr$checks$library_sufficient & 
                                            .attr$checks$query_sufficient & 
-                                           .attr$checks$stable_library_size & 
+                                           #.attr$checks$stable_library_size & 
                                            .attr$checks$sufficient_tests_per_query, "asymmetric", 
                                          !.attr$checks$library_sufficient | 
                                            !.attr$checks$stable_library_size | 
@@ -72,7 +73,7 @@ get_screen_attributes <- function(input,
   
   ##### 
   
-
+  
   
   .attr$queried <- .attr$screen_type %in% c("symmetric", "asymmetric") & 
     .attr$checks$library_sufficient & 
