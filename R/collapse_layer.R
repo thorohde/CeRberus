@@ -22,9 +22,11 @@ collapse_layer <- function(input, .collapse) {
           value.var = "GI", 
           fun.aggregate = mean)
   
-  walk(c("queried", "dim_description"), ~ setattr(output, .x, attr(input, .x)))
+  walk(c("block_layer", "collapsed_layers", "queried", "dim_description"), ~ setattr(output, .x, attr(input, .x)))
   
-  attr(output, "replicate_layers") <- replicate_layers(dimnames(output)[[attr(output, "dim_description")[["replicate"]]]])
+  setattr(output, "collapsed_layers", c(attr(output, "collapsed_layers"), .collapse))
+
+  setattr(output, "replicate_layers", replicate_layers(dimnames(output)[[attr(output, "dim_description")[["replicate"]]]]))
   
   return(output)
 }

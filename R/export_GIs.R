@@ -3,27 +3,28 @@
 #' @importFrom purrr map imap
 #' @export export_GIs
 
-export_GIs <- function(GI_object, filepath, overwrite = F) {
-  if (!base::dir.exists(base::dirname(filepath))) {
-    base::dir.create(base::dirname(filepath), showWarnings = F, recursive = T)
+export_GIs <- function(GI_object, dupcor_object = NULL, directory = NULL) {
+  
+  stopifnot("Output directory required!" = !is.null(directory))
+  
+  dir.create(directory, showWarnings = F, recursive = T)
+  
+  output <- list(
+    GI = purrr::imap(GI_object, 
+                     ~ data.table(query_gene = .y, 
+                                  library_gene = rownames(.x), 
+                                  .x)) |> data.table::rbindlist(), 
+    dupcor = dupcor_object)
+  
+  paths <- c("GI_scores")
+  
+  if (!is.null(dupcor_object)) {
+    paths <- c(paths, "duplicate_correlation")
   }
   
-  .output <- GI_object |> 
-    purrr::map("result") |> 
-    purrr::imap(~ data.table(query_gene = .y, 
-                             library_gene = base::rownames(.x), .x)) |>
-    data.table::rbindlist()
+  paths <- map_chr(paths, ~ file.path(directory, paste0(.x, ".csv")))
   
-  if (file.exists(filepath)) {
-    if (overwrite) {
-      data.table::fwrite(x = .output, file = filepath)
-    } else {
-      message("Keeping old file.")
-    }
-    #    overwrite <- utils::menu(c("Yes", "No"), title = base::paste0("Overwrite existing file '", filepath, "'?"))
-  } else {
-    data.table::fwrite(x = .output, file = filepath)
-  }
+  pwalk(list(output, paths), \(.o, .p) data.table::fwrite(x = .o, file = .p))
   
   return(NULL)
 }

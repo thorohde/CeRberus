@@ -26,8 +26,11 @@ build_limma_object <- function(GI_object) {
   
   walk(c("queried", "contrasts"), ~ setattr(output, .x, .attr[[.x]]))
   
-  attr(output, "replicate_layers") <- replicate_layers(dimnames(output)[[attr(output, "dim_description")[["replicate"]]]])
+  setattr(output, "replicate_layers", replicate_layers(dimnames(output)[[attr(output, "dim_description")[["replicate"]]]]))
   
+  setattr(output, "collapsed_layers", NULL)
+  setattr(output, "block_layer", NULL)
+
   ####
   
   if (F) {
