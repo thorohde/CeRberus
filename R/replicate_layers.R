@@ -1,4 +1,3 @@
-#' @importFrom stringr str_match
 #' @export replicate_layers
 
 replicate_layers <- function(replicates) {

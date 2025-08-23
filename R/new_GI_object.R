@@ -1,10 +1,7 @@
-#' @import data.table
-#' @import purrr
-#' @importFrom stringr str_c
-#' @export make_GI_object
+#' @export new_GI_object
 
 
-make_GI_object <- \(input, 
+new_GI_object <- \(input, 
                     contrasts_col = "contrast", 
                     query_col = "query_gene", 
                     lib_col = "library_gene", 
@@ -20,7 +17,7 @@ make_GI_object <- \(input,
   input <- data.table::copy(input)
   
   
-  stopifnot("The input object needs to be a data frame." = is.data.table(input), 
+  stopifnot("The input object needs to be a data frame." = data.table::is.data.table(input), 
             "The query gene column is not in the provided dataset." = query_col %in% colnames(input), 
             "The library gene column is not in the provided dataset." = lib_col %in% colnames(input))
   

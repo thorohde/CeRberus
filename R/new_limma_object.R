@@ -1,9 +1,6 @@
-#' @importFrom purrr
-#' @importFrom reshape2 acast
-#' @importFrom stats as.formula
-#' @export build_limma_object
+#' @export new_limma_object
 
-build_limma_object <- function(GI_object) {
+new_limma_object <- function(GI_object) {
   
   .attr <- attributes(GI_object)
   
@@ -22,14 +19,14 @@ build_limma_object <- function(GI_object) {
                     value.var = "GI")
   
   
-  setattr(output, "dim_description", .dim_desc)
+  data.table::setattr(output, "dim_description", .dim_desc)
   
-  walk(c("queried", "contrasts"), ~ setattr(output, .x, .attr[[.x]]))
+  walk(c("queried", "contrasts"), ~ data.table::setattr(output, .x, .attr[[.x]]))
   
-  setattr(output, "replicate_layers", replicate_layers(dimnames(output)[[attr(output, "dim_description")[["replicate"]]]]))
+  data.table::setattr(output, "replicate_layers", replicate_layers(dimnames(output)[[attr(output, "dim_description")[["replicate"]]]]))
   
-  setattr(output, "collapsed_layers", NULL)
-  setattr(output, "block_layer", NULL)
+  data.table::setattr(output, "collapsed_layers", NULL)
+  data.table::setattr(output, "block_layer", NULL)
 
   ####
   

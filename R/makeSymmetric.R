@@ -1,4 +1,3 @@
-#' @importFrom abind abind
 #' @export makeSymmetric
 
 makeSymmetric <- function(.x) {

@@ -1,4 +1,3 @@
-#' @importFrom stringr str_split_i
 #' @export sort_gene_pairs
 
 sort_gene_pairs <- function(g1, g2, sep = ";", pairs, pair_sep = ";", invert = F) {

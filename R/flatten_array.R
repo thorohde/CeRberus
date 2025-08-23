@@ -1,4 +1,3 @@
-#' @importFrom data.table data.table setnames
 #' @export flatten_array
 
 flatten_array <- \(x, dnames, value.name = "value") {

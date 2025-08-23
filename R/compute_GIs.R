@@ -1,10 +1,8 @@
-#' @importFrom data.table rbindlist
-#' @importFrom limma lmFit eBayes
-#' @importFrom purrr map map2
-#' @importFrom stats p.adjust
 #' @export compute_GIs
 
 compute_GIs <- function(GI_object, dupcor, FDR_method) {
+  
+  print(attributes(GI_object))
   
   if (attr(GI_object, "queried")) {
     output <- purrr::map(set_names(rownames(GI_object)), ~ GI_object[.x,,])

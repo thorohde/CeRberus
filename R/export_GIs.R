@@ -1,9 +1,8 @@
-#' @importFrom data.table fwrite rbindlist
-#' @importFrom utils menu
-#' @importFrom purrr map imap
 #' @export export_GIs
 
 export_GIs <- function(GI_object, dupcor_object = NULL, directory = NULL) {
+  
+  print(str(GI_object))
   
   stopifnot("Output directory required!" = !is.null(directory))
   
@@ -22,9 +21,11 @@ export_GIs <- function(GI_object, dupcor_object = NULL, directory = NULL) {
     paths <- c(paths, "duplicate_correlation")
   }
   
-  paths <- map_chr(paths, ~ file.path(directory, paste0(.x, ".csv")))
+  paths <- purrr::map_chr(paths, ~ file.path(directory, paste0(.x, ".csv")))
   
-  pwalk(list(output, paths), \(.o, .p) data.table::fwrite(x = .o, file = .p))
+  purrr::pwalk(list(output, paths), \(.o, .p) data.table::fwrite(x = .o, file = .p))
+  
+
   
   return(NULL)
 }

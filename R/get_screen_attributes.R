@@ -1,5 +1,3 @@
-
-
 #' @export get_screen_attributes
 
 get_screen_attributes <- function(input, 
@@ -19,7 +17,7 @@ get_screen_attributes <- function(input,
     keep(~ .x %in% colnames(input)) |>
     map(~ input[, sort(unique(get(.x)))])
   
-  input[, pair := stringr::str_c(get("query_gene"), ";", get("library_gene"))]
+  input[, pair := paste0(get("query_gene"), ";", get("library_gene"))]
   
   .query_genes <- input[, unique(get("query_gene"))]
   .lib_genes <- input[, unique(get("library_gene"))]

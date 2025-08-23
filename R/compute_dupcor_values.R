@@ -1,6 +1,3 @@
-#' @importFrom limma duplicateCorrelation
-#' @importFrom purrr map map_dbl
-#' 
 #' @export compute_dupcor_values
 
 compute_dupcor_values <- function(GI, sample_query = NULL) {
