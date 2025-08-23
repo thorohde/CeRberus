@@ -2,7 +2,9 @@
 
 compute_GIs <- function(GI_object, dupcor, FDR_method) {
   
-  print(attributes(GI_object))
+  print(str(GI_object))
+  print(str(dupcor))
+  
   
   if (attr(GI_object, "queried")) {
     output <- purrr::map(set_names(rownames(GI_object)), ~ GI_object[.x,,])
@@ -28,7 +30,7 @@ compute_GIs <- function(GI_object, dupcor, FDR_method) {
     purrr::imap(~ data.table(query_gene = .y, 
                              library_gene = rownames(.x), 
                              .x)) |> 
-    data.table::rbindlist()
+    data.table::rbindlist(fill = T)
   
   return(output)
 }
