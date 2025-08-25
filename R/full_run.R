@@ -79,6 +79,10 @@ full_run <- function(yaml_fpath, test_run = F) {
   if (instr$verbose) print("(4/5) Computed GI scores.")
   
   
+  
+  print(str(.data$GI_object))
+  
+  
   if ("output_directory" %in% names(instr) & instr$overwrite_output) {
     
     export_GIs(
