@@ -8,16 +8,7 @@ export_GIs <- function(GI_object, dupcor_object = NULL, directory = NULL) {
   dir.create(directory, showWarnings = F, recursive = T)
   
   output <- list(
-    GI = #purrr::imap(GI_object, 
-        #             ~ data.table(query_gene = .y, 
-        #                          library_gene = rownames(.x), 
-        #                          .x)) |> data.table::rbindlist(), 
-    
-    GI_object, 
-    
-    
-    
-    dupcor = dupcor_object)
+    GI = GI_object, dupcor = dupcor_object)
   
   paths <- c("GI_scores")
   

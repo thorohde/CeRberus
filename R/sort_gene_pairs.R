@@ -1,3 +1,25 @@
+#' Alphabetically sorts gene pairs. 
+#' 
+#' @description
+#' After pairwise sorting, `sort_gene_pairs` concatenates two vectors of gene names into one. 
+#' 
+#' @param g1 Character vector of gene names
+#' @param g2 Character vector of gene names
+#' @param sep Separator used to concatenate the gene pairs
+#' @param pairs Vector of gene pair names, separated by the pair_sep separator
+#' @param pair_sep Separator used when pairs is provided
+#' @param invert inversts the sorting of gene pairs. If false, the output will be "GeneA;GeneB". If true: "GeneB;GeneA"
+#' @examples
+#' genes1 <- c("RB1", "NOTCH1", "TTN", "MSH2", "FANCD2")
+#' genes2 <- c("RNF43", "NEK1", "HLTF", "REV3L", "PAPD7")
+#' 
+#' # Basic usage
+#' sort_gene_pairs(genes1, genes2)
+#' 
+#' # Inverted sorting
+#' sort_gene_pairs(genes1, genes2, invert = TRUE)
+
+#' 
 #' @export sort_gene_pairs
 
 sort_gene_pairs <- function(g1, g2, sep = ";", pairs, pair_sep = ";", invert = F) {
