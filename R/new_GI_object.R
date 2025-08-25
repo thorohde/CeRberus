@@ -29,7 +29,7 @@ new_GI_object <- \(input,
   
   .attr <- get_screen_attributes(input)
   
-  iwalk(.attr, ~ setattr(input, .y, .x))
+  iwalk(.attr, ~ data.table::setattr(input, .y, .x))
   
   input[, replicate := do.call(paste, c(.SD, sep = "_")), 
         .SDcols = names(.attr$rep_layers)]
