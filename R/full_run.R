@@ -1,21 +1,14 @@
 #' @export full_run
 
 
-full_run <- function(yaml_fpath, test_run = F) {
+full_run <- function(yaml_fpath, return_output = F) {
   
   stopifnot("Instruction file does not exist!" = file.exists(yaml_fpath))
   
-  instr <- yaml::read_yaml(file = yaml_fpath)
-  
-  
-  
-  instr <- read_instructions(instr)
+  instr <- read_instructions(yaml::read_yaml(file = yaml_fpath))
 
-  #for (.pkg in c("BiocManager")) {if (!require(.pkg, quietly = T)) {utils::install.packages(.pkg)}
-  #}
-  
+  #for (.pkg in c("BiocManager")) {if (!require(.pkg, quietly = T)) {utils::install.packages(.pkg)}}
   #if (!require("limma", quietly = T)) {BiocManager::install("limma")}
-  
   #if (F) {devtools::load_all("D:/Promotion_projects_github/CeRberus/")}
   
   print(str(instr))
@@ -24,16 +17,7 @@ full_run <- function(yaml_fpath, test_run = F) {
                   "csv" = data.table::fread(instr$scores_file), 
                   "rds" = readRDS(instr$scores_file))
   
-
-  if (test_run) {
-    # to reduce runtime, the input file is subsetted to 100 x 100 genes
-    .g <- .data[, sample(unique(intersect(query_gene, library_gene)), 200)]
-    .data <- .data[query_gene %in% .g & library_gene %in% .g]
-  }
-  
-
-  
-  .data <- new_GI_object(.data)
+  .data <- GIScores(.data)
   
   .data <- new_limma_object(.data)
   
@@ -50,7 +34,7 @@ full_run <- function(yaml_fpath, test_run = F) {
     # This should find the block with the highest in-block correlation. 
     # If no positive block is found, the lowest correlating layer gets collapsed, and the process is repeated. 
     
-    .dc <- map_dbl(compute_dupcor_values(.data, sample_query = 20), median, na.rm = T)
+    .dc <- purrr::map_dbl(compute_dupcor_values(.data, sample_query = 20), median, na.rm = T)
     
     .highest <- .dc[which.max(.dc)]
     
@@ -111,6 +95,9 @@ full_run <- function(yaml_fpath, test_run = F) {
     if (instr$verbose) print("(5/5) Limma run successful. Output not saved.")
   }
   
-  
-  return(NULL)
+  if (return_output) {
+    return(list(data = .data, log = .log))
+  } else {
+    return(NULL)
+    }
 }

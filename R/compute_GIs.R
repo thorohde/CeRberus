@@ -10,6 +10,10 @@ compute_GIs <- function(GI_object, dupcor, FDR_method) {
     output <- purrr::map(set_names(rownames(GI_object)), ~ GI_object[.x,,])
   }
   
+#  if ! queried output is NA!
+  
+  
+  
   output <- purrr::map2(
     output, 
     dupcor[[attr(GI_object, "block_layer")]], 
