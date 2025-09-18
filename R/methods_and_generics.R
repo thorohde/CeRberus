@@ -70,7 +70,6 @@ setMethod(
     .blocks <- purrr::set_names(.blocks) |> purrr::map(~ GI_obj@blocks$map[,.x])
     
     if (grepl("multiplex", GI_obj@screenType)) {
-      
       output <- if (is.null(sample_query)) {
         GI_obj@screen_attributes$query_genes
       } else {
@@ -78,6 +77,12 @@ setMethod(
       }
       GI_obj@dupCorrelation <- set_names(output) |> purrr::map(~ GI_obj@guideGIs[.x,,])
     }
+    
+    if (grepl("fixed", GI_obj@screenType)) {
+      GI_obj@dupCorrelation <- list(GI_obj@guideGIs)
+    }
+    
+    
     
     GI_obj@dupCorrelation <- purrr::map(.blocks, \(.b) {
       GI_obj@dupCorrelation |>
@@ -188,39 +193,83 @@ setMethod(
     
     if (grepl("multiplex", GI_obj@screenType)) {
       
-      .f <- c("query_gene", "library_gene", "variable")
-      
       geneGIs(GI_obj) <- set_names(GI_obj@screen_attributes$query_genes) |> 
-        map(
-          purrr::safely(\(.g) {
-            .fit <- limma::lmFit(object = GI_obj@guideGIs[.g,,], 
-                                 block = GI_obj@blocks$map[, GI_obj@blocks$chosen], 
-                                 correlation = GI_obj@dupCorrelation[[GI_obj@blocks$chosen]][[.g]])
-            
-            .efit <- limma::eBayes(.fit)
-            
-            data.frame(query_gene = rep(.g, GI_obj@screen_attributes$n_lib_genes), 
-                       library_gene = GI_obj@screen_attributes$library_genes, 
-                       GI = .fit$Amean, 
-                       pval = .efit$p.value[, 1], 
-                       FDR = stats::p.adjust(.efit$p.value[, 1], method = FDR_method))
-          })) |>
-        purrr::map("result") |> 
+        map(purrr::safely(\(.g) {
+          .fit <- limma::lmFit(object = GI_obj@guideGIs[.g,,], 
+                               block = GI_obj@blocks$map[, GI_obj@blocks$chosen], 
+                               correlation = GI_obj@dupCorrelation[[GI_obj@blocks$chosen]][[.g]])
+          
+          .efit <- limma::eBayes(.fit)
+          
+          data.frame(query_gene = rep(.g, GI_obj@screen_attributes$n_lib_genes), 
+                     library_gene = GI_obj@screen_attributes$library_genes, 
+                     GI = .fit$Amean, 
+                     pval = .efit$p.value[, 1], 
+                     FDR = stats::p.adjust(.efit$p.value[, 1], method = FDR_method))
+        })) |> purrr::map("result") |> 
         data.table::rbindlist(fill = T) |>
         data.table::melt.data.table(measure.vars = c("GI", "pval", "FDR")) |>
-        reshape2::acast(formula = as.formula(paste0(.f, collapse = " ~ ")), 
+        reshape2::acast(formula = as.formula("query_gene ~ library_gene ~ variable"), 
                         value.var = "value")
       
     } else {
-      ##### add!
-    }
-    
-    print(apply(GI_obj@geneGIs, 3, \(.) {sum(is.na(.)) / length(.)}))
+      geneGIs(GI_obj) <- {
+      .fit <- limma::lmFit(object = GI_obj@guideGIs, 
+                             block = GI_obj@blocks$map[, GI_obj@blocks$chosen], 
+                             correlation = GI_obj@dupCorrelation[[GI_obj@blocks$chosen]])
+        
+        
+      .efit <- limma::eBayes(.fit)
+      
+      output <- list(rownames(GI_obj@guideGIs), 
+                     c("GI", "pval", "FDR"))
+      
+      output <- array(data = NA, 
+                      dim = map_int(output, length), 
+                      dimnames = output)
+        
+      output[,"GI"] <- .fit$Amean
+      output[,"pval"] <- .efit$p.value[, 1]
+      output[,"FDR"] <- stats::p.adjust(.efit$p.value[, 1], method = FDR_method)
+      
+      output
+      }}
+      
+      
+#    print(apply(GI_obj@geneGIs, 3, \(.) {sum(is.na(.)) / length(.)}))
     
     return(GI_obj)
     
   })
 
-
+setMethod("export_GIs", 
+          signature = "ScreenBase", 
+          function(GI_obj, dupcor_object = NULL, directory = NULL) {
+  
+  
+  stopifnot("Output directory required!" = !is.null(directory))
+  
+  dir.create(directory, showWarnings = F, recursive = T)
+  
+  
+  #####
+  output <- list(
+    GI = GI_object, dupcor = dupcor_object)
+  
+  paths <- c("GI_scores")
+  
+  if (!is.null(dupcor_object)) {
+    paths <- c(paths, "duplicate_correlation")
+  }
+  
+  paths <- purrr::map_chr(paths, ~ file.path(directory, paste0(.x, ".csv")))
+  
+  purrr::pwalk(list(output, paths), \(.o, .p) data.table::fwrite(x = .o, file = .p))
+  
+  return(NULL)
+  
+  #####
+  
+})
 
 

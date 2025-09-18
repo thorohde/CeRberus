@@ -2,7 +2,6 @@
 
 export(GIScores)
 export(blocks)
-export(build_limma_object)
 export(define_screen_type)
 export(export_GIs)
 export(flatten_array)
