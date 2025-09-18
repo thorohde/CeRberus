@@ -11,27 +11,6 @@ comment: ORCID: 0009-0004-5159-4635
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
-Collate: 
-    'CeRberus-package.R'
-    'GIScores.R'
-    'GIScores_class.R'
-    'generics.R'
-    'GIScores_methods.R'
-    'build_limma_object.R'
-    'collapse_layer.R'
-    'compute_GIs.R'
-    'compute_dupcor_values.R'
-    'define_screen_type.R'
-    'export_GIs.R'
-    'flatten_array.R'
-    'full_run.R'
-    'get_screen_attributes.R'
-    'makeSymmetric.R'
-    'new_GI_object.R'
-    'new_limma_object.R'
-    'read_instructions.R'
-    'replicate_layers.R'
-    'sort_gene_pairs.R'
 Imports: 
     abind,
     data.table,

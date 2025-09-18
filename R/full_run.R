@@ -19,52 +19,27 @@ full_run <- function(yaml_fpath, return_output = F) {
   
   .data <- GIScores(.data)
   
-  .data <- new_limma_object(.data)
-  
   if (instr$verbose) {
     print("(1/5) Data import successful.")
     print("Deciding on block structure. This may take a while.")
   }
   
-  
-  
-  while(is.null(attr(.data, "block_layer")) & 
-        ncol(attr(.data, "replicate_layers")) > 1) {
-    
-    # This should find the block with the highest in-block correlation. 
-    # If no positive block is found, the lowest correlating layer gets collapsed, and the process is repeated. 
-    
-    .dc <- purrr::map_dbl(compute_dupcor_values(.data, sample_query = 20), median, na.rm = T)
-    
-    .highest <- .dc[which.max(.dc)]
-    
-    if (.highest >= 0) {
-      data.table::setattr(.data, "block_layer", names(.highest))
-    } else {
-      .data <- collapse_layer(.data, names(which.min(.dc)))
-    }
-  }
-  
+  .data <- block_decision_heuristics(.data)
   
   if (instr$verbose) print("(2/5) Optimal block structure identified. Estimating duplicate correlation.")
   
-  .data <- list(data = .data, 
-                dupcor = compute_dupcor_values(.data))
+  .data <- compute_dupcor_values(.data)
   
   if (instr$verbose) print("(3/5) Computed duplicate correlation values.")
   
-  .data$GI_scores <- compute_GIs(GI_object = .data$data, 
-                                 dupcor = .data$dupcor, 
-                                 FDR_method = instr$FDR)
+  #.data$GI_scores <- compute_GIs(GI_object = .data$data, 
+  #                               dupcor = .data$dupcor, 
+  #                               FDR_method = instr$FDR)
   
-  
-  #print(str(.data$GI_scores))
   
   if (instr$verbose) print("(4/5) Computed GI scores.")
   
-  
-  
-  print(str(.data$GI_object))
+  print(str(.data))
   
   
   if ("output_directory" %in% names(instr) & instr$overwrite_output) {

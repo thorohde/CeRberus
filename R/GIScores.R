@@ -33,8 +33,6 @@ GIScores <- function(input,
   
   .a <- get_screen_attributes(input)
   
-  
-  
   .checks <- list(
     gene_sets_equal = (length(.a$query_genes_not_in_lib) <= 0.02*.a$n_query_genes) & 
       (length(.a$lib_genes_not_in_query) <= 0.02*.a$n_lib_genes), 
@@ -50,35 +48,34 @@ GIScores <- function(input,
   
   .type <- define_screen_type(.checks)
   
-  if (.type == "unknown") {
-    warning("Unknown screen design! Forcing fixed pair run.")
-    .type <- "fixed"
-  }
+  #GI_obj <- c("fixed" = "FixedPairScreen", 
+  #              "multiplex.symmetric" = "MultiplexScreen", 
+  #               "multiplex.asymmetric" = "MultiplexScreen")[[.type]]
   
+  GI_obj <- new("ScreenBase")
   
-  GI_object <- new("GIScores")
+  screen_attributes(GI_obj) <- .a
+  checks(GI_obj) <- .checks
+  screenType(GI_obj) <- .type
   
-  screen_attributes(GI_object) <- .a
-  checks(GI_object) <- .checks
-  screen_type(GI_object) <- .type
-  
-  .f <- c(if (grepl("multiplex", .type)) c("query_gene", "library_gene") else c("pair"), 
-          "replicate"#, 
-          #if (is.null(screen_attributes(GI_object)$contrasts)) c() else c("contrast")
+  structure(GI_obj) <- c(if (grepl("multiplex", .type)) c("query_gene", "library_gene") else c("pair"), 
+          "replicate", if (is.null(screen_attributes(GI_obj)$contrasts)) c() else c("contrast")
   )
   
-  dim_description(GI_object) <- purrr::map_int(set_names(.f), ~ which(.f == .x))
-  
-  guideGIs(GI_object) <- input |> 
-    reshape2::acast(formula = as.formula(paste0(.f, collapse = " ~ ")), 
+  guideGIs(GI_obj) <- input |> 
+    reshape2::acast(formula = as.formula(paste0(structure(GI_obj), collapse = " ~ ")), 
                     value.var = "GI")
   
-  layers(GI_object) <- replicate_layers(dimnames(guideGIs(GI_object))[[dim_description(GI_object)[["replicate"]]]])
+  replicates(GI_obj) <- dimnames(guideGIs(GI_obj))[[which(structure(GI_obj) == "replicate")]]
   
-  ###
-  #data.table::setattr(GI_object, "collapsed_layers", NULL)
-  #data.table::setattr(GI_object, "block_layer", NULL)
-  ###
+  blocks(GI_obj) <- list(map = map_replicate_layers(replicates(GI_obj)), 
+                         all = colnames(map_replicate_layers(replicates(GI_obj))), 
+                         options = colnames(map_replicate_layers(replicates(GI_obj))), 
+                         collapsed = NULL, 
+                         chosen = NULL)
+
   
-  return(GI_object)
+
+  
+  return(GI_obj)
 }
