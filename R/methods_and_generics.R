@@ -7,9 +7,6 @@ setGeneric("blocks<-", function(x, value) standardGeneric("blocks<-"))
 setGeneric("checks", function(x) standardGeneric("checks"))
 setGeneric("checks<-", function(x, value) standardGeneric("checks<-"))
 
-setGeneric("compute_GIs", function(x) standardGeneric("compute_GIs"))
-setGeneric("compute_GIs<-", function(x, value) standardGeneric("compute_GIs<-"))
-
 setGeneric("dupCorrelation", function(x) standardGeneric("dupCorrelation"))
 setGeneric("dupCorrelation<-", function(x, value) standardGeneric("dupCorrelation<-"))
 
@@ -53,11 +50,15 @@ purrr::walk(c(
   }
 )
 
+setGeneric("block_decision_heuristics", function(GI_obj, ...) standardGeneric("block_decision_heuristics"))
 setGeneric("collapse_layer", function(GI_obj, ...) standardGeneric("collapse_layer"))
 setGeneric("compute_dupcor_values", function(GI_obj, ...) standardGeneric("compute_dupcor_values"))
-setGeneric("block_decision_heuristics", function(GI_obj, ...) standardGeneric("block_decision_heuristics"))
 setGeneric("compute_GIs", function(GI_obj, ...) standardGeneric("compute_GIs"))
-
+setGeneric("dupCorrelation_df", function(GI_obj, ...) standardGeneric("dupCorrelation_df"))
+setGeneric("export_GIs", function(GI_obj, ...) standardGeneric("export_GIs"))
+setGeneric("GI_df", function(GI_obj, ...) standardGeneric("GI_df"))
+setGeneric("dupcor_df", function(GI_obj, ...) standardGeneric("dupcor_df"))
+setGeneric("create_log", function(GI_obj, ...) standardGeneric("create_log"))
 
 setMethod(
   "compute_dupcor_values", 
@@ -92,19 +93,6 @@ setMethod(
     return(GI_obj)
   })
 
-#setMethod(
-#  "compute_dupcor_values", 
-#  signature = "FixedPairScreen", 
-#  function(GI_obj, sample_query = NULL) {
-#    
-#    return(GI_obj)              
-#  })
-
-
-
-
-
-
 setMethod(
   "collapse_layer", 
   signature = "ScreenBase", 
@@ -135,15 +123,8 @@ setMethod(
                            options = colnames(map_replicate_layers(replicates(GI_obj))), 
                            collapsed = NULL, 
                            chosen = NULL)
-    
-    
-    
     return(GI_obj)
-    
   })
-
-
-
 
 setMethod(
   "block_decision_heuristics", 
@@ -178,11 +159,6 @@ setMethod(
   }
 )
 
-
-
-
-
-
 setMethod(
   "compute_GIs", 
   signature = "ScreenBase", 
@@ -214,62 +190,85 @@ setMethod(
       
     } else {
       geneGIs(GI_obj) <- {
-      .fit <- limma::lmFit(object = GI_obj@guideGIs, 
+        .fit <- limma::lmFit(object = GI_obj@guideGIs, 
                              block = GI_obj@blocks$map[, GI_obj@blocks$chosen], 
                              correlation = GI_obj@dupCorrelation[[GI_obj@blocks$chosen]])
         
         
-      .efit <- limma::eBayes(.fit)
-      
-      output <- list(rownames(GI_obj@guideGIs), 
-                     c("GI", "pval", "FDR"))
-      
-      output <- array(data = NA, 
-                      dim = map_int(output, length), 
-                      dimnames = output)
+        .efit <- limma::eBayes(.fit)
         
-      output[,"GI"] <- .fit$Amean
-      output[,"pval"] <- .efit$p.value[, 1]
-      output[,"FDR"] <- stats::p.adjust(.efit$p.value[, 1], method = FDR_method)
-      
-      output
+        output <- list(rownames(GI_obj@guideGIs), 
+                       c("GI", "pval", "FDR"))
+        
+        output <- array(data = NA, 
+                        dim = map_int(output, length), 
+                        dimnames = output)
+        
+        output[,"GI"] <- .fit$Amean
+        output[,"pval"] <- .efit$p.value[, 1]
+        output[,"FDR"] <- stats::p.adjust(.efit$p.value[, 1], method = FDR_method)
+        
+        output
       }}
-      
-      
-#    print(apply(GI_obj@geneGIs, 3, \(.) {sum(is.na(.)) / length(.)}))
     
     return(GI_obj)
+  })
+
+setMethod(
+  "GI_df", 
+  signature = "ScreenBase", 
+  function(GI_obj) {
+    
+    if (grepl("multiplex", GI_obj@screenType)) {
+      output <- GI_obj@geneGIs |> 
+        flatten_array(dnames = c("query_gene", "library_gene", "variable"), 
+                      value.name = "value") |>
+        data.table::dcast(formula = query_gene + library_gene ~ variable, 
+                          value.var = "value")
+      output <- output[, .SD, .SDcols = c("query_gene", "library_gene", "GI", "pval", "FDR")]
+    }
+    
+    if (grepl("fixed", GI_obj@screenType)) {
+      output <- data.table::data.table(pair = rownames(GI_obj@geneGIs), GI_obj@geneGIs)
+    }
+    
+    return(output)
     
   })
 
-setMethod("export_GIs", 
-          signature = "ScreenBase", 
-          function(GI_obj, dupcor_object = NULL, directory = NULL) {
-  
-  
-  stopifnot("Output directory required!" = !is.null(directory))
-  
-  dir.create(directory, showWarnings = F, recursive = T)
-  
-  
-  #####
-  output <- list(
-    GI = GI_object, dupcor = dupcor_object)
-  
-  paths <- c("GI_scores")
-  
-  if (!is.null(dupcor_object)) {
-    paths <- c(paths, "duplicate_correlation")
-  }
-  
-  paths <- purrr::map_chr(paths, ~ file.path(directory, paste0(.x, ".csv")))
-  
-  purrr::pwalk(list(output, paths), \(.o, .p) data.table::fwrite(x = .o, file = .p))
-  
-  return(NULL)
-  
-  #####
-  
-})
 
+setMethod(
+  "dupCorrelation_df", 
+  signature = "ScreenBase", 
+  function(GI_obj) {
+    if (grepl("multiplex", GI_obj@screenType)) {
+      output <- data.table::data.table(
+        query_gene = GI_obj@screen_attributes$query_genes, 
+        data.frame(GI_obj@dupCorrelation))
+    }
+    
+    if (grepl("fixed", GI_obj@screenType)) {
+      output <- data.table(data.frame(GI_obj@dupCorrelation))
+    }
+    
+    
+    return(output)
+    
+  })
+
+setMethod(
+  "create_log", 
+  signature = "ScreenBase", 
+  function(GI_obj) {
+    list(stringr::str_glue("CRISPR screen with {GI_obj@screen_attributes$n_query_genes} query genes and {GI_obj@screen_attributes$n_lib_genes} library genes."), 
+         stringr::str_glue("Identified screen design: {GI_obj@screenType}."), 
+         "", 
+         stringr::str_glue("Possible replicate layers: {paste(GI_obj@blocks$options, collapse = ', ')}"), 
+         stringr::str_glue("Possible layer used for p-values: {GI_obj@blocks$chosen}"), 
+         stringr::str_glue("Median duplicate correlation levels: "), 
+         "", 
+         stringr::str_glue("... and many other useful log information.")
+    ) |> paste(collapse = "\n")
+    
+  })
 

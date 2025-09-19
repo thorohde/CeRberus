@@ -6,7 +6,11 @@ full_run <- function(yaml_fpath, return_output = F) {
   stopifnot("Instruction file does not exist!" = file.exists(yaml_fpath))
   
   instr <- read_instructions(yaml::read_yaml(file = yaml_fpath))
-
+  
+  stopifnot("Output directory required!" = !is.null(instr$output_directory))
+  
+  dir.create(instr$output_directory, showWarnings = F, recursive = T)
+  
   #for (.pkg in c("BiocManager")) {if (!require(.pkg, quietly = T)) {utils::install.packages(.pkg)}}
   #if (!require("limma", quietly = T)) {BiocManager::install("limma")}
   #if (F) {devtools::load_all("D:/Promotion_projects_github/CeRberus/")}
@@ -32,47 +36,29 @@ full_run <- function(yaml_fpath, return_output = F) {
   
   if (instr$verbose) print("(3/5) Computed duplicate correlation values.")
   
-  #.data$GI_scores <- compute_GIs(GI_object = .data$data, 
-  #                               dupcor = .data$dupcor, 
-  #                               FDR_method = instr$FDR)
+  .data <- compute_GIs(.data, FDR_method = instr$FDR)
   
   
   if (instr$verbose) print("(4/5) Computed GI scores.")
   
-  print(str(.data))
-  
   
   if ("output_directory" %in% names(instr) & instr$overwrite_output) {
     
-    export_GIs(
-      GI_object = .data$GI_scores, 
-      dupcor_object = .data$dupcor, 
-      directory = file.path(instr$output_directory)
-    )
+    iwalk(list(
+      GI_scores = GI_df(.data), 
+      duplicate_correlation = dupCorrelation_df(.data)), 
+      ~ {data.table::fwrite(
+        x = .x, 
+        file = file.path(instr$output_directory, paste0(.y, ".csv")))
+      })
     
-    .log <- c(list(instructions = instr), 
-              list(file1 = .data$data, 
-                   file3 = .data$dupcor) |> map(~ attributes(.x)[!names(attributes(.x)) %in% c("dim", "dimnames"#, "dim_description", "replicate_layers"
-                   )]), 
-              screen_design = list(
-                queried = attr(.data$data, "queried"), 
-                collapsed_layers = if (is.null(attr(.data$GI_scores, "collapsed_layers"))) {"none"} else {attr(.data$GI_scores, "collapsed_layers")}, 
-                block_layer = if (is.null(attr(.data$GI_scores, "block_layer"))) {"none"} else {attr(.data$GI_scores, "block_layer")}
-              ))
-    
-    #print(str(.log))
-    
-    yaml::write_yaml(.log, file.path(instr$output_directory, "limma.log"))
-    
+    .log <- create_log(.data)
+    writeLines(.log, file.path(instr$output_directory, "limma.log"))
     
     if (instr$verbose) print("(5/5) Exported results. Limma run successful!")
   } else {
     if (instr$verbose) print("(5/5) Limma run successful. Output not saved.")
   }
   
-  if (return_output) {
-    return(list(data = .data, log = .log))
-  } else {
-    return(NULL)
-    }
+  if (return_output) {return(.data)} else {return(NULL)}
 }
