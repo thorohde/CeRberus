@@ -7,12 +7,15 @@ map_replicate_layers <- function(replicates) {
   
   .x <- .x |> purrr::keep(purrr::map_int(.x, length) != 0)
   
-  .map <- matrix(data = 1, nrow = length(replicates), ncol = length(.x), dimnames = list(replicates, names(.x)))
+  output <- list(bio_rep = "(b\\d+)", 
+                 tech_rep = "(t\\d+)", 
+                 guides = "(g\\d+)")
   
-  .rgx <- list(bio_rep = "(b\\d+)", tech_rep = "(t\\d+)", guides = "(g\\d+)")
+  output <- output |> 
+    purrr::keep(names(output) %in% names(.x)) |> 
+    purrr::map(~ {.xx <- as.integer(factor(str_match(replicates, .x)[,2]))
+    names(.xx) <- replicates
+    .xx})
   
-  for (.n in intersect(names(.x), names(.rgx))) {
-      .map[, .n] <- factor(str_match(replicates, .rgx[[.n]])[,2])
-    }
-  return(.map)
+  return(output)
 }

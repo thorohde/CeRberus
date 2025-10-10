@@ -14,7 +14,7 @@ GIScores <- function(input,
   
   input <- data.table::copy(input)
   
-  input[, pair := paste0(get("query_gene"), ";", get("library_gene"))]  
+  input[, pair := paste0(get("query_gene"), ";", get("library_gene"))]
   
   input[, replicate := do.call(paste, c(.SD, sep = "_")), 
         .SDcols = intersect(c("contrast", "bio_rep", "tech_rep", "guide_pair"), colnames(input))]
@@ -69,9 +69,8 @@ GIScores <- function(input,
   replicates(GI_obj) <- dimnames(guideGIs(GI_obj))[[which(structure(GI_obj) == "replicate")]]
   
   blocks(GI_obj) <- list(map = map_replicate_layers(replicates(GI_obj)), 
-                         all = colnames(map_replicate_layers(replicates(GI_obj))), 
-                         options = colnames(map_replicate_layers(replicates(GI_obj))), 
-                         collapsed = NULL, 
+                         all = names(map_replicate_layers(replicates(GI_obj))), 
+                         use = names(map_replicate_layers(replicates(GI_obj))), 
                          chosen = NULL)
 
   

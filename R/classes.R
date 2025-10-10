@@ -4,7 +4,8 @@ setClass("ScreenBase",
          slots = c(
            "screenType" = "character", 
            "guideGIs" = "array", 
-           "geneGIs" = "array", 
+           "geneGIs" = "list", 
+           "geneGIsSymmetric" = "list", 
            "structure" = "character", 
            "replicates" = "character",  
            "screen_attributes" = "list", 
@@ -15,4 +16,3 @@ setClass("ScreenBase",
 )
 
 #setClass("FixedPairScreen", contains = "ScreenBase")
-#setClass("MultiplexScreen", contains = "ScreenBase")

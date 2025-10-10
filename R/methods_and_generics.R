@@ -50,8 +50,9 @@ purrr::walk(c(
   }
 )
 
+setGeneric("add_collapsed_layers", function(GI_obj, ...) standardGeneric("add_collapsed_layers"))
 setGeneric("block_decision_heuristics", function(GI_obj, ...) standardGeneric("block_decision_heuristics"))
-setGeneric("collapse_layer", function(GI_obj, ...) standardGeneric("collapse_layer"))
+#setGeneric("collapse_layer", function(GI_obj, ...) standardGeneric("collapse_layer"))
 setGeneric("compute_dupcor_values", function(GI_obj, ...) standardGeneric("compute_dupcor_values"))
 setGeneric("compute_GIs", function(GI_obj, ...) standardGeneric("compute_GIs"))
 setGeneric("dupCorrelation_df", function(GI_obj, ...) standardGeneric("dupCorrelation_df"))
@@ -63,19 +64,21 @@ setGeneric("create_log", function(GI_obj, ...) standardGeneric("create_log"))
 setMethod(
   "compute_dupcor_values", 
   signature = "ScreenBase", 
-  function(GI_obj, sample_query = NULL) {
+  function(GI_obj, .blocks = GI_obj@blocks$use, sample_query = NULL) {
     
-    .blocks <- blocks(GI_obj)$chosen
-    if (is.null(.blocks)) {.blocks <- GI_obj@blocks$options}
+    if (is.null(.blocks)) {.blocks <- GI_obj@blocks$all}
     
-    .blocks <- purrr::set_names(.blocks) |> purrr::map(~ GI_obj@blocks$map[,.x])
+    .blocks <- GI_obj@blocks$map[.blocks]
     
     if (grepl("multiplex", GI_obj@screenType)) {
+      
       output <- if (is.null(sample_query)) {
         GI_obj@screen_attributes$query_genes
       } else {
         sample(GI_obj@screen_attributes$query_genes, min(c(sample_query, GI_obj@screen_attributes$n_query_genes)))
       }
+      
+      
       GI_obj@dupCorrelation <- set_names(output) |> purrr::map(~ GI_obj@guideGIs[.x,,])
     }
     
@@ -86,53 +89,92 @@ setMethod(
     
     
     GI_obj@dupCorrelation <- purrr::map(.blocks, \(.b) {
+      
       GI_obj@dupCorrelation |>
-        purrr::map(limma::duplicateCorrelation, block = .b) |>
+        purrr::map(~ suppressWarnings(limma::duplicateCorrelation(object = .x[,names(.b)], block = .b))) |>
         purrr::map_dbl("consensus.correlation")})
     
+    
     return(GI_obj)
   })
 
-setMethod(
-  "collapse_layer", 
-  signature = "ScreenBase", 
-  function(GI_obj, .collapse) {
-    
-    stopifnot(.collapse %in% GI_obj@blocks$options)
-    
-    .old_reps <- GI_obj@blocks$options
-    .new_reps <- setdiff(.old_reps, .collapse)
-    
-    output <- input |> flatten_array(structure(GI_obj), "GI")
-    
-    output[, c(.old_reps) := data.table::tstrsplit(replicate, "_")]
-    
-    output[, replicate := do.call(paste, c(data.table::.SD, sep = "_")), .SDcols = .new_reps]
-    
-    output <- output |> 
-      reshape2::acast(formula = as.formula(paste0(structure(GI_obj), collapse = " ~ ")), 
-                      value.var = "GI", 
-                      fun.aggregate = mean)
-    
-    GI_obj@blocks$collapsed <- c(GI_obj@blocks$collapsed, .collapse)
-    
-    replicates(GI_obj) <- dimnames(guideGIs(GI_obj))[[which(structure(GI_obj) == "replicate")]]
-    
-    blocks(GI_obj) <- list(map = map_replicate_layers(replicates(GI_obj)), 
-                           all = colnames(map_replicate_layers(replicates(GI_obj))), 
-                           options = colnames(map_replicate_layers(replicates(GI_obj))), 
-                           collapsed = NULL, 
-                           chosen = NULL)
-    return(GI_obj)
-  })
+#setMethod(
+#    "collapse_layer", 
+#    signature = "ScreenBase", 
+#    function(GI_obj, .collapse) {
 
+#      stopifnot(.collapse %in% GI_obj@blocks$options)
+#      
+#      .old_reps <- GI_obj@blocks$options
+#      .new_reps <- setdiff(.old_reps, .collapse)
+#      
+#      output <- GI_obj@guideGIs |> flatten_array(structure(GI_obj), "GI")
+#      
+#      output[, c(.old_reps) := data.table::tstrsplit(replicate, "_")]
+#      
+#      output[, replicate := do.call(paste, c(.SD, sep = "_")), .SDcols = .new_reps]
+#      
+#      output <- output |> 
+#        reshape2::acast(formula = as.formula(paste0(structure(GI_obj), collapse = " ~ ")), 
+#                        value.var = "GI", 
+#                        fun.aggregate = mean)
+#      
+#      GI_obj@blocks$collapsed <- c(GI_obj@blocks$collapsed, .collapse)
+#      
+#      replicates(GI_obj) <- dimnames(guideGIs(GI_obj))[[which(structure(GI_obj) == "replicate")]]
+#      
+#      blocks(GI_obj) <- list(map = map_replicate_layers(replicates(GI_obj)), 
+#                             all = colnames(map_replicate_layers(replicates(GI_obj))), 
+#                             options = colnames(map_replicate_layers(replicates(GI_obj))), 
+#                             collapsed = NULL, 
+#                             chosen = NULL)
+#      return(GI_obj)
+#    })
+
+
+setMethod("add_collapsed_layers", 
+          signature = "ScreenBase", 
+          function(GI_obj, to_collapse = GI_obj@blocks$all) {
+            
+            output <- set_names(c("nothing", to_collapse)) |> 
+              map(~ GI_obj@guideGIs) |> 
+              map(flatten_array, dnames = GI_obj@structure, value.name = "GI") |>
+              imap(~ {
+                .old_reps <- GI_obj@blocks$all
+                .new_reps <- setdiff(.old_reps, .y)
+                .x[, c(.old_reps) := data.table::tstrsplit(replicate, "_")]
+                .x[, replicate := do.call(paste, c(.SD, sep = "_")), .SDcols = .new_reps]
+              }) |> 
+              map(reshape2::acast, 
+                  formula = as.formula(paste0(structure(GI_obj), collapse = " ~ ")), 
+                  value.var = "GI", 
+                  fun.aggregate = mean)
+            
+            
+            
+            GI_obj@blocks$map <- map(output, ~ dimnames(.x)[[3]]) |> 
+              map(map_replicate_layers) |>
+              purrr::list_flatten(name_spec = "{outer}_collapsed_{inner}_used")
+            
+            GI_obj@blocks$all <- names(GI_obj@blocks$map)
+            GI_obj@blocks$use <- names(GI_obj@blocks$map)
+            
+            GI_obj@guideGIs <- output |> 
+              reduce(abind::abind, along = 3)
+            
+            return(GI_obj)
+          }
+)
+
+
+## rework!
 setMethod(
   "block_decision_heuristics", 
   signature = "ScreenBase", 
   function(GI_obj) {
     
     while(is.null(GI_obj@blocks$chosen) & 
-          ncol(GI_obj@blocks$map) > 1) {
+          length(GI_obj@blocks$map) > 1) {
       
       # This should find the block with the highest in-block correlation. 
       # If no positive block is found, the lowest correlating layer gets collapsed, 
@@ -140,7 +182,7 @@ setMethod(
       
       .dc <- GI_obj@dupCorrelation
       
-      if (!all(colnames(GI_obj@blocks$map) %in% names(.dc))) {
+      if (!all(names(GI_obj@blocks$map) %in% names(.dc))) {
         
         GI_obj <- compute_dupcor_values(GI_obj, sample_query = 20)
         .dc <- GI_obj@dupCorrelation
@@ -153,7 +195,8 @@ setMethod(
       if (.highest >= 0) {
         GI_obj@blocks$chosen <- names(.highest)
       } else {
-        GI_obj <- collapse_layer(GI_obj, names(which.min(.dc)))
+        print(stringr::str_glue("Collapsing {names(which.min(.dc))}"))
+        #GI_obj <- collapse_layer(GI_obj, names(which.min(.dc)))
       }}
     return(GI_obj)
   }
@@ -162,57 +205,135 @@ setMethod(
 setMethod(
   "compute_GIs", 
   signature = "ScreenBase", 
-  function(GI_obj, FDR_method) {
+  function(GI_obj, .blocks = GI_obj@blocks$use, FDR_method = "BH") {
     
-    stopifnot("FDR method required." = !missing(FDR_method))
-    .block <- GI_obj@blocks$chosen
     
-    if (grepl("multiplex", GI_obj@screenType)) {
+    stopifnot("Unknown FDR method provided." = FDR_method %in% p.adjust.methods)
+    
+    stopifnot("DupCorrelation values required for all blocks!" = all(.blocks %in% names(GI_obj@dupCorrelation)))
+    
+    for (.b in .blocks) {
+      print(stringr::str_glue("{.b}..."))
       
-      geneGIs(GI_obj) <- set_names(GI_obj@screen_attributes$query_genes) |> 
-        map(purrr::safely(\(.g) {
-          .fit <- limma::lmFit(object = GI_obj@guideGIs[.g,,], 
-                               block = GI_obj@blocks$map[, GI_obj@blocks$chosen], 
-                               correlation = GI_obj@dupCorrelation[[GI_obj@blocks$chosen]][[.g]])
+      if (grepl("multiplex", GI_obj@screenType)) {
+        
+        
+        geneGIs(GI_obj)[[.b]] <- set_names(GI_obj@screen_attributes$query_genes) |> 
+          map(purrr::safely(\(.g) {
+            .fit <- limma::lmFit(object = GI_obj@guideGIs[.g,,names(GI_obj@blocks$map[[.b]])], 
+                                 block = GI_obj@blocks$map[[.b]], 
+                                 correlation = GI_obj@dupCorrelation[[.b]][[.g]])
+            
+            .efit <- limma::eBayes(.fit)
+            
+            data.frame(query_gene = rep(.g, GI_obj@screen_attributes$n_lib_genes), 
+                       library_gene = GI_obj@screen_attributes$library_genes, 
+                       GI = .fit$Amean, 
+                       pval = .efit$p.value[, 1], 
+                       FDR = stats::p.adjust(.efit$p.value[, 1], method = FDR_method))
+          })) |> purrr::map("result") |> 
+          data.table::rbindlist(fill = T) |>
+          data.table::melt.data.table(measure.vars = c("GI", "pval", "FDR")) |>
+          reshape2::acast(formula = as.formula("query_gene ~ library_gene ~ variable"), 
+                          value.var = "value")
+        
+      } else {
+        geneGIs(GI_obj)[[.b]] <- {
+          .fit <- limma::lmFit(object = GI_obj@guideGIs[,names(GI_obj@blocks$map[[.b]])], 
+                               block = GI_obj@blocks$map[[.b]], 
+                               correlation = GI_obj@dupCorrelation[[.b]])
           
           .efit <- limma::eBayes(.fit)
           
-          data.frame(query_gene = rep(.g, GI_obj@screen_attributes$n_lib_genes), 
-                     library_gene = GI_obj@screen_attributes$library_genes, 
-                     GI = .fit$Amean, 
-                     pval = .efit$p.value[, 1], 
-                     FDR = stats::p.adjust(.efit$p.value[, 1], method = FDR_method))
-        })) |> purrr::map("result") |> 
-        data.table::rbindlist(fill = T) |>
-        data.table::melt.data.table(measure.vars = c("GI", "pval", "FDR")) |>
-        reshape2::acast(formula = as.formula("query_gene ~ library_gene ~ variable"), 
-                        value.var = "value")
-      
-    } else {
-      geneGIs(GI_obj) <- {
-        .fit <- limma::lmFit(object = GI_obj@guideGIs, 
-                             block = GI_obj@blocks$map[, GI_obj@blocks$chosen], 
-                             correlation = GI_obj@dupCorrelation[[GI_obj@blocks$chosen]])
-        
-        
-        .efit <- limma::eBayes(.fit)
-        
-        output <- list(rownames(GI_obj@guideGIs), 
-                       c("GI", "pval", "FDR"))
-        
-        output <- array(data = NA, 
-                        dim = map_int(output, length), 
-                        dimnames = output)
-        
-        output[,"GI"] <- .fit$Amean
-        output[,"pval"] <- .efit$p.value[, 1]
-        output[,"FDR"] <- stats::p.adjust(.efit$p.value[, 1], method = FDR_method)
-        
-        output
-      }}
+          output <- list(rownames(GI_obj@guideGIs), 
+                         c("GI", "pval", "FDR"))
+          
+          output <- array(data = NA, 
+                          dim = purrr::map_int(output, length), 
+                          dimnames = output)
+          
+          output[,"GI"] <- .fit$Amean
+          output[,"pval"] <- .efit$p.value[, 1]
+          output[,"FDR"] <- stats::p.adjust(.efit$p.value[, 1], method = FDR_method)
+          
+          output
+        }}
+    }
     
     return(GI_obj)
   })
+
+compute_symmetric_GIs <- function(GI_arr, FDR_method = "BH") {
+  
+  stopifnot(
+    "GI Array is not symmetric!" = 
+      cor(x = as.vector(GI_arr[,,"GI"]), 
+          y = as.vector(t(GI_arr[,,"GI"])), 
+          use = "pairwise.complete.obs") >= 0.98, 
+    
+    "pval array is not symmetric!" = 
+      cor(x = as.vector(GI_arr[,,"pval"]), 
+          y = as.vector(t(GI_arr[,,"pval"])), 
+          use = "pairwise.complete.obs") >= 0.9)
+  
+  gather_symmetric_scores <- function(pairs, .arr, sep = ";") {
+    if (!isSymmetric(.arr)) {
+      warning(stringr::str_c("Input array is asymmetric! ABBA: ", 
+                             round(cor(x = as.vector(.arr), 
+                                       y = as.vector(t(.arr)), 
+                                       use = "pairwise.complete.obs"), 3)))}
+    
+    genes1 <- str_split_i(pairs, sep, 1)
+    genes2 <- str_split_i(pairs, sep, 2)
+    return(purrr::map2_dbl(genes1, genes2, \(.g1, .g2) {.arr[.g1,.g2]}))}
+  
+  balanced_FDR <- \(pairs, pval_array, fdr_method) {
+    
+    pair_template <- \(.pair) {
+      .g1 <- str_split_i(.pair, ";", 1)
+      .g2 <- str_split_i(.pair, ";", 2)
+      .d <- data.table(pair = .pair, 
+                       g1 = c(rep(.g1, ncol(pval_array)), setdiff(rownames(pval_array), .g1)), 
+                       g2 = c(colnames(pval_array), rep(.g2, nrow(pval_array)-1)))
+      .d[, pair2 := stringr::str_c(g1, ";", g2)]
+      .d
+    }
+    
+    return(purrr::map_dbl(pairs, \(pair) {
+      .d <- pair_template(pair)
+      .d[, pval := purrr::map2_dbl(g1, g2, ~ pval_array[.x,.y])]
+      .d[, fdr := stats::p.adjust(pval, method = fdr_method)]
+      .d[pair == pair2, get("fdr")]}))
+  }
+  
+  
+  all_pairs <- data.table::CJ(g1 = rownames(GI_arr), g2 = colnames(GI_arr))
+  all_pairs <- all_pairs[, `:=`(pair = stringr::str_glue("{g1};{g2}"), 
+                                sorted_pair = sort_gene_pairs(g1, g2))]
+  
+  .x <- list(all_pairs[, unique(sorted_pair)], 
+             c("GI", "GI_z", "pval", "fdr"))
+  
+  .x <- array(data = NA, 
+              dim = purrr::map_int(.x, length), 
+              dimnames = .x)
+  
+  .x[,"GI"] <- gather_symmetric_scores(pairs = rownames(.x), 
+                                       .arr = GI_arr[,,"GI"])
+  .x[,"GI_z"] <- z_transform(.x[,"GI"])
+  .x[,"pval"] <- gather_symmetric_scores(pairs = rownames(.x), 
+                                         .arr = GI_arr[,,"pval"])
+  
+  .x[,"fdr"] <- balanced_FDR(pairs = rownames(.x), 
+                             pval_array = GI_arr[,,"pval"], 
+                             fdr_method = FDR_method)
+  
+  return(.x)
+}
+
+
+
+
 
 setMethod(
   "GI_df", 
@@ -229,11 +350,12 @@ setMethod(
     }
     
     if (grepl("fixed", GI_obj@screenType)) {
-      output <- data.table::data.table(pair = rownames(GI_obj@geneGIs), GI_obj@geneGIs)
+      output <- data.table::data.table(pair = rownames(GI_obj@geneGIs), 
+                                       query_gene = str_split_i(rownames(GI_obj@geneGIs), ";", 1), 
+                                       library_gene = str_split_i(rownames(GI_obj@geneGIs), ";", 2), 
+                                       GI_obj@geneGIs)
     }
-    
     return(output)
-    
   })
 
 
