@@ -46,8 +46,8 @@ full_run <- function(yaml_fpath, return_output = F) {
     
     .output <- list()
     
-    .output[[str_glue("GI_scores")]] <- GI_df(.data, .block = blocks(.data)$chosen)
-    .output[[str_glue("duplicate_correlation")]] <- dupCorrelation_df(.data, .block = blocks(.data)$chosen)
+    .output[[paste0("GI_scores")]] <- GI_df(.data, .block = blocks(.data)$chosen)
+    .output[[paste0("duplicate_correlation")]] <- dupCorrelation_df(.data, .block = blocks(.data)$chosen)
     
     
     
