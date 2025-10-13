@@ -338,10 +338,15 @@ compute_symmetric_GIs <- function(GI_arr, FDR_method = "BH") {
 setMethod(
   "GI_df", 
   signature = "ScreenBase", 
-  function(GI_obj) {
+  function(GI_obj, .block) {
+    
+    if (missing(.block)) {
+      .block <- blocks(GI_obj)$chosen
+      warning(str_glue("No block set. Defaulting to using {.block}."))
+    }
     
     if (grepl("multiplex", GI_obj@screenType)) {
-      output <- GI_obj@geneGIs |> 
+      output <- GI_obj@geneGIs[[.block]] |> 
         flatten_array(dnames = c("query_gene", "library_gene", "variable"), 
                       value.name = "value") |>
         data.table::dcast(formula = query_gene + library_gene ~ variable, 
@@ -350,10 +355,10 @@ setMethod(
     }
     
     if (grepl("fixed", GI_obj@screenType)) {
-      output <- data.table::data.table(pair = rownames(GI_obj@geneGIs), 
-                                       query_gene = str_split_i(rownames(GI_obj@geneGIs), ";", 1), 
-                                       library_gene = str_split_i(rownames(GI_obj@geneGIs), ";", 2), 
-                                       GI_obj@geneGIs)
+      output <- data.table::data.table(pair = rownames(GI_obj@geneGIs[[.block]]), 
+                                       query_gene = str_split_i(rownames(GI_obj@geneGIs[[.block]]), ";", 1), 
+                                       library_gene = str_split_i(rownames(GI_obj@geneGIs[[.block]]), ";", 2), 
+                                       GI_obj@geneGIs[[.block]])
     }
     return(output)
   })
@@ -362,15 +367,22 @@ setMethod(
 setMethod(
   "dupCorrelation_df", 
   signature = "ScreenBase", 
-  function(GI_obj) {
+  function(GI_obj, .block) {
+    
+    if (missing(.block)) {
+      .block <- blocks(GI_obj)$chosen
+      warning(str_glue("No block set. Defaulting to using {.block}."))
+    }
+    
+    
     if (grepl("multiplex", GI_obj@screenType)) {
       output <- data.table::data.table(
         query_gene = GI_obj@screen_attributes$query_genes, 
-        data.frame(GI_obj@dupCorrelation))
+        data.frame(GI_obj@dupCorrelation[[.block]]))
     }
     
     if (grepl("fixed", GI_obj@screenType)) {
-      output <- data.table(data.frame(GI_obj@dupCorrelation))
+      output <- data.table(data.frame(GI_obj@dupCorrelation[[.block]]))
     }
     
     

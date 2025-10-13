@@ -44,10 +44,15 @@ full_run <- function(yaml_fpath, return_output = F) {
   
   if ("output_directory" %in% names(instr) & instr$overwrite_output) {
     
-    iwalk(list(
-      GI_scores = GI_df(.data), 
-      duplicate_correlation = dupCorrelation_df(.data)), 
-      ~ {data.table::fwrite(
+    .output <- list()
+    
+    .output[[str_glue("GI_scores")]] <- GI_df(.data, .block = blocks(.data)$chosen)
+    .output[[str_glue("duplicate_correlation")]] <- dupCorrelation_df(.data, .block = blocks(.data)$chosen)
+    
+    
+    
+    .output |>
+      iwalk(~ {data.table::fwrite(
         x = .x, 
         file = file.path(instr$output_directory, paste0(.y, ".csv")))
       })
