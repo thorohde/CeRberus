@@ -13,6 +13,7 @@ RoxygenNote: 7.3.3
 Imports: 
     abind,
     data.table,
+    ggplot2,
     limma,
     methods,
     purrr,

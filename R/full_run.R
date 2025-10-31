@@ -21,23 +21,22 @@ full_run <- function(yaml_fpath, return_output = F) {
                   "csv" = data.table::fread(instr$scores_file), 
                   "rds" = readRDS(instr$scores_file))
   
-  .data <- GIScores(.data)
+  .data <- collect_all_layer_combinations(.data)
   
   if (instr$verbose) {
     print("(1/5) Data import successful.")
-    print("Deciding on block structure. This may take a while.")
+    #  print("Deciding on block structure. This may take a while.")
   }
   
-  .data <- block_decision_heuristics(.data)
+  #.data <- block_decision_heuristics(.data)
   
-  if (instr$verbose) print("(2/5) Optimal block structure identified. Estimating duplicate correlation.")
+#  if (instr$verbose) print("(2/5) Optimal block structure identified. Estimating duplicate correlation.")
   
-  .data <- compute_dupcor_values(.data)
+  .data <- map(.data, compute_dupcor_values, .progress = T)
   
   if (instr$verbose) print("(3/5) Computed duplicate correlation values.")
   
-  .data <- compute_GIs(.data, FDR_method = instr$FDR)
-  
+  .data <- map(.data, compute_GIs, FDR_method = instr$FDR)
   
   if (instr$verbose) print("(4/5) Computed GI scores.")
   
@@ -46,10 +45,13 @@ full_run <- function(yaml_fpath, return_output = F) {
     
     .output <- list()
     
-    .output[[paste0("GI_scores")]] <- GI_df(.data, .block = blocks(.data)$chosen)
-    .output[[paste0("duplicate_correlation")]] <- dupCorrelation_df(.data, .block = blocks(.data)$chosen)
+    print(names(.data))
     
-    
+    for (.n in names(.data)) {
+      .output[[paste0("GI_scores_", .n)]] <- GI_df(.data[[.n]])
+      .output[[paste0("duplicate_correlation_", .n)]] <- dupCorrelation_df(.data[[.n]])
+      
+    }
     
     .output |>
       iwalk(~ {data.table::fwrite(
@@ -57,8 +59,30 @@ full_run <- function(yaml_fpath, return_output = F) {
         file = file.path(instr$output_directory, paste0(.y, ".csv")))
       })
     
-    .log <- create_log(.data)
-    writeLines(.log, file.path(instr$output_directory, "limma.log"))
+    #.log <- create_log(.data)
+    
+    #writeLines(.log, file.path(instr$output_directory, "limma.log"))
+    
+    library(ggplot2)
+    
+    .plt <- .data |> 
+      imap(~ data.table(config = .y, dupCorrelation_df(.x))) |>
+      rbindlist() |>
+      ggplot(aes(dupcor, config)) + theme_light() + 
+      geom_boxplot() + 
+      geom_jitter(size = 0.5) + 
+      geom_vline(xintercept = c(0, 0.25), linetype = "dashed", linewidth = 1) +
+      labs(caption = "It is recommended to choose a configuration with most values between 0 and 0.25.", 
+           x = "Duplicate correlation", 
+           y = "Limma configuration")
+    
+    ggplot2::ggsave(filename = file.path(instr$output_directory, "duplicateCorrelationPlot.png"), 
+                    plot = .plt, width = 8, 
+                    height = 5, 
+                    dpi = 300)
+    
+    
+    
     
     if (instr$verbose) print("(5/5) Exported results. Limma run successful!")
   } else {
