@@ -10,9 +10,6 @@ find_optimal_configuration <- function(GI_list, verbose = T) {
     print(str_c("Start: ", str_c(.remaining, collapse = ", ")))
     }
   
-  print(.remaining)
-  print(.remaining[which.max(.remaining)])
-  
   #if options greater 0 found, remove <= 0
   
   if (any(.remaining >= 0)) {

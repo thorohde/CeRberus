@@ -93,44 +93,6 @@ setMethod(
   })
 
 
-## rework!
-if (F) {
-  setMethod(
-  "block_decision_heuristics", 
-  signature = "ScreenBase", 
-  function(GI_obj) {
-    
-    while(is.null(GI_obj@blocks$chosen) & 
-          length(GI_obj@blocks$map) > 1) {
-      
-      # This should find the block with the highest in-block correlation. 
-      # If no positive block is found, the lowest correlating layer gets collapsed, 
-      # and the process is repeated. 
-      
-      .dc <- GI_obj@dupCorrelation
-      
-      if (!all(names(GI_obj@blocks$map) %in% names(.dc))) {
-        
-        GI_obj <- compute_dupcor_values(GI_obj, sample_query = 20)
-        #any(dupCorrelation(.d) |> map(mean, na.rm = T) > 0.05)
-        
-        .dc <- GI_obj@dupCorrelation
-      }
-      
-      .dc <- purrr::map_dbl(.dc, median, na.rm = T)
-      
-      .highest <- .dc[which.max(.dc)]
-      
-      if (.highest >= 0) {
-        GI_obj@blocks$chosen <- names(.highest)
-      } else {
-        print(stringr::str_glue("Collapsing {names(which.min(.dc))}"))
-        #GI_obj <- collapse_layer(GI_obj, names(which.min(.dc)))
-      }}
-    return(GI_obj)
-  }
-)
-}
 setMethod(
   "compute_GIs", 
   signature = "ScreenBase", 

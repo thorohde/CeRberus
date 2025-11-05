@@ -30,7 +30,9 @@ full_run <- function(yaml_fpath, return_output = F) {
   
   .data <- map(.data, compute_dupcor_values, sample_query = 50, .progress = T)
   
-  .data <- find_optimal_configuration(.data)
+  if (!instr$keep_all_configurations) {
+    .data <- find_optimal_configuration(.data)
+  }
   
   if (instr$verbose) print("(2/5) Optimal block structure identified. Estimating duplicate correlation.")
   
