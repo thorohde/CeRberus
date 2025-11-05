@@ -30,7 +30,7 @@ full_run <- function(yaml_fpath, return_output = F) {
   
   .data <- map(.data, compute_dupcor_values, sample_query = 50, .progress = T)
   
-  if (!"keep_all_configurations" %in% names(instr) | 
+  if (!"keep_all_configurations" %in% names(instr) || 
       (!instr$keep_all_configurations)) {
     .data <- find_optimal_configuration(.data)
   }
