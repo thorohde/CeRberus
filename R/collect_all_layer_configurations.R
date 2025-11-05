@@ -1,6 +1,6 @@
 #' @export
 
-collect_all_layer_combinations <- \(GI_data, 
+collect_all_layer_configurations <- function(GI_data, 
                                     .collapsable_layers = c("tech_rep", "bio_rep", "guide_pair"), 
                                     .to_use = c("tech_rep", "bio_rep", "guide_pair")) {
   .collapsable_layers <- intersect(.collapsable_layers, colnames(GI_data))

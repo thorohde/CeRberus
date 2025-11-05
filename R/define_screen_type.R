@@ -1,6 +1,6 @@
 #' @export
 
-define_screen_type <- \(.checks) {
+define_screen_type <- function(.checks) {
   
   .type <- data.table::fcase(.checks$gene_sets_equal & 
                                .checks$query_sufficient & 

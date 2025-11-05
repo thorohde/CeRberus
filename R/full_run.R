@@ -21,16 +21,18 @@ full_run <- function(yaml_fpath, return_output = F) {
                   "csv" = data.table::fread(instr$scores_file), 
                   "rds" = readRDS(instr$scores_file))
   
-  .data <- collect_all_layer_combinations(.data)
+  .data <- collect_all_layer_configurations(.data)
   
   if (instr$verbose) {
     print("(1/5) Data import successful.")
-    #  print("Deciding on block structure. This may take a while.")
+    print("Deciding on block structure. This may take a while.")
   }
   
-  #.data <- block_decision_heuristics(.data)
+  .data <- map(.data, compute_dupcor_values, sample_query = 50, .progress = T)
   
-#  if (instr$verbose) print("(2/5) Optimal block structure identified. Estimating duplicate correlation.")
+  .data <- find_optimal_configuration(.data)
+  
+  if (instr$verbose) print("(2/5) Optimal block structure identified. Estimating duplicate correlation.")
   
   .data <- map(.data, compute_dupcor_values, .progress = T)
   

@@ -27,6 +27,7 @@
 #' @importFrom purrr map_chr
 #' @importFrom purrr map_dbl
 #' @importFrom purrr map_int
+#' @importFrom purrr map_lgl
 #' @importFrom purrr map2
 #' @importFrom purrr pwalk
 #' @importFrom purrr reduce
