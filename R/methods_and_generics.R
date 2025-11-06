@@ -16,6 +16,11 @@ setGeneric("dupCorrelation<-", function(x, value) standardGeneric("dupCorrelatio
 setGeneric("geneGIs", function(x) standardGeneric("geneGIs"))
 setGeneric("geneGIs<-", function(x, value) standardGeneric("geneGIs<-"))
 
+setGeneric("geneGIsSymmetric", function(x) standardGeneric("geneGIsSymmetric"))
+setGeneric("geneGIsSymmetric<-", function(x, value) standardGeneric("geneGIsSymmetric<-"))
+
+
+
 setGeneric("guideGIs", function(x) standardGeneric("guideGIs"))
 setGeneric("guideGIs<-", function(x, value) standardGeneric("guideGIs<-"))
 
@@ -39,16 +44,15 @@ setGeneric("structure<-", function(x, value) standardGeneric("structure<-"))
 
 
 purrr::walk(c(
-  "blocks", "block_description", "checks", "dupCorrelation", "geneGIs", "guideGIs", 
+  "blocks", "block_description", "checks", "dupCorrelation", 
+  "geneGIs", "geneGIsSymmetric", "guideGIs", 
   "replicates", "screen_attributes", "screenType", "structure"), ~ {
     
     .x2 <- paste0(.x, "<-")
     setMethod(.x, "ScreenBase", function(x) return(slot(x, .x)))
     setMethod(.x2, "ScreenBase", function(x, value) {slot(x, .x) <- value; return(x)})
-    
     #  setMethod(.x, "MultiplexScreen", function(x) return(slot(x, .x)))
     #  setMethod(.x2, "MultiplexScreen", function(x, value) {slot(x, .x) <- value; return(x)})
-    
     
   }
 )
@@ -58,9 +62,11 @@ setGeneric("block_decision_heuristics", function(GI_obj, ...) standardGeneric("b
 #setGeneric("collapse_layer", function(GI_obj, ...) standardGeneric("collapse_layer"))
 setGeneric("compute_dupcor_values", function(GI_obj, ...) standardGeneric("compute_dupcor_values"))
 setGeneric("compute_GIs", function(GI_obj, ...) standardGeneric("compute_GIs"))
+setGeneric("compute_symmetric_GIs", function(GI_obj, ...) standardGeneric("compute_symmetric_GIs"))
 setGeneric("dupCorrelation_df", function(GI_obj, ...) standardGeneric("dupCorrelation_df"))
-setGeneric("export_GIs", function(GI_obj, ...) standardGeneric("export_GIs"))
+#setGeneric("export_GIs", function(GI_obj, ...) standardGeneric("export_GIs"))
 setGeneric("GI_df", function(GI_obj, ...) standardGeneric("GI_df"))
+setGeneric("symmetricGI_df", function(GI_obj, ...) standardGeneric("symmetricGI_df"))
 setGeneric("dupcor_df", function(GI_obj, ...) standardGeneric("dupcor_df"))
 setGeneric("create_log", function(GI_obj, ...) standardGeneric("create_log"))
 
@@ -84,7 +90,7 @@ setMethod(
     
     output <- output |>
       purrr::map(\(.g) suppressWarnings(limma::duplicateCorrelation(object = .g, 
-                                                                block = blocks(GI_obj)))) |>
+                                                                    block = blocks(GI_obj)))) |>
       purrr::map_dbl("consensus.correlation")
     
     GI_obj@dupCorrelation <- output
@@ -127,97 +133,74 @@ setMethod(
       
     } else {
       .fit <- limma::lmFit(object = GI_obj@guideGIs, 
-                             block = blocks(GI_obj), 
-                             correlation = dupCorrelation(GI_obj))
-        
+                           block = blocks(GI_obj), 
+                           correlation = dupCorrelation(GI_obj))
+      
       .efit <- limma::eBayes(.fit)
-        
+      
       output <- list(rownames(GI_obj@guideGIs), 
-                       c("GI", "pval", "FDR"))
-        
+                     c("GI", "pval", "FDR"))
+      
       output <- array(data = NA, 
-                        dim = purrr::map_int(output, length), 
-                        dimnames = output)
-        
+                      dim = purrr::map_int(output, length), 
+                      dimnames = output)
+      
       output[,"GI"] <- .fit$Amean
       output[,"pval"] <- .efit$p.value[, 1]
       output[,"FDR"] <- stats::p.adjust(.efit$p.value[, 1], method = FDR_method)
-        
-      }
+      
+    }
     
     geneGIs(GI_obj) <- output
     
     return(GI_obj)
   })
 
-# rework
-compute_symmetric_GIs <- function(GI_arr, FDR_method = "BH") {
-  
-  stopifnot(
-    "GI Array is not symmetric!" = 
-      cor(x = as.vector(GI_arr[,,"GI"]), 
-          y = as.vector(t(GI_arr[,,"GI"])), 
-          use = "pairwise.complete.obs") >= 0.98, 
-    
-    "pval array is not symmetric!" = 
-      cor(x = as.vector(GI_arr[,,"pval"]), 
-          y = as.vector(t(GI_arr[,,"pval"])), 
-          use = "pairwise.complete.obs") >= 0.9)
-  
-  gather_symmetric_scores <- function(pairs, .arr, sep = ";") {
-    if (!isSymmetric(.arr)) {
-      warning(stringr::str_c("Input array is asymmetric! ABBA: ", 
-                             round(cor(x = as.vector(.arr), 
-                                       y = as.vector(t(.arr)), 
-                                       use = "pairwise.complete.obs"), 3)))}
-    
-    genes1 <- str_split_i(pairs, sep, 1)
-    genes2 <- str_split_i(pairs, sep, 2)
-    return(purrr::map2_dbl(genes1, genes2, \(.g1, .g2) {.arr[.g1,.g2]}))}
-  
-  balanced_FDR <- \(pairs, pval_array, fdr_method) {
-    
-    pair_template <- \(.pair) {
-      .g1 <- str_split_i(.pair, ";", 1)
-      .g2 <- str_split_i(.pair, ";", 2)
-      .d <- data.table(pair = .pair, 
-                       g1 = c(rep(.g1, ncol(pval_array)), setdiff(rownames(pval_array), .g1)), 
-                       g2 = c(colnames(pval_array), rep(.g2, nrow(pval_array)-1)))
-      .d[, pair2 := stringr::str_c(g1, ";", g2)]
-      .d
-    }
-    
-    return(purrr::map_dbl(pairs, \(pair) {
-      .d <- pair_template(pair)
-      .d[, pval := purrr::map2_dbl(g1, g2, ~ pval_array[.x,.y])]
-      .d[, fdr := stats::p.adjust(pval, method = fdr_method)]
-      .d[pair == pair2, get("fdr")]}))
-  }
-  
-  
-  all_pairs <- data.table::CJ(g1 = rownames(GI_arr), g2 = colnames(GI_arr))
-  all_pairs <- all_pairs[, `:=`(pair = stringr::str_glue("{g1};{g2}"), 
-                                sorted_pair = sort_gene_pairs(g1, g2))]
-  
-  .x <- list(all_pairs[, unique(sorted_pair)], 
-             c("GI", "GI_z", "pval", "fdr"))
-  
-  .x <- array(data = NA, 
-              dim = purrr::map_int(.x, length), 
-              dimnames = .x)
-  
-  .x[,"GI"] <- gather_symmetric_scores(pairs = rownames(.x), 
-                                       .arr = GI_arr[,,"GI"])
-  .x[,"GI_z"] <- z_transform(.x[,"GI"])
-  .x[,"pval"] <- gather_symmetric_scores(pairs = rownames(.x), 
-                                         .arr = GI_arr[,,"pval"])
-  
-  .x[,"fdr"] <- balanced_FDR(pairs = rownames(.x), 
-                             pval_array = GI_arr[,,"pval"], 
-                             fdr_method = FDR_method)
-  
-  return(.x)
-}
+
+
+
+
+
+
+setMethod("compute_symmetric_GIs", 
+          signature = "ScreenBase", 
+          function(GI_obj, FDR_method = "BH") {
+            
+            stopifnot("The given screen is not position-agnostic." = grepl("position.agnostic", screenType(GI_obj)))
+            
+            message("Computing symmetric GIs. This might take a while.")
+            #stopifnot(
+            #  "GI Array is not symmetric!" = abba_cor(GI_arr[,,"GI"]) >= 0.98, 
+            #  "pval array is not symmetric!" = abba_cor(GI_arr[,,"pval"]) >= 0.9)
+            
+            all_pairs <- data.table::CJ(g1 = screen_attributes(GI_obj)$query_genes, 
+                                        g2 = screen_attributes(GI_obj)$library_genes)
+            
+            all_pairs <- all_pairs[, `:=`(pair = stringr::str_glue("{g1};{g2}"), 
+                                          sorted_pair = sort_gene_pairs(g1, g2))]
+            
+            all_pairs <- all_pairs[, unique(sorted_pair)]
+            
+            .x <- list(all_pairs, c("GI", "GI_z", "pval", "FDR"))
+            .x <- array(data = NA, 
+                        dim = purrr::map_int(.x, length), 
+                        dimnames = .x)
+            
+            .x[,"GI"] <- gather_symmetric_scores(pairs = rownames(.x), 
+                                                 .arr = geneGIs(GI_obj)[,,"GI"])
+            .x[,"GI_z"] <- z_transform(.x[,"GI"])
+            .x[,"pval"] <- gather_symmetric_scores(pairs = rownames(.x), 
+                                                   .arr = geneGIs(GI_obj)[,,"pval"])
+            
+            .x[,"FDR"] <- balanced_FDR(pairs = rownames(.x), 
+                                       pval_array = geneGIs(GI_obj)[,,"pval"], 
+                                       fdr_method = FDR_method)
+            
+            geneGIsSymmetric(GI_obj) <- .x
+            
+            return(GI_obj)
+          })
+
 
 
 
@@ -245,6 +228,25 @@ setMethod(
     }
     return(output)
   })
+
+
+
+setMethod(
+  "symmetricGI_df", 
+  signature = "ScreenBase", 
+  function(GI_obj) {
+    
+    if (GI_obj@screenType == "multiplex.symmetric.position.agnostic") {
+      
+      output <- data.table::data.table(pair = rownames(GI_obj@geneGIsSymmetric), 
+                                       query_gene = str_split_i(rownames(GI_obj@geneGIsSymmetric), ";", 1), 
+                                       library_gene = str_split_i(rownames(GI_obj@geneGIsSymmetric), ";", 2), 
+                                       GI_obj@geneGIsSymmetric)
+      
+      return(output)
+    } else {return(NULL)}
+  })
+
 
 
 setMethod(

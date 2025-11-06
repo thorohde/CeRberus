@@ -18,7 +18,7 @@ GIScores <- function(input,
   
   input <- data.table::copy(input)
   
-
+  
   
   stopifnot("The input object needs to be a data frame." = data.table::is.data.table(input), 
             "The query gene column is not in the provided dataset." = query_col %in% colnames(input), 
@@ -34,24 +34,25 @@ GIScores <- function(input,
   
   #####
   
-
+  
   if (!is.null(collapse_layers)) {
     input <- input[, .SD, .SDcols = setdiff(colnames(input), collapse_layers)]
     input <- input[, .(GI = mean(GI, na.rm = T)), by = setdiff(colnames(input), "GI")]
   }
   
   
-
+  
   
   ######
   
   input[, replicate := do.call(paste, c(.SD, sep = "_")), 
         .SDcols = intersect(c("bio_rep", "tech_rep", "guide_pair"), colnames(input))]
   
-
+  GI_obj <- new("ScreenBase")
+  
   .a <- get_screen_attributes(input)
   
-  .checks <- list(
+  checks(GI_obj) <- list(
     gene_sets_equal = (length(.a$query_genes_not_in_lib) <= 0.02*.a$n_query_genes) & 
       (length(.a$lib_genes_not_in_query) <= 0.02*.a$n_lib_genes), 
     query_sufficient = .a$n_query_genes >= min_query_size, 
@@ -60,31 +61,42 @@ GIScores <- function(input,
     sufficient_tests_per_query = sum(.a$observations_per_query >= min_library_size) >= 0.95 * length(.a$observations_per_query), 
     avg_tests_per_query = stats::median(.a$observations_per_query, .na.rm = T)
     
-    #   length(.all_pairs) <= 0.9*.n_query_genes*.n_lib_genes
   )
   
-  
-  .type <- define_screen_type(.checks)
-  
-  GI_obj <- new("ScreenBase")
-  
   screen_attributes(GI_obj) <- .a
-  checks(GI_obj) <- .checks
-  screenType(GI_obj) <- .type
   
-  structure(GI_obj) <- c(if (grepl("multiplex", .type)) c("query_gene", "library_gene") else c("pair"), "replicate")
+  screenType(GI_obj) <- define_screen_type(checks(GI_obj))
+  
+  structure(GI_obj) <- c(if (grepl("multiplex", screenType(GI_obj))) c("query_gene", "library_gene") else c("pair"), "replicate")
   
   guideGIs(GI_obj) <- input |> 
     reshape2::acast(formula = as.formula(paste0(structure(GI_obj), collapse = " ~ ")), 
                     value.var = "GI")
   
   replicates(GI_obj) <- dimnames(guideGIs(GI_obj))[[which(structure(GI_obj) == "replicate")]]
-
-  blocks(GI_obj) <- c(bio_rep = "(b\\d+)", 
-            tech_rep = "(t\\d+)", 
-            guide_pair = "(g\\d+)")[[block_layer]]
   
-  blocks(GI_obj) <- as.character(factor(str_match(replicates(GI_obj), blocks(GI_obj))[,2]))
+  
+  if (screenType(GI_obj) == "multiplex.symmetric") {
+    
+#    print(map_dbl(replicates(GI_obj), ~ {
+#      .x <- guideGIs(GI_obj)[,,.x]
+#      cor(as.vector(.x), as.vector(t(.x)), use = "pairwise.complete.obs")}) > 0.975)
+    
+    
+    if (all(map_dbl(replicates(GI_obj), ~ abba_cor(guideGIs(GI_obj)[,,.x])) > 0.975)) {
+      screenType(GI_obj) <- "multiplex.symmetric.position.agnostic"}}
+  
+
+  if (!is.null(block_layer)) {
+    blocks(GI_obj) <- c(bio_rep = "(b\\d+)", 
+                        tech_rep = "(t\\d+)", 
+                        guide_pair = "(g\\d+)")[[block_layer]]
+    
+    blocks(GI_obj) <- as.character(factor(str_match(replicates(GI_obj), blocks(GI_obj))[,2]))
+  } else {
+    warning("Not defining a block structure is not recommended.")
+  }
+  
   ######
   GI_obj@block_description <- list(used = block_layer)
   ######

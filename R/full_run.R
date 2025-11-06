@@ -43,8 +43,12 @@ full_run <- function(yaml_fpath, return_output = F) {
   
   .data <- map(.data, compute_GIs, FDR_method = instr$FDR)
   
-  if (instr$verbose) print("(4/5) Computed GI scores.")
+  for (.n in names(.data)) {
+    if (screenType(.data[[.n]]) == "multiplex.symmetric.position.agnostic") {
+      .data[[.n]] <- compute_symmetric_GIs(.data[[.n]])
+    }}
   
+  if (instr$verbose) print("(4/5) Computed GI scores.")
   
   if ("output_directory" %in% names(instr) & instr$overwrite_output) {
     
@@ -55,7 +59,9 @@ full_run <- function(yaml_fpath, return_output = F) {
     for (.n in names(.data)) {
       .output[[paste0("GI_scores_", .n)]] <- GI_df(.data[[.n]])
       .output[[paste0("duplicate_correlation_", .n)]] <- dupCorrelation_df(.data[[.n]])
-      
+      if (screenType(.data[[.n]]) == "multiplex.symmetric.position.agnostic") {
+        .output[[paste0("GI_scores_position_agnostic_", .n)]] <- symmetricGI_df(.data[[.n]])
+      }
     }
     
     .output |>
