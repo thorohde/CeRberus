@@ -2,42 +2,21 @@
 
 find_optimal_configuration <- function(GI_list, verbose = T) {
   
-  .n_options_start <- length(GI_list)
-  
-  .remaining <- GI_list |> map(dupCorrelation) |> map_dbl(mean, na.rm = T)
+  .x <- map_dbl(GI_list, dupCorrelation)
   
   if (verbose) {
-    print(str_c("Start: ", str_c(.remaining, collapse = ", ")))
-    }
-  
-  #if options greater 0 found, remove <= 0
-  
-  if (any(.remaining >= 0)) {
-    .remaining <- .remaining |> keep(.remaining >= 0)
-    if (any(.remaining > 0)) {
-      .remaining <- .remaining |> keep(.remaining > 0)
-    }}
-  
-  # if more than one option remaining, determine if only one of them has most values above 0
-  if (length(.remaining) >= 1) {
-    .remaining <- set_names(names(.remaining)) |> 
-      map(~ GI_list[[.x]]) |> 
-      map(dupCorrelation) |> 
-      map(~ {.x[.x >= quantile(.x, 0.1)]}) |>
-      map_lgl(~ all(.x > 0))
-    
-    if (sum(.remaining) == 1) {.remaining <- .remaining[.remaining]}
-  } else {
-    .remaining <- set_names(names(.remaining)) |> 
-      map(~ GI_list[[.x]]) |> 
-      map(dupCorrelation) |> 
-      map(sum, na.rm = T)
-    .remaining <- .remaining[which.max(.remaining)]
+    print("Start: ")
+    print(round(.x, 3))
   }
   
-  if (verbose) {
-    print(str_c("End: ", str_c(names(.remaining), collapse = ", ")))
-    }
+  if (any(.x >= 0)) {.x <- keep(.x, .x >= 0)} # ifgreater or = 0 found, remove <= 0
+  if (any(.x > 0)) {.x <- .x |> keep(.x > 0)} # if any greater 0 found, remove = 0
+  if (length(.x) >= 1) {.x <- .x[which.min(.x)]} # if more than one option remains, choose weakest correlation
   
-  return(GI_list[names(.remaining)])
+  if (verbose) {
+    print("End: ")
+    print(.x)
+  }
+  
+  return(GI_list[names(.x)])
 }

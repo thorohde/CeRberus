@@ -19,10 +19,11 @@ setGeneric("geneGIs<-", function(x, value) standardGeneric("geneGIs<-"))
 setGeneric("geneGIsSymmetric", function(x) standardGeneric("geneGIsSymmetric"))
 setGeneric("geneGIsSymmetric<-", function(x, value) standardGeneric("geneGIsSymmetric<-"))
 
-
-
 setGeneric("guideGIs", function(x) standardGeneric("guideGIs"))
 setGeneric("guideGIs<-", function(x, value) standardGeneric("guideGIs<-"))
+
+#setGeneric("guideGIsSymmetric", function(x) standardGeneric("guideGIsSymmetric"))
+#setGeneric("guideGIsSymmetric<-", function(x, value) standardGeneric("guideGIsSymmetric<-"))
 
 setGeneric("layers", function(x) standardGeneric("layers"))
 setGeneric("layers<-", function(x, value) standardGeneric("layers<-"))
@@ -58,9 +59,9 @@ purrr::walk(c(
 )
 
 #setGeneric("add_collapsed_layers", function(GI_obj, ...) standardGeneric("add_collapsed_layers"))
-setGeneric("block_decision_heuristics", function(GI_obj, ...) standardGeneric("block_decision_heuristics"))
+#setGeneric("block_decision_heuristics", function(GI_obj, ...) standardGeneric("block_decision_heuristics"))
 #setGeneric("collapse_layer", function(GI_obj, ...) standardGeneric("collapse_layer"))
-setGeneric("compute_dupcor_values", function(GI_obj, ...) standardGeneric("compute_dupcor_values"))
+#setGeneric("compute_dupcor_values", function(GI_obj, ...) standardGeneric("compute_dupcor_values"))
 setGeneric("compute_GIs", function(GI_obj, ...) standardGeneric("compute_GIs"))
 setGeneric("compute_symmetric_GIs", function(GI_obj, ...) standardGeneric("compute_symmetric_GIs"))
 setGeneric("dupCorrelation_df", function(GI_obj, ...) standardGeneric("dupCorrelation_df"))
@@ -70,33 +71,37 @@ setGeneric("symmetricGI_df", function(GI_obj, ...) standardGeneric("symmetricGI_
 setGeneric("dupcor_df", function(GI_obj, ...) standardGeneric("dupcor_df"))
 setGeneric("create_log", function(GI_obj, ...) standardGeneric("create_log"))
 
-setMethod(
-  "compute_dupcor_values", 
-  signature = "ScreenBase", 
-  function(GI_obj, sample_query = NULL) {
+#setMethod(
+#  "compute_dupcor_values", 
+#  signature = "ScreenBase", 
+#  function(GI_obj, sample_query = NULL) {
+#    
+#    if (grepl("multiplex", GI_obj@screenType)) {
+#      output <- set_names(GI_obj@screen_attributes$query_genes)
+#      
+#      if (!is.null(sample_query)) {
+#        output <- sample(output, min(c(sample_query, GI_obj@screen_attributes$n_query_genes)))
+#      }
+#      output <- output |> purrr::map(\(.g) GI_obj@guideGIs[.g,,])
+#    }
     
-    if (grepl("multiplex", GI_obj@screenType)) {
-      output <- set_names(GI_obj@screen_attributes$query_genes)
-      
-      if (!is.null(sample_query)) {
-        output <- sample(output, min(c(sample_query, GI_obj@screen_attributes$n_query_genes)))
-      }
-      output <- output |> purrr::map(\(.g) GI_obj@guideGIs[.g,,])
-    }
     
-    if (grepl("fixed", GI_obj@screenType)) {
-      output <- list(GI_obj@guideGIs)
-    }
-    
-    output <- output |>
-      purrr::map(\(.g) suppressWarnings(limma::duplicateCorrelation(object = .g, 
-                                                                    block = blocks(GI_obj)))) |>
-      purrr::map_dbl("consensus.correlation")
-    
-    GI_obj@dupCorrelation <- output
-    
-    return(GI_obj)
-  })
+#    
+#    
+#    
+#    if (grepl("fixed", GI_obj@screenType)) {
+#      output <- list(GI_obj@guideGIs)
+#    }
+#    
+#    output <- output |>
+#      purrr::map(\(.g) suppressWarnings(limma::duplicateCorrelation(object = .g, 
+#                                                                    block = blocks(GI_obj)))) |>
+#      purrr::map_dbl("consensus.correlation")
+#    
+#    GI_obj@dupCorrelation <- output
+#    
+#    return(GI_obj)
+#  })
 
 
 setMethod(
@@ -115,7 +120,7 @@ setMethod(
         map(purrr::safely(\(.g) {
           .fit <- limma::lmFit(object = GI_obj@guideGIs[.g,,], 
                                block = blocks(GI_obj), 
-                               correlation = dupCorrelation(GI_obj)[[.g]])
+                               correlation = dupCorrelation(GI_obj))
           
           .efit <- limma::eBayes(.fit)
           
@@ -166,13 +171,11 @@ setMethod("compute_symmetric_GIs",
           signature = "ScreenBase", 
           function(GI_obj, FDR_method = "BH") {
             
-            stopifnot("The given screen is not position-agnostic." = grepl("position.agnostic", screenType(GI_obj)))
-            
-            message("Computing symmetric GIs. This might take a while.")
-            #stopifnot(
-            #  "GI Array is not symmetric!" = abba_cor(GI_arr[,,"GI"]) >= 0.98, 
-            #  "pval array is not symmetric!" = abba_cor(GI_arr[,,"pval"]) >= 0.9)
-            
+            if (!grepl("position.agnostic", screenType(GI_obj))) {
+              warning("The given screen is not position-agnostic.")
+              return(GI_obj)
+            }
+
             all_pairs <- data.table::CJ(g1 = screen_attributes(GI_obj)$query_genes, 
                                         g2 = screen_attributes(GI_obj)$library_genes)
             
@@ -253,15 +256,7 @@ setMethod(
   "dupCorrelation_df", 
   signature = "ScreenBase", 
   function(GI_obj) {
-    
-    if (grepl("multiplex", GI_obj@screenType)) {
-      output <- data.table::data.table(
-        query_gene = GI_obj@screen_attributes$query_genes, 
-        data.frame(dupcor = GI_obj@dupCorrelation))
-    }
-    if (grepl("fixed", GI_obj@screenType)) {
-      output <- data.table(data.frame(dupcor = GI_obj@dupCorrelation))
-    }
+    output <- data.table(data.frame(dupcor = GI_obj@dupCorrelation))
     return(output)
   })
 
@@ -280,4 +275,6 @@ setMethod(
     ) |> paste(collapse = "\n")
     
   })
+
+
 
