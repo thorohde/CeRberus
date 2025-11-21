@@ -13,8 +13,8 @@ setClass("ScreenBase",
            "blocks" = "character", 
            "block_description" = "list", 
            "dupCorrelation" = "numeric",
-           "checks" = "list"
-           )
+           "checks" = "list",
+           "errors" = "list")
 )
 
 #setClass("FixedPairScreen", contains = "ScreenBase")

@@ -1,4 +1,4 @@
-#' @export full_run
+#' @export
 
 
 full_run <- function(yaml_fpath, return_output = F) {

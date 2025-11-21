@@ -20,6 +20,7 @@
 #' @importFrom limma eBayes
 #' @importFrom limma lmFit
 #' @importFrom methods new
+#' @importFrom purrr discard
 #' @importFrom purrr imap
 #' @importFrom purrr iwalk
 #' @importFrom purrr keep

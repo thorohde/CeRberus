@@ -81,15 +81,21 @@ GIScores <- function(input,
     reshape2::acast(formula = as.formula(paste0(structure(GI_obj), collapse = " ~ ")), 
                     value.var = "GI")
   
+  replicates(GI_obj) <- dimnames(guideGIs(GI_obj))[[which(structure(GI_obj) == "replicate")]]
+  
+  
   if (screenType(GI_obj) == "multiplex.symmetric" & pos_agnostic) {
     message("Creating a position-agnostic (ABBA-symmetric) GI object.")
     
     GI_obj@guideGIs[] <- apply(GI_obj@guideGIs, 3, \(.x) {.x + t(.x) / 2})
+    
+    for (.r in replicates(GI_obj)) {
+      guideGIs(GI_obj)[,,.r] <- makeSymmetric(guideGIs(GI_obj)[,,.r])
+    }
+    
     screenType(GI_obj) <- "multiplex.symmetric.position.agnostic"
   }
     
-  
-  replicates(GI_obj) <- dimnames(guideGIs(GI_obj))[[which(structure(GI_obj) == "replicate")]]
   
   
   

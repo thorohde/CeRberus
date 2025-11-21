@@ -13,6 +13,9 @@ setGeneric("checks<-", function(x, value) standardGeneric("checks<-"))
 setGeneric("dupCorrelation", function(x) standardGeneric("dupCorrelation"))
 setGeneric("dupCorrelation<-", function(x, value) standardGeneric("dupCorrelation<-"))
 
+setGeneric("errors", function(x) standardGeneric("errors"))
+setGeneric("errors<-", function(x, value) standardGeneric("errors<-"))
+
 setGeneric("geneGIs", function(x) standardGeneric("geneGIs"))
 setGeneric("geneGIs<-", function(x, value) standardGeneric("geneGIs<-"))
 
@@ -45,7 +48,7 @@ setGeneric("structure<-", function(x, value) standardGeneric("structure<-"))
 
 
 purrr::walk(c(
-  "blocks", "block_description", "checks", "dupCorrelation", 
+  "blocks", "block_description", "checks", "dupCorrelation", "errors", 
   "geneGIs", "geneGIsSymmetric", "guideGIs", 
   "replicates", "screen_attributes", "screenType", "structure"), ~ {
     
@@ -58,14 +61,9 @@ purrr::walk(c(
   }
 )
 
-#setGeneric("add_collapsed_layers", function(GI_obj, ...) standardGeneric("add_collapsed_layers"))
-#setGeneric("block_decision_heuristics", function(GI_obj, ...) standardGeneric("block_decision_heuristics"))
-#setGeneric("collapse_layer", function(GI_obj, ...) standardGeneric("collapse_layer"))
-#setGeneric("compute_dupcor_values", function(GI_obj, ...) standardGeneric("compute_dupcor_values"))
 setGeneric("compute_GIs", function(GI_obj, ...) standardGeneric("compute_GIs"))
 setGeneric("compute_symmetric_GIs", function(GI_obj, ...) standardGeneric("compute_symmetric_GIs"))
 setGeneric("dupCorrelation_df", function(GI_obj, ...) standardGeneric("dupCorrelation_df"))
-#setGeneric("export_GIs", function(GI_obj, ...) standardGeneric("export_GIs"))
 setGeneric("GI_df", function(GI_obj, ...) standardGeneric("GI_df"))
 setGeneric("symmetricGI_df", function(GI_obj, ...) standardGeneric("symmetricGI_df"))
 setGeneric("dupcor_df", function(GI_obj, ...) standardGeneric("dupcor_df"))
@@ -78,28 +76,15 @@ setGeneric("create_log", function(GI_obj, ...) standardGeneric("create_log"))
 #    
 #    if (grepl("multiplex", GI_obj@screenType)) {
 #      output <- set_names(GI_obj@screen_attributes$query_genes)
-#      
-#      if (!is.null(sample_query)) {
-#        output <- sample(output, min(c(sample_query, GI_obj@screen_attributes$n_query_genes)))
-#      }
-#      output <- output |> purrr::map(\(.g) GI_obj@guideGIs[.g,,])
-#    }
-    
-    
-#    
-#    
-#    
-#    if (grepl("fixed", GI_obj@screenType)) {
-#      output <- list(GI_obj@guideGIs)
-#    }
-#    
+#      if (!is.null(sample_query)) {output <- sample(output, min(c(sample_query, GI_obj@screen_attributes$n_query_genes)))}
+#      output <- output |> purrr::map(\(.g) GI_obj@guideGIs[.g,,])}
+
+#    if (grepl("fixed", GI_obj@screenType)) {output <- list(GI_obj@guideGIs)}
 #    output <- output |>
 #      purrr::map(\(.g) suppressWarnings(limma::duplicateCorrelation(object = .g, 
 #                                                                    block = blocks(GI_obj)))) |>
 #      purrr::map_dbl("consensus.correlation")
-#    
-#    GI_obj@dupCorrelation <- output
-#    
+#     GI_obj@dupCorrelation <- output
 #    return(GI_obj)
 #  })
 
@@ -117,20 +102,43 @@ setMethod(
       
       
       output <- set_names(GI_obj@screen_attributes$query_genes) |> 
-        map(purrr::safely(\(.g) {
-          .fit <- limma::lmFit(object = GI_obj@guideGIs[.g,,], 
-                               block = blocks(GI_obj), 
-                               correlation = dupCorrelation(GI_obj))
-          
-          .efit <- limma::eBayes(.fit)
-          
-          data.frame(query_gene = .g, 
-                     library_gene = rownames(.fit), 
-                     GI = .fit$Amean, 
-                     pval = .efit$p.value[, 1], 
-                     FDR = stats::p.adjust(.efit$p.value[, 1], method = FDR_method))
-        })) |> 
-        purrr::map("result") |> 
+        map(\(.g) {GI_obj@guideGIs[.g,,]})
+      
+      
+      
+      .usable <- map_lgl(output, usable_for_limma)
+      
+      
+      
+      output <- output |> 
+        modify_if(.usable, 
+                  \(.obj) {
+                    .fit <- limma::lmFit(object = .obj, 
+                                         block = blocks(GI_obj), 
+                                         correlation = dupCorrelation(GI_obj))
+                    
+                    .efit <- limma::eBayes(.fit)
+                    data.frame(library_gene = rownames(.obj), 
+                               GI = .fit$Amean, 
+                               pval = .efit$p.value[, 1], 
+                               FDR = stats::p.adjust(.efit$p.value[, 1], method = FDR_method))
+                  })
+      
+      if (!all(.usable)) {
+        print("Not usable:")
+        print(str_c(names(keep(output, !.usable)), collapse = ", "))
+      }
+      
+      output <- output |> 
+        modify_if(!.usable, 
+                  \(.obj) {data.frame(library_gene = rownames(.obj), 
+                                      GI = NA, pval = NA, FDR = NA)})
+      
+      
+      errors(GI_obj)$query_genes_not_usable <- names(which(!.usable))
+      
+      output <- output |> 
+        imap(~ {.x$query_gene <- .y; .x}) |>
         data.table::rbindlist(fill = T) |>
         data.table::melt.data.table(measure.vars = c("GI", "pval", "FDR")) |>
         reshape2::acast(formula = as.formula("query_gene ~ library_gene ~ variable"), 
@@ -158,6 +166,22 @@ setMethod(
     
     geneGIs(GI_obj) <- output
     
+    
+    if (length(setdiff(rownames(guideGIs(GI_obj)), rownames(geneGIs(GI_obj)))) != 0 | 
+        length(setdiff(colnames(guideGIs(GI_obj)), colnames(geneGIs(GI_obj)))) != 0) {
+      
+      warning("Some genes were lost!")
+      
+      print(str(guideGIs(GI_obj)))
+      print(str(geneGIs(GI_obj)))
+      
+      print(setdiff(rownames(guideGIs(GI_obj)), rownames(geneGIs(GI_obj))))
+      print(setdiff(colnames(guideGIs(GI_obj)), colnames(geneGIs(GI_obj))))
+      
+    }
+    
+    
+    
     return(GI_obj)
   })
 
@@ -175,7 +199,7 @@ setMethod("compute_symmetric_GIs",
               warning("The given screen is not position-agnostic.")
               return(GI_obj)
             }
-
+            
             #all_pairs <- data.table::CJ(g1 = screen_attributes(GI_obj)$query_genes, 
             #                            g2 = screen_attributes(GI_obj)$library_genes)
             
@@ -183,7 +207,7 @@ setMethod("compute_symmetric_GIs",
             #                              sorted_pair = sort_gene_pairs(g1, g2))]
             
             #all_pairs <- all_pairs[, unique(sorted_pair)]
-
+            
             
             .x <- list(screen_attributes(GI_obj)$unique_pairs, c("GI", "GI_z", "pval", "FDR"))
             .x <- array(data = NA, 

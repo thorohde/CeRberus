@@ -5,6 +5,7 @@ gather_symmetric_scores <- function(pairs, .arr, sep = ";") {
 #    warning(stringr::str_c("Input array is asymmetric! ABBA: ", 
 #                           round(abba_cor(.arr), 3)))}
 
+  
   genes1 <- str_split_i(pairs, sep, 1)
   genes2 <- str_split_i(pairs, sep, 2)
 
