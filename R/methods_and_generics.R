@@ -134,7 +134,7 @@ setMethod(
         data.table::rbindlist(fill = T) |>
         data.table::melt.data.table(measure.vars = c("GI", "pval", "FDR")) |>
         reshape2::acast(formula = as.formula("query_gene ~ library_gene ~ variable"), 
-                        value.var = "value")
+                        value.var = "value", drop = F)
       
     } else {
       .fit <- limma::lmFit(object = GI_obj@guideGIs, 
@@ -176,15 +176,16 @@ setMethod("compute_symmetric_GIs",
               return(GI_obj)
             }
 
-            all_pairs <- data.table::CJ(g1 = screen_attributes(GI_obj)$query_genes, 
-                                        g2 = screen_attributes(GI_obj)$library_genes)
+            #all_pairs <- data.table::CJ(g1 = screen_attributes(GI_obj)$query_genes, 
+            #                            g2 = screen_attributes(GI_obj)$library_genes)
             
-            all_pairs <- all_pairs[, `:=`(pair = stringr::str_glue("{g1};{g2}"), 
-                                          sorted_pair = sort_gene_pairs(g1, g2))]
+            #all_pairs <- all_pairs[, `:=`(pair = stringr::str_glue("{g1};{g2}"), 
+            #                              sorted_pair = sort_gene_pairs(g1, g2))]
             
-            all_pairs <- all_pairs[, unique(sorted_pair)]
+            #all_pairs <- all_pairs[, unique(sorted_pair)]
+
             
-            .x <- list(all_pairs, c("GI", "GI_z", "pval", "FDR"))
+            .x <- list(screen_attributes(GI_obj)$unique_pairs, c("GI", "GI_z", "pval", "FDR"))
             .x <- array(data = NA, 
                         dim = purrr::map_int(.x, length), 
                         dimnames = .x)
