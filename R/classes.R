@@ -4,7 +4,6 @@ setClass("ScreenBase",
          slots = c(
            "screenType" = "character", 
            "guideGIs" = "array", 
-           #"guideGIsSymmetric" = "array", 
            "geneGIs" = "array", 
            "geneGIsSymmetric" = "array", 
            "structure" = "character", 

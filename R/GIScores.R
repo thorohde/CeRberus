@@ -10,10 +10,10 @@ GIScores <- function(input,
                      collapse_layers = NULL, 
                      block_layer = NULL, 
                      force_fixed_pair = F, 
-                     #mean_positional_effects = F, 
                      min_query_size = 50, 
                      min_library_size = 50, 
-                     pos_agnostic = F) {
+                     pos_agnostic = F, 
+                     individual_guide_dupcor = T) {
   
   #message(paste0("Collapsing layers: ", collapse_layers, collapse = ", "))
   #message(paste0(block_layer, " used as blocks"))
@@ -85,9 +85,9 @@ GIScores <- function(input,
   
   
   if (screenType(GI_obj) == "multiplex.symmetric" & pos_agnostic) {
-    message("Creating a position-agnostic (ABBA-symmetric) GI object.")
+    #message("Creating a position-agnostic (ABBA-symmetric) GI object.")
     
-    GI_obj@guideGIs[] <- apply(GI_obj@guideGIs, 3, \(.x) {.x + t(.x) / 2})
+    #GI_obj@guideGIs[] <- apply(GI_obj@guideGIs, 3, \(.x) {.x + t(.x) / 2})
     
     for (.r in replicates(GI_obj)) {
       guideGIs(GI_obj)[,,.r] <- makeSymmetric(guideGIs(GI_obj)[,,.r])
@@ -96,7 +96,7 @@ GIScores <- function(input,
     screenType(GI_obj) <- "multiplex.symmetric.position.agnostic"
   }
     
-  
+
   
   
   if (!is.null(block_layer)) {
@@ -110,10 +110,13 @@ GIScores <- function(input,
   }
   
   ##### rework?
-  .flat_GIs <- input |> reshape2::acast(formula = pair ~ replicate, value.var = "GI")
+  GI_obj <- compute_dupCorrelation(GI_obj)
   
-  dupCorrelation(GI_obj) <- suppressWarnings(limma::duplicateCorrelation(object = .flat_GIs, 
-                                                                         block = blocks(GI_obj)))$consensus.correlation
+#  dupCorrelation(GI_obj) <- suppressWarnings(limma::duplicateCorrelation(object = .flat_GIs, 
+#                                                                         block = blocks(GI_obj)))$consensus.correlation
+  
+  print(str(dupCorrelation(GI_obj)))
+  
   #####
   
   GI_obj@block_description <- list(used = block_layer)

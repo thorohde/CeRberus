@@ -25,9 +25,6 @@ setGeneric("geneGIsSymmetric<-", function(x, value) standardGeneric("geneGIsSymm
 setGeneric("guideGIs", function(x) standardGeneric("guideGIs"))
 setGeneric("guideGIs<-", function(x, value) standardGeneric("guideGIs<-"))
 
-#setGeneric("guideGIsSymmetric", function(x) standardGeneric("guideGIsSymmetric"))
-#setGeneric("guideGIsSymmetric<-", function(x, value) standardGeneric("guideGIsSymmetric<-"))
-
 setGeneric("layers", function(x) standardGeneric("layers"))
 setGeneric("layers<-", function(x, value) standardGeneric("layers<-"))
 
@@ -48,8 +45,8 @@ setGeneric("structure<-", function(x, value) standardGeneric("structure<-"))
 
 
 purrr::walk(c(
-  "blocks", "block_description", "checks", "dupCorrelation", "errors", 
-  "geneGIs", "geneGIsSymmetric", "guideGIs", 
+  "blocks", "block_description", "checks", "dupCorrelation", 
+  "errors", "geneGIs", "geneGIsSymmetric", "guideGIs", 
   "replicates", "screen_attributes", "screenType", "structure"), ~ {
     
     .x2 <- paste0(.x, "<-")
@@ -61,6 +58,7 @@ purrr::walk(c(
   }
 )
 
+setGeneric("compute_dupCorrelation", function(GI_obj, ...) standardGeneric("compute_dupCorrelation"))
 setGeneric("compute_GIs", function(GI_obj, ...) standardGeneric("compute_GIs"))
 setGeneric("compute_symmetric_GIs", function(GI_obj, ...) standardGeneric("compute_symmetric_GIs"))
 setGeneric("dupCorrelation_df", function(GI_obj, ...) standardGeneric("dupCorrelation_df"))
@@ -69,24 +67,34 @@ setGeneric("symmetricGI_df", function(GI_obj, ...) standardGeneric("symmetricGI_
 setGeneric("dupcor_df", function(GI_obj, ...) standardGeneric("dupcor_df"))
 setGeneric("create_log", function(GI_obj, ...) standardGeneric("create_log"))
 
-#setMethod(
-#  "compute_dupcor_values", 
-#  signature = "ScreenBase", 
-#  function(GI_obj, sample_query = NULL) {
-#    
-#    if (grepl("multiplex", GI_obj@screenType)) {
-#      output <- set_names(GI_obj@screen_attributes$query_genes)
-#      if (!is.null(sample_query)) {output <- sample(output, min(c(sample_query, GI_obj@screen_attributes$n_query_genes)))}
-#      output <- output |> purrr::map(\(.g) GI_obj@guideGIs[.g,,])}
 
-#    if (grepl("fixed", GI_obj@screenType)) {output <- list(GI_obj@guideGIs)}
-#    output <- output |>
-#      purrr::map(\(.g) suppressWarnings(limma::duplicateCorrelation(object = .g, 
-#                                                                    block = blocks(GI_obj)))) |>
-#      purrr::map_dbl("consensus.correlation")
-#     GI_obj@dupCorrelation <- output
-#    return(GI_obj)
-#  })
+
+setMethod("compute_dupCorrelation", signature = "ScreenBase", 
+          function(GI_obj) {
+            if (grepl("fixed", GI_obj@screenType)) {
+              
+              dupCorrelation(GI_obj) <- suppressWarnings(limma::duplicateCorrelation(
+                object = GI_obj@guideGIs, 
+                block = blocks(GI_obj)))$consensus.correlation
+            }
+            
+            if (grepl("multiplex", GI_obj@screenType)) {
+              
+              output <- purrr::set_names(GI_obj@screen_attributes$query_genes)
+              
+              output <- output |> purrr::map(\(.g) GI_obj@guideGIs[.g,,])
+              
+              output <- output |>
+                purrr::map(\(.g) suppressWarnings(limma::duplicateCorrelation(object = .g, 
+                                                                              block = blocks(GI_obj)))) |>
+                purrr::map_dbl("consensus.correlation")
+              
+              GI_obj@dupCorrelation <- output
+            }
+            return(GI_obj)
+          })
+
+
 
 
 setMethod(
@@ -100,42 +108,51 @@ setMethod(
     
     if (grepl("multiplex", GI_obj@screenType)) {
       
-      
-      output <- set_names(GI_obj@screen_attributes$query_genes) |> 
-        map(\(.g) {GI_obj@guideGIs[.g,,]})
-      
-      
-      
-      .usable <- map_lgl(output, usable_for_limma)
-      
-      
+      output <- set_names(GI_obj@screen_attributes$query_genes)
       
       output <- output |> 
-        modify_if(.usable, 
-                  \(.obj) {
-                    .fit <- limma::lmFit(object = .obj, 
-                                         block = blocks(GI_obj), 
-                                         correlation = dupCorrelation(GI_obj))
-                    
-                    .efit <- limma::eBayes(.fit)
-                    data.frame(library_gene = rownames(.obj), 
-                               GI = .fit$Amean, 
-                               pval = .efit$p.value[, 1], 
-                               FDR = stats::p.adjust(.efit$p.value[, 1], method = FDR_method))
-                  })
+        map(safely(\(.g) {
+          
+          .obj <- GI_obj@guideGIs[.g,,]
+          
+          .dcor <- dupCorrelation(GI_obj)[[.g]]
+          
+          .fit <- limma::lmFit(object = .obj, 
+                               block = blocks(GI_obj), 
+                               correlation = .dcor)
+          
+          .efit <- limma::eBayes(.fit)
+          
+          .obj <- data.frame(library_gene = GI_obj@screen_attributes$library_genes, 
+                             GI = .fit$Amean, 
+                             pval = .efit$p.value[, 1], 
+                             FDR = stats::p.adjust(.efit$p.value[, 1], method = FDR_method))
+          
+          return(.obj)
+        }))
       
-      if (!all(.usable)) {
-        print("Not usable:")
-        print(str_c(names(keep(output, !.usable)), collapse = ", "))
+      errors(GI_obj)$query_genes_not_usable <- map(output, "result") |> keep(is.null) |> names()
+      errors(GI_obj)$GI_computation_errors <- map(output, "error")
+      
+      #  map("error") |> 
+      #  compact() |> 
+      #  map_chr(~ .x$message)
+      
+      if (length(errors(GI_obj)$query_genes_not_usable) > 0) {
+        warning(str_c("Failed computing GIs for ", length(errors(GI_obj)$query_genes_not_usable), " genes."))
       }
       
       output <- output |> 
-        modify_if(!.usable, 
-                  \(.obj) {data.frame(library_gene = rownames(.obj), 
+        map("result") |>
+        modify_if(is.null, 
+                  \(.obj) {data.frame(library_gene = GI_obj@screen_attributes$library_genes, 
                                       GI = NA, pval = NA, FDR = NA)})
       
       
-      errors(GI_obj)$query_genes_not_usable <- names(which(!.usable))
+      
+      
+      
+      
       
       output <- output |> 
         imap(~ {.x$query_gene <- .y; .x}) |>
@@ -166,7 +183,6 @@ setMethod(
     
     geneGIs(GI_obj) <- output
     
-    
     if (length(setdiff(rownames(guideGIs(GI_obj)), rownames(geneGIs(GI_obj)))) != 0 | 
         length(setdiff(colnames(guideGIs(GI_obj)), colnames(geneGIs(GI_obj)))) != 0) {
       
@@ -185,12 +201,6 @@ setMethod(
     return(GI_obj)
   })
 
-
-
-
-
-
-
 setMethod("compute_symmetric_GIs", 
           signature = "ScreenBase", 
           function(GI_obj, FDR_method = "BH") {
@@ -200,28 +210,21 @@ setMethod("compute_symmetric_GIs",
               return(GI_obj)
             }
             
-            #all_pairs <- data.table::CJ(g1 = screen_attributes(GI_obj)$query_genes, 
-            #                            g2 = screen_attributes(GI_obj)$library_genes)
-            
-            #all_pairs <- all_pairs[, `:=`(pair = stringr::str_glue("{g1};{g2}"), 
-            #                              sorted_pair = sort_gene_pairs(g1, g2))]
-            
-            #all_pairs <- all_pairs[, unique(sorted_pair)]
-            
-            
             .x <- list(screen_attributes(GI_obj)$unique_pairs, c("GI", "GI_z", "pval", "FDR"))
             .x <- array(data = NA, 
                         dim = purrr::map_int(.x, length), 
                         dimnames = .x)
             
+            .arr <- geneGIs(GI_obj)
+            
             .x[,"GI"] <- gather_symmetric_scores(pairs = rownames(.x), 
-                                                 .arr = geneGIs(GI_obj)[,,"GI"])
+                                                 .arr = .arr[,,"GI"])
             .x[,"GI_z"] <- z_transform(.x[,"GI"])
             .x[,"pval"] <- gather_symmetric_scores(pairs = rownames(.x), 
-                                                   .arr = geneGIs(GI_obj)[,,"pval"])
+                                                   .arr = .arr[,,"pval"])
             
             .x[,"FDR"] <- balanced_FDR(pairs = rownames(.x), 
-                                       pval_array = geneGIs(GI_obj)[,,"pval"], 
+                                       pval_array = .arr[,,"pval"], 
                                        fdr_method = FDR_method)
             
             geneGIsSymmetric(GI_obj) <- .x
@@ -229,18 +232,15 @@ setMethod("compute_symmetric_GIs",
             return(GI_obj)
           })
 
-
-
-
-
-
 setMethod(
   "GI_df", 
   signature = "ScreenBase", 
   function(GI_obj) {
     
     if (grepl("multiplex", GI_obj@screenType)) {
-      output <- GI_obj@geneGIs |> 
+      output <- GI_obj@geneGIs
+      
+      output <- output |> 
         flatten_array(dnames = c("query_gene", "library_gene", "variable"), 
                       value.name = "value") |>
         data.table::dcast(formula = query_gene + library_gene ~ variable, 
@@ -249,10 +249,12 @@ setMethod(
     }
     
     if (grepl("fixed", GI_obj@screenType)) {
-      output <- data.table::data.table(pair = rownames(GI_obj@geneGIs), 
-                                       query_gene = str_split_i(rownames(GI_obj@geneGIs), ";", 1), 
-                                       library_gene = str_split_i(rownames(GI_obj@geneGIs), ";", 2), 
-                                       GI_obj@geneGIs)
+      output <- GI_obj@geneGIs
+      
+      output <- data.table::data.table(pair = rownames(output), 
+                                       query_gene = str_split_i(rownames(output), ";", 1), 
+                                       library_gene = str_split_i(rownames(output), ";", 2), 
+                                       output)
     }
     return(output)
   })
@@ -266,14 +268,22 @@ setMethod(
     
     if (GI_obj@screenType == "multiplex.symmetric.position.agnostic") {
       
-      output <- data.table::data.table(pair = rownames(GI_obj@geneGIsSymmetric), 
-                                       query_gene = str_split_i(rownames(GI_obj@geneGIsSymmetric), ";", 1), 
-                                       library_gene = str_split_i(rownames(GI_obj@geneGIsSymmetric), ";", 2), 
-                                       GI_obj@geneGIsSymmetric)
+      
+      output <- GI_obj@geneGIsSymmetric
+      
+      output <- data.table::data.table(pair = rownames(output), 
+                                       query_gene = str_split_i(rownames(output), ";", 1), 
+                                       library_gene = str_split_i(rownames(output), ";", 2), 
+                                       output)
       
       return(output)
-    } else {return(NULL)}
+    } else {
+      return(NULL)
+    }
   })
+
+
+
 
 
 
