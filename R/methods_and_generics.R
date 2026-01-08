@@ -89,7 +89,7 @@ setMethod("compute_dupCorrelation", signature = "ScreenBase",
                                                                               block = blocks(GI_obj)))) |>
                 purrr::map_dbl("consensus.correlation")
               
-              GI_obj@dupCorrelation <- output
+              dupCorrelation(GI_obj) <- output
             }
             return(GI_obj)
           })

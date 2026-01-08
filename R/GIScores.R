@@ -115,10 +115,7 @@ GIScores <- function(input,
 #  dupCorrelation(GI_obj) <- suppressWarnings(limma::duplicateCorrelation(object = .flat_GIs, 
 #                                                                         block = blocks(GI_obj)))$consensus.correlation
   
-  print(str(dupCorrelation(GI_obj)))
-  
   #####
-  
   GI_obj@block_description <- list(used = block_layer)
   ######
   

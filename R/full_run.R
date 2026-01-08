@@ -31,13 +31,17 @@ full_run <- function(yaml_fpath, return_output = F) {
   
   .data <- collect_all_layer_configurations(.data)
   
-  
+  print(str(.data))
   
   library(ggplot2)
   
-  .plt_data <- data.frame(config = names(.data), dupcor = map_dbl(.data, dupCorrelation))
+  .plt_data <- imap(.data, ~ {
+    data.frame(config = .y, 
+               dupcor = mean(dupCorrelation(.x), na.rm = T))}) |>
+    rbindlist()
   
-  print(.plt_data)
+  print(str(.plt_data))
+  
   
   if (!"keep_all_configurations" %in% names(instr) || (!instr$keep_all_configurations)) {
     .data <- find_optimal_configuration(.data, verbose = instr$verbose)
@@ -92,7 +96,7 @@ full_run <- function(yaml_fpath, return_output = F) {
     
     for (.n in names(.data)) {
       .output[[paste0("GI_scores_", .n)]] <- GI_df(.data[[.n]])
-
+      
       if (screenType(.data[[.n]]) == "multiplex.symmetric.position.agnostic") {
         .output[[paste0("GI_scores_position_agnostic_", .n)]] <- symmetricGI_df(.data[[.n]])
       }

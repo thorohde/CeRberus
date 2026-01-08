@@ -2,7 +2,7 @@
 
 find_optimal_configuration <- function(GI_list, verbose = T) {
   
-  .x <- map_dbl(GI_list, dupCorrelation)
+  .x <- GI_list |> map(dupCorrelation) |> map_dbl(mean, na.rm = T)
   
   if (verbose) {
     print("Start: ")
