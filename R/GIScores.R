@@ -10,94 +10,43 @@ GIScores <- function(input,
                      collapse_layers = NULL, 
                      block_layer = NULL, 
                      force_fixed_pair = F, 
-                     min_query_size = 50, 
-                     min_library_size = 50, 
-                     pos_agnostic = F, 
-                     individual_guide_dupcor = T) {
+                     pos_agnostic = F#, 
+                     #individual_guide_dupcor = T
+) {
   
   #message(paste0("Collapsing layers: ", collapse_layers, collapse = ", "))
   #message(paste0(block_layer, " used as blocks"))
   
-  input <- data.table::copy(input)
+  GI_obj <- new("ScreenBase", 
+                metadata = list(
+                  input = input, 
+                  query_col = query_col, 
+                  lib_col = lib_col, 
+                  bio_rep_col = bio_rep_col, 
+                  tech_rep_col = tech_rep_col, 
+                  guide_col = guide_col, 
+                  gi_col = gi_col, 
+                  collapse_layers = collapse_layers, 
+                  force_fixed_pair = force_fixed_pair
+                ))
   
+  GI_obj <- import_scores(GI_obj)
   
-  stopifnot("The input object needs to be a data frame." = data.table::is.data.table(input), 
-            "The query gene column is not in the provided dataset." = query_col %in% colnames(input), 
-            "The library gene column is not in the provided dataset." = lib_col %in% colnames(input))
+  GI_obj <- get_screen_attributes(GI_obj)
   
-  setnames(input, 
-           old = c(bio_rep_col, tech_rep_col, guide_col, query_col, lib_col, gi_col), 
-           new = c("bio_rep", "tech_rep", "guide_pair", "query_gene", "library_gene", "GI"), 
-           skip_absent = T)
+  GI_obj <- run_checks(GI_obj)
   
-  input[, pair := paste0(get("query_gene"), ";", get("library_gene"))]
+  GI_obj <- set_screenType(GI_obj)
   
-  #####
+  print(screenReport(GI_obj))
   
-  if (!is.null(collapse_layers)) {
-    input <- input[, .SD, .SDcols = setdiff(colnames(input), collapse_layers)]
-    input <- input[, .(GI = mean(GI, na.rm = T)), by = setdiff(colnames(input), "GI")]
-  }
-  
-  ######
-  
-  input[, replicate := do.call(paste, c(.SD, sep = "_")), 
-        .SDcols = intersect(c("bio_rep", "tech_rep", "guide_pair"), colnames(input))]
-  
-  
-  
-  GI_obj <- new("ScreenBase")
-  
-  .a <- get_screen_attributes(input)
-  
-  checks(GI_obj) <- list(
-    gene_sets_equal = (length(.a$query_genes_not_in_lib) <= 0.02*.a$n_query_genes) & 
-      (length(.a$lib_genes_not_in_query) <= 0.02*.a$n_lib_genes), 
-    query_sufficient = .a$n_query_genes >= min_query_size, 
-    library_sufficient = .a$n_lib_genes >= min_library_size, 
-    stable_library_size = sum(.a$observations_per_query != stats::median(.a$observations_per_query, na.rm = T)) <= 10, 
-    sufficient_tests_per_query = sum(.a$observations_per_query >= min_library_size) >= 0.95 * length(.a$observations_per_query), 
-    avg_tests_per_query = stats::median(.a$observations_per_query, .na.rm = T)
     
-  )
-  
-  screen_attributes(GI_obj) <- .a
-  
-  if (force_fixed_pair) {
-    warning("Set up to use fixed pair structure.")
-    screenType(GI_obj) <- "fixed"} else {
-      screenType(GI_obj) <- define_screen_type(checks(GI_obj))}
-  
-  
-  if (grepl("multiplex", screenType(GI_obj))) {
-    structure(GI_obj) <- c("query_gene", "library_gene", "replicate")
-  } else {
-    structure(GI_obj) <- c("pair", "replicate")
-  }
-  
-  #structure(GI_obj) <- c(if (grepl("multiplex", screenType(GI_obj))) c("query_gene", "library_gene") else c("pair"), "replicate")
-  
-  guideGIs(GI_obj) <- input |> 
-    reshape2::acast(formula = as.formula(paste0(structure(GI_obj), collapse = " ~ ")), 
-                    value.var = "GI")
-  
-  replicates(GI_obj) <- dimnames(guideGIs(GI_obj))[[which(structure(GI_obj) == "replicate")]]
-  
-  
-  if (screenType(GI_obj) == "multiplex.symmetric" & pos_agnostic) {
-    #message("Creating a position-agnostic (ABBA-symmetric) GI object.")
-    
-    #GI_obj@guideGIs[] <- apply(GI_obj@guideGIs, 3, \(.x) {.x + t(.x) / 2})
+  if (is(GI_obj, "PosAgnMultiplexScreen") & pos_agnostic) {
     
     for (.r in replicates(GI_obj)) {
       guideGIs(GI_obj)[,,.r] <- makeSymmetric(guideGIs(GI_obj)[,,.r])
     }
-    
-    screenType(GI_obj) <- "multiplex.symmetric.position.agnostic"
   }
-    
-
-  
   
   if (!is.null(block_layer)) {
     blocks(GI_obj) <- c(bio_rep = "(b\\d+)", 
@@ -112,12 +61,7 @@ GIScores <- function(input,
   ##### rework?
   GI_obj <- compute_dupCorrelation(GI_obj)
   
-#  dupCorrelation(GI_obj) <- suppressWarnings(limma::duplicateCorrelation(object = .flat_GIs, 
-#                                                                         block = blocks(GI_obj)))$consensus.correlation
-  
-  #####
   GI_obj@block_description <- list(used = block_layer)
-  ######
   
   return(GI_obj)
 }

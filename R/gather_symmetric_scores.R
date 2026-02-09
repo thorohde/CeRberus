@@ -13,4 +13,3 @@ gather_symmetric_scores <- function(pairs, .arr, sep = ";") {
             length(setdiff(genes2, colnames(.arr))) == 0)  
   
   return(purrr::map2_dbl(genes1, genes2, \(.g1, .g2) {.arr[.g1,.g2]}))}
-
