@@ -115,19 +115,29 @@ collect_all_layer_configurations <- function(GI_data,
 
 find_optimal_configuration <- function(GI_list, verbose = T) {
   
-  
-  
   .x <- GI_list |> map(dupCorrelation) |> map_dbl(mean, na.rm = T)
   
   .d <- data.table(config = names(GI_list), 
                    dcor = GI_list |> map(dupCorrelation) |> map_dbl(mean, na.rm = T) |> round(3))
+
   
-  if (any(.x >= 0)) {.x <- keep(.x, .x >= 0)} # ifgreater or = 0 found, remove <= 0
+  if (any(.x >= 0)) {.x <- keep(.x, .x >= 0)} # if greater or = 0 found, remove <= 0
   if (any(.x > 0)) {.x <- .x |> keep(.x > 0)} # if any greater 0 found, remove = 0
   if (length(.x) >= 1) {.x <- .x[which.min(.x)]} # if more than one option remains, choose weakest correlation
   
   .d[, kept := fcase(config %in% names(.x), "*", default = "")]
   
+  for (.n in names(GI_list)) {
+    GI_list[[.n]]@metadata$dupcor_plot <- ggplot(
+      data = .d, mapping = aes(dcor, config)) + 
+      theme_light() + 
+      geom_col(aes(fill = kept)) + 
+      scale_color_manual(values = c("TRUE" = "seagreen", "FALSE" = "NA")) + 
+      geom_vline(xintercept = c(0, 0.25), linetype = "dashed", linewidth = 1) +
+      labs(#caption = "It is recommended to choose a configuration with most values between 0 and 0.25.", 
+        x = "Duplicate correlation", 
+        y = "Limma configuration")
+  }
   #if (verbose) {
     print(.d)
   #  }
@@ -139,21 +149,3 @@ find_optimal_configuration <- function(GI_list, verbose = T) {
 
 
 
-dupcor_plot <- \(plt_data, fname = NULL) {
-  
-  plt <- ggplot(data = plt_data, 
-                mapping = aes(dupcor, config)) + 
-    theme_light() + 
-    geom_col(aes(fill = kept)) + 
-    scale_color_manual(values = c("TRUE" = "seagreen", "FALSE" = "NA")) + 
-    geom_vline(xintercept = c(0, 0.25), linetype = "dashed", linewidth = 1) +
-    labs(#caption = "It is recommended to choose a configuration with most values between 0 and 0.25.", 
-      x = "Duplicate correlation", 
-      y = "Limma configuration")
-  
-  if (!is.null(fname)) {
-    ggplot2::ggsave(filename = fname, 
-                    plot = plt, width = 8, 
-                    height = 5, 
-                    dpi = 300)}
-}

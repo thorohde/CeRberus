@@ -22,29 +22,26 @@ full_run <- function(yaml_fpath, return_output = T) {
   
   .data <- collect_all_layer_configurations(.data)
   
-  #.plt_data <- imap(.data, ~ {
-  #  data.frame(config = .y, 
-  #             dupcor = mean(dupCorrelation(.x), na.rm = T))}) |>
-  #  rbindlist()
   
   if (!"keep_all_configurations" %in% names(instr) || (!instr$keep_all_configurations)) {
     .data <- find_optimal_configuration(.data#, verbose = instr$verbose
     )
   }
   
-
-  #.plt_data$kept <- .plt_data$config %in% names(.data)
+  plot(.data[[1]]@metadata$dupcor_plot)
   
-  #dupcor_plot(.plt_data, fname = file.path(instr$output_directory, "duplicateCorrelationPlot.png"))
+  ggplot2::ggsave(filename = file.path(instr$output_directory, "duplicateCorrelationPlot.png"), 
+                  plot = .data[[1]]@metadata$dupcor_plot, 
+                  width = 8, 
+                  height = 5, 
+                  dpi = 300)
+  
   
   if (instr$verbose) print("(2/5)")
   
-  #  if (any(map_chr(.data, is) == "PosAgnMultiplexScreen") & instr$verbose) {
-  #    message("Computing symmetric GIs. This might take a while.")}
-  
   .data <- map(.data, compute_models)
   
-
+  
   .data <- map(.data, collect_GIs)
   
   

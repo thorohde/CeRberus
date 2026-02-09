@@ -334,8 +334,6 @@ setMethod(
   signature = "PosAgnMultiplexScreen", 
   function(GI_obj, FDR_method = "BH") {
     
-    
-    
     GI_obj <- methods::callNextMethod(GI_obj)
     
     .x <- data.table(pair = screen_attributes(GI_obj)$unique_pairs)
