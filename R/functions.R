@@ -128,6 +128,8 @@ find_optimal_configuration <- function(GI_list, verbose = T) {
   .d[, kept := fcase(config %in% names(.x), "*", default = "")]
   
   for (.n in names(GI_list)) {
+    GI_list[[.n]]@metadata$dupcor_data <- .d
+    
     GI_list[[.n]]@metadata$dupcor_plot <- ggplot(
       data = .d, mapping = aes(dcor, config)) + 
       theme_light() + 

@@ -18,8 +18,6 @@ full_run <- function(yaml_fpath, return_output = T) {
                   "csv" = data.table::fread(instr$scores_file), 
                   "rds" = readRDS(instr$scores_file))
   
-  if (instr$verbose) {print("(1/5)")}
-  
   .data <- collect_all_layer_configurations(.data)
   
   
@@ -37,18 +35,10 @@ full_run <- function(yaml_fpath, return_output = T) {
                   dpi = 300)
   
   
-  if (instr$verbose) print("(2/5)")
-  
   .data <- map(.data, compute_models)
-  
-  
   .data <- map(.data, collect_GIs)
   
-  
-  if (instr$verbose) print("(4/5)")
-  
-  print(ls.str(.data))
-  
+  #print(ls.str(.data))
   
   if ("output_directory" %in% names(instr) & instr$overwrite_output) {
     
@@ -56,7 +46,7 @@ full_run <- function(yaml_fpath, return_output = T) {
     
     .output <- list()
     
-    #.output$duplicate_correlation <- .plt_data
+    .output$duplicate_correlation <- .data[[1]]@metadata$dupcor_data
     
       for (.n in names(.data)) {
         .output[[paste0("GI_scores_", .n)]] <- GI_df(.data[[.n]])
