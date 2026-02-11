@@ -36,15 +36,13 @@ setMethod("import_scores", signature = "ScreenBase",
             
             .md$input[, pair := paste0(get("query_gene"), ";", get("library_gene"))]
             
-            #####
-            
             if (!is.null(.md$collapse_layers)) {
-              .md$input <- .md$input[, .SD, .SDcols = setdiff(colnames(.md$input), .md$collapse_layers)]
-              .md$input <- .md$input[, .(GI = mean(GI, na.rm = T)), by = setdiff(colnames(.md$input), "GI")]
+              #.md$input <- .md$input[, .SD, .SDcols = setdiff(colnames(.md$input), .md$collapse_layers)]
+              group_cols <- setdiff(colnames(.md$input), "GI")
+              
+              .md$input <- .md$input[, .(GI = mean(GI, na.rm = T)), by = ..group_cols]
             }
-            
-            ######
-            
+
             .md$input[, replicate := do.call(paste, c(.SD, sep = "_")), 
                       .SDcols = intersect(c("bio_rep", "tech_rep", "guide_pair"), colnames(.md$input))]
             
