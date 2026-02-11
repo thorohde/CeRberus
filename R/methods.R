@@ -407,7 +407,8 @@ setMethod(
                     value.name = "value") |>
       data.table::dcast(formula = query_gene + library_gene ~ variable, 
                         value.var = "value")
-    output <- output[, .SD, .SDcols = c("query_gene", "library_gene", "GI", "pval", "FDR")]
+    output[, pair := str_c(query_gene, ";", library_gene)]
+    output <- output[, .SD, .SDcols = c("pair", "query_gene", "library_gene", "GI", "pval", "FDR")]
     
     return(output)
   })

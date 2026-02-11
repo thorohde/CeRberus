@@ -20,7 +20,12 @@ full_run <- function(yaml_fpath, return_output = T) {
   
   .data <- collect_all_layer_configurations(.data)
   
-  
+  # store all GI objects
+  if ("output_directory" %in% names(instr) & instr$overwrite_output) {
+    saveRDS(.data, file.path(instr$output_directory, "all_GI_objects.rds"))
+  }
+    
+    
   if (!"keep_all_configurations" %in% names(instr) || (!instr$keep_all_configurations)) {
     .data <- find_optimal_configuration(.data#, verbose = instr$verbose
     )
@@ -42,7 +47,7 @@ full_run <- function(yaml_fpath, return_output = T) {
   
   if ("output_directory" %in% names(instr) & instr$overwrite_output) {
     
-    saveRDS(.data, file.path(instr$output_directory, "all_GI_objects.rds"))
+
     
     .output <- list()
     
