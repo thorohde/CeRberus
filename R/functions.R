@@ -51,12 +51,10 @@ read_instructions <- function(yaml_fpath) {
 
 
 
-usable_for_limma <- \(.x) {
-  .usable <- is.array(.x) & sum(is.na(.x)) / length(.x) <= 0.9
-  return(.usable)
-}
-
-
+#usable_for_limma <- \(.x) {
+#  .usable <- is.array(.x) & sum(is.na(.x)) / length(.x) <= 0.9
+#  return(.usable)
+#}
 
 
 
@@ -81,11 +79,10 @@ usable_for_limma <- \(.x) {
 
 
 collect_all_layer_configurations <- function(GI_data, 
-                                             .collapsable_layers = c("tech_rep", "bio_rep", "guide_pair"), 
                                              .to_use = c("tech_rep", "bio_rep", "guide_pair"), 
                                              make_pos_agnostic = F) {
   
-  .collapsable_layers <- intersect(.collapsable_layers, colnames(GI_data))
+  .collapsable_layers <- intersect(c("tech_rep", "bio_rep", "guide_pair"), colnames(GI_data))
   .to_use = intersect(.to_use, colnames(GI_data))
   
   output <- list()
@@ -101,11 +98,12 @@ collect_all_layer_configurations <- function(GI_data,
   for (.i in seq_len(length(.collapsable_layers)-1)) {
     for (.to_collapse in combn(.collapsable_layers, .i, simplify = F)) {
       for (.use in setdiff(.collapsable_layers, .to_collapse)) {
-        output[[str_c(str_c(.to_collapse, collapse = "_"), "_collapsed_", .use, "_used")]] <- GIScores(
-          GI_data, 
-          collapse_layers = .to_collapse, 
-          block_layer = .use, 
-          pos_agnostic = make_pos_agnostic)
+        .n <- str_c(str_c(.to_collapse, collapse = "_"), "_collapsed_", .use, "_used")
+        print(.n)
+        output[[.n]] <- GIScores(GI_data, 
+                                 collapse_layers = .to_collapse, 
+                                 block_layer = .use, 
+                                 pos_agnostic = make_pos_agnostic)
       }}}
   return(output)
 }
@@ -115,11 +113,13 @@ collect_all_layer_configurations <- function(GI_data,
 
 find_optimal_configuration <- function(GI_list, verbose = T) {
   
-  .x <- GI_list |> map(dupCorrelation) |> map_dbl(mean, na.rm = T)
+  print(str(map(GI_list, ~ .x@dupCorrelation)))
+  
+  .x <- GI_list |> map(~ .x@dupCorrelation) |> map_dbl(mean, na.rm = T)
   
   .d <- data.table(config = names(GI_list), 
-                   dcor = GI_list |> map(dupCorrelation) |> map_dbl(mean, na.rm = T) |> round(3))
-
+                   dcor = GI_list |> map(~ .x@dupCorrelation) |> map_dbl(mean, na.rm = T) |> round(3))
+  
   
   if (any(.x >= 0)) {.x <- keep(.x, .x >= 0)} # if greater or = 0 found, remove <= 0
   if (any(.x > 0)) {.x <- .x |> keep(.x > 0)} # if any greater 0 found, remove = 0
@@ -141,7 +141,7 @@ find_optimal_configuration <- function(GI_list, verbose = T) {
         y = "Limma configuration")
   }
   #if (verbose) {
-    print(.d)
+  print(.d)
   #  }
   
   return(GI_list[names(.x)])

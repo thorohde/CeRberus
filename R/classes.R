@@ -1,15 +1,25 @@
 #' @export
 
+setClass("GuideGI", 
+         slots = list(
+           "data" = "array", 
+           "space" = "character", 
+           "replicates" = "character", 
+           "block_layer" = "character", 
+           "blocks" = "character", 
+           "use_blocks" = "logical", 
+           "block_description" = "character", 
+           "collapse" = "character")
+         )
+
 setClass("ScreenBase", 
          slots = list(
-           "guideGIs" = "array", 
+           "guideGIs" = "GuideGI", 
            "limma_models" = "list", 
            "geneGIs" = "array", 
-           "structure" = "character", 
-           "replicates" = "character",  
-           "screen_attributes" = "list", 
-           "blocks" = "character", 
-           "block_description" = "list", 
+           "screen_attr" = "list", 
+           #"blocks" = "character", 
+           #"block_description" = "list", 
            "dupCorrelation" = "numeric",
            "metadata" = "list", 
            "checks" = "list",
