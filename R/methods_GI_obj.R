@@ -208,15 +208,15 @@ setMethod(
       map(safely(\(.g) {
         
         .fit <- limma::lmFit(
-          object = GI_obj@guideGIs[.g,GI_obj@screen_attr$library_genes,], 
-          block = GI_obj@blocks, 
+          object = GI_obj@guideGIs@data[.g,GI_obj@screen_attr$library_genes,], 
+          block = GI_obj@guideGIs@blocks, 
           correlation = GI_obj@dupCorrelation[[.g]]) |> 
           limma::eBayes()
         
         return(.fit)
       }))
     
-    limma_models(GI_obj) <- map(output, "result")
+    GI_obj@limma_models <- map(output, "result")
     GI_obj@errors$query_genes_not_usable <- map(output, "result") |> keep(is.null) |> names()
     GI_obj@errors$GI_computation_errors <- map(output, "error")
     
@@ -254,9 +254,9 @@ setMethod("collect_GIs",
                             dim = purrr::map_int(output, length), 
                             dimnames = output)
             
-            output[,"GI"] <- limma_models(GI_obj)$coefficients[, 1]
-            output[,"pval"] <- limma_models(GI_obj)$p.value[, 1]
-            output[,"FDR"] <- stats::p.adjust(limma_models(GI_obj)$p.value[, 1], method = FDR_method)
+            output[,"GI"] <- GI_obj@limma_models$coefficients[, 1]
+            output[,"pval"] <- GI_obj@limma_models$p.value[, 1]
+            output[,"FDR"] <- stats::p.adjust(GI_obj@limma_models$p.value[, 1], method = FDR_method)
             
             geneGIs(GI_obj) <- output
             
@@ -269,7 +269,7 @@ setMethod("collect_GIs",
           function(GI_obj, FDR_method = "BH") {
             stopifnot("Unknown FDR method provided." = FDR_method %in% p.adjust.methods)
             
-            output <- limma_models(GI_obj) |> 
+            output <- GI_obj@limma_models |> 
               imap(\(.m, .y) {
                 .x <- data.frame(library_gene = GI_obj@screen_attr$library_genes, 
                                  query_gene = .y)
@@ -290,17 +290,17 @@ setMethod("collect_GIs",
               reshape2::acast(formula = as.formula("query_gene ~ library_gene ~ variable"), 
                               value.var = "value", drop = F)
             
-            geneGIs(GI_obj) <- output
+            GI_obj@geneGIs <- output
             
-            if (length(setdiff(rownames(guideGIs(GI_obj)), rownames(geneGIs(GI_obj)))) != 0 | 
-                length(setdiff(colnames(guideGIs(GI_obj)), colnames(geneGIs(GI_obj)))) != 0) {
+            if (length(setdiff(rownames(GI_obj@guideGIs), rownames(GI_obj@geneGIs))) != 0 | 
+                length(setdiff(colnames(GI_obj@guideGIs), colnames(GI_obj@geneGIs))) != 0) {
               
               warning("Some genes were lost!")
-              print(str(guideGIs(GI_obj)))
-              print(str(geneGIs(GI_obj)))
+              print(str(GI_obj@guideGIs))
+              print(str(GI_obj@geneGIs))
               
-              print(setdiff(rownames(guideGIs(GI_obj)), rownames(geneGIs(GI_obj))))
-              print(setdiff(colnames(guideGIs(GI_obj)), colnames(geneGIs(GI_obj))))
+              print(setdiff(rownames(GI_obj@guideGIs), rownames(GI_obj@geneGIs)))
+              print(setdiff(colnames(GI_obj@guideGIs), colnames(GI_obj@geneGIs)))
               
             }
             return(GI_obj)
@@ -321,14 +321,14 @@ setMethod(
     
     .x[, query_gene := str_split_i(pair, ";", 1)]
     .x[, library_gene := str_split_i(pair, ";", 2)]
-    .x[, GI := gather_symmetric_scores(pairs = pair, .arr = geneGIs(GI_obj)[,,"GI"])]
+    .x[, GI := gather_symmetric_scores(pairs = pair, .arr = GI_obj@geneGIs[,,"GI"])]
     .x[, GI_z := z_transform(GI)]
-    .x[, pval := gather_symmetric_scores(pairs = pair, .arr = geneGIs(GI_obj)[,,"pval"])]
+    .x[, pval := gather_symmetric_scores(pairs = pair, .arr = GI_obj@geneGIs[,,"pval"])]
     .x[, FDR := balanced_FDR(pairs = pair, 
-                             pval_array = geneGIs(GI_obj)[,,"pval"], 
+                             pval_array = GI_obj@geneGIs[,,"pval"], 
                              fdr_method = FDR_method)]
     
-    symmGeneGIs(GI_obj) <- .x
+    GI_obj@symmGeneGIs <- .x
     
     return(GI_obj)
   })
@@ -349,7 +349,11 @@ setMethod("screenReport",
             cat(paste0("A ", .t, " CRISPR screen with ", 
                        .a$n_query_genes, " x ", .a$n_lib_genes, " genes.\n"))
             
-            cat(paste0("Using ", GI_obj@metadata$used_block), " as blocks.")
+            #            
+            #if (!.x@use_blocks) {warning("Not using any block structure.")}
+            
+            cat(paste0("Using ", GI_obj@guideGIs@block_layer), " as blocks. ")
+            cat("")
             #print(.checks)
           })
 
@@ -438,8 +442,8 @@ setMethod("symmetry_test",
           signature = signature(GI_obj = "MultiplexScreen"), 
           function(GI_obj, cutoff = 0.99) {
             
-            .test <- map_lgl(set_names(replicates(GI_obj)), \(.r) {
-              .x <- guideGIs(GI_obj)[,,.r]
+            .test <- map_lgl(set_names(GI_obj@guideGIs@replicates), \(.r) {
+              .x <- GI_obj@guideGIs[,,.r]
               if (all(.x == t(.x)) || all(dplyr::near(.x, t(.x)))) {return(T)} else {
                 return(cor(as.vector(.x), as.vector(t(.x)), use = "pairwise.complete.obs") >= cutoff)}})
             

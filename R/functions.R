@@ -109,17 +109,13 @@ collect_all_layer_configurations <- function(GI_data,
 }
 
 
-
-
-find_optimal_configuration <- function(GI_list, verbose = T) {
+find_optimal_configuration <- function(GI_list, keep_all = F) {
   
-  print(str(map(GI_list, ~ .x@dupCorrelation)))
   
   .x <- GI_list |> map(~ .x@dupCorrelation) |> map_dbl(mean, na.rm = T)
   
   .d <- data.table(config = names(GI_list), 
                    dcor = GI_list |> map(~ .x@dupCorrelation) |> map_dbl(mean, na.rm = T) |> round(3))
-  
   
   if (any(.x >= 0)) {.x <- keep(.x, .x >= 0)} # if greater or = 0 found, remove <= 0
   if (any(.x > 0)) {.x <- .x |> keep(.x > 0)} # if any greater 0 found, remove = 0
@@ -129,9 +125,21 @@ find_optimal_configuration <- function(GI_list, verbose = T) {
   
   for (.n in names(GI_list)) {
     GI_list[[.n]]@metadata$dupcor_data <- .d
-    
+  }
+  
+  if (keep_all) {return(GI_list)}
+  if (!keep_all) {return(GI_list[names(.x)])}
+}
+
+
+
+
+
+compute_dupcor_plot <- function(GI_list, .fpath = NULL) {
+  
+  for (.n in names(GI_list)) {
     GI_list[[.n]]@metadata$dupcor_plot <- ggplot(
-      data = .d, mapping = aes(dcor, config)) + 
+      data = GI_list[[.n]]@metadata$dupcor_data, mapping = aes(dcor, config)) + 
       theme_light() + 
       geom_col(aes(fill = kept)) + 
       scale_color_manual(values = c("TRUE" = "seagreen", "FALSE" = "NA")) + 
@@ -139,15 +147,21 @@ find_optimal_configuration <- function(GI_list, verbose = T) {
       labs(#caption = "It is recommended to choose a configuration with most values between 0 and 0.25.", 
         x = "Duplicate correlation", 
         y = "Limma configuration")
+    
+    plot(GI_list[[1]]@metadata$dupcor_plot)
+    
+    if (!is.null(.fpath)) {
+      
+      dir.create(dirname(.fpath), F, T)
+      
+      ggplot2::ggsave(filename = .fpath, 
+                      plot = GI_list[[1]]@metadata$dupcor_plot, 
+                      width = 8, 
+                      height = 5, 
+                      dpi = 300)
+    }
   }
-  #if (verbose) {
-  print(.d)
-  #  }
-  
-  return(GI_list[names(.x)])
+  return(GI_list)
 }
-
-
-
 
 

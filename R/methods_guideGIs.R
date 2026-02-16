@@ -3,11 +3,15 @@
 setMethod("collapse_replicates", 
           signature = signature(.x = "GuideGI"), 
           function(.x) {
+            
+          #  print("Before: ")
+          #  print(str(.x))
+            
             if (l(.x@collapse) > 0) {
               stopifnot(all(.x@collapse %in% .x@replicates))
               
               .margin <- setdiff(1:length(dim(.x@data)), 
-                                 which(.x@replicates %in% .x@collapse))
+                                 which(c(.x@space, .x@replicates) %in% .x@collapse))
               
               .x@data <- apply(X = .x@data, 
                                MARGIN = .margin, 
@@ -15,6 +19,11 @@ setMethod("collapse_replicates",
               
               .x@replicates <- setdiff(.x@replicates, .x@collapse)
             }
+            
+            
+         #   print("After: ")
+         #   print(str(.x))
+            
             return(.x)
           })
 
@@ -28,9 +37,7 @@ setMethod("flatten_guideGIs",
             .x@use_blocks <- .x@block_layer != "" & 
                 length(.x@block_layer) > 0 & 
                 length(setdiff(.x@replicates, .x@block_layer)) != 0
-            
-            if (!.x@use_blocks) {warning("Not using any block structure.")}
-            
+
             .f <- as.formula(paste0(paste0(.x@space, collapse = " ~ "), " ~ ", 
                                     paste0(.x@replicates, collapse = " + ")))
             
@@ -86,7 +93,9 @@ setMethod("compute_dupCorrelation",
               } else {
                 output <- output |>
                   map(\(.g) suppressWarnings(
-                    limma::duplicateCorrelation(object = .g)))
+                    limma::duplicateCorrelation(object = .g, 
+                                                ndups = 1 # required 
+                                                )))
                 
               }
               output <- output |> map_dbl("consensus.correlation")

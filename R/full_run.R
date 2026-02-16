@@ -19,41 +19,31 @@ full_run <- function(yaml_fpath, return_output = T) {
                   "rds" = readRDS(instr$scores_file))
   
   .data <- collect_all_layer_configurations(.data)
+  
+  #if (F) {
+  
   .data <- map(.data, compute_dupCorrelation)
     
   # store all GI objects
-#  if ("output_directory" %in% names(instr) & instr$overwrite_output) {
-#    saveRDS(.data, file.path(instr$output_directory, "all_GI_objects.rds"))
-#  }
-    
-    
-  if (!"keep_all_configurations" %in% names(instr) || (!instr$keep_all_configurations)) {
-    .data <- find_optimal_configuration(.data#, verbose = instr$verbose
-    )
+  if ("output_directory" %in% names(instr) & instr$overwrite_output) {
+    saveRDS(.data, file.path(instr$output_directory, "all_GI_objects.rds"))
   }
+    
+    
+  .keep_all <- "keep_all_configurations" %in% names(instr) & (instr$keep_all_configurations)
+  .data <- find_optimal_configuration(.data, keep_all = .keep_all)
   
 
-    
-  plot(.data[[1]]@metadata$dupcor_plot)
+  .data <- .data |> 
+      compute_dupcor_plot(.fpath = file.path(instr$output_directory, "duplicateCorrelationPlot.png"))
   
-  ggplot2::ggsave(filename = file.path(instr$output_directory, "duplicateCorrelationPlot.png"), 
-                  plot = .data[[1]]@metadata$dupcor_plot, 
-                  width = 8, 
-                  height = 5, 
-                  dpi = 300)
-  
-  
+
   .data <- map(.data, compute_models)
   
-  if (F) {
-    
   .data <- map(.data, collect_GIs)
-  
-  #print(ls.str(.data))
-  
-  if ("output_directory" %in% names(instr) & instr$overwrite_output) {
-    
 
+
+  if ("output_directory" %in% names(instr) & instr$overwrite_output) {
     
     .output <- list()
     
@@ -75,7 +65,7 @@ full_run <- function(yaml_fpath, return_output = T) {
       
     }
 
-  }####
+  #}####
   
   #if (instr$verbose) {print("(5/5)")}
   if (!return_output) {.data <- NULL}
