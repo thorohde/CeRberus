@@ -30,7 +30,9 @@ full_run <- function(yaml_fpath, return_output = T) {
   }
     
     
-  .keep_all <- "keep_all_configurations" %in% names(instr) & (instr$keep_all_configurations)
+  .keep_all <- "keep_all_configurations" %in% names(instr) & (isTRUE(instr$keep_all_configurations))
+  print("Keep all:")
+  print(.keep_all)
   .data <- find_optimal_configuration(.data, keep_all = .keep_all)
   
 
