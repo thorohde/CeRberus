@@ -7,7 +7,7 @@ setMethod("collapse_replicates",
           #  print("Before: ")
           #  print(str(.x))
             
-            if (l(.x@collapse) > 0) {
+            if (length(.x@collapse) > 0) {
               stopifnot(all(.x@collapse %in% .x@replicates))
               
               .margin <- setdiff(1:length(dim(.x@data)), 
@@ -45,7 +45,7 @@ setMethod("flatten_guideGIs",
               flatten_array(c(.x@space, .x@replicates)) |>
               acast(.f)
             
-            .x@block_description <- dimnames(.x@data)[[l(.x@space)+1]]
+            .x@block_description <- dimnames(.x@data)[[length(.x@space)+1]]
             
             if (length(.x@blocks) != 1 && !identical(.x@blocks, "none")) {
               

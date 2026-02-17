@@ -258,7 +258,7 @@ setMethod("collect_GIs",
             output[,"pval"] <- GI_obj@limma_models$p.value[, 1]
             output[,"FDR"] <- stats::p.adjust(GI_obj@limma_models$p.value[, 1], method = FDR_method)
             
-            geneGIs(GI_obj) <- output
+            GI_obj@geneGIs <- output
             
             return(GI_obj)
           })
