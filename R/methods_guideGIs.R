@@ -74,7 +74,7 @@ setMethod("compute_dupCorrelation",
                 
               } else {
                 output <- suppressWarnings(
-                  limma::duplicateCorrelation(object = .x@data))
+                  limma::duplicateCorrelation(object = .x@data, ndups = 1))
               }
               output <- output$consensus.correlation
             }
