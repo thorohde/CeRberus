@@ -91,8 +91,8 @@ setMethod("get_screen_attributes",
 setMethod("run_checks", 
           signature = signature(GI_obj = "ScreenBase"), 
           function(GI_obj,
-                   min_query_size = 50, 
-                   min_library_size = 50) {
+                   min_query_size = 20, 
+                   min_library_size = 20) {
             
             .a <- GI_obj@screen_attr
             

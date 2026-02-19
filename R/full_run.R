@@ -20,17 +20,22 @@ full_run <- function(yaml_fpath, return_output = T) {
   
   .data <- collect_all_layer_configurations(.data)
   
+  #.data |> #map(~ {.x@guideGIs}) |> 
+  #  str() |> print()
+  
   #if (F) {
   
+  #.data <- imap(.data, ~ {print(.y); compute_dupCorrelation(.x)})
   .data <- map(.data, compute_dupCorrelation)
-    
+  
+  
   # store all GI objects
   if ("output_directory" %in% names(instr) & instr$overwrite_output) {
     saveRDS(.data, file.path(instr$output_directory, "all_GI_objects.rds"))
   }
     
     
-  .keep_all <- "keep_all_configurations" %in% names(instr) & (isTRUE(instr$keep_all_configurations))
+  .keep_all <- "keep_all_configurations" %in% names(instr) && (isTRUE(instr$keep_all_configurations))
   print("Keep all:")
   print(.keep_all)
   .data <- find_optimal_configuration(.data, keep_all = .keep_all)
