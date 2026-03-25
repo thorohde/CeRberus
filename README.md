@@ -1,9 +1,44 @@
 # CeRberus
 
-The CeRberus module is part of the Cerberus package and performs the final steps of aggregating guide-level genetic interaction (GI) scores to gene-pair level scores. It can also be used independently as part of other `R` GI scoring pilelines, using a csv file with guide GI scores as input. 
+The CeRberus module is part of the Cerberus package and performs the final steps of aggregating guide-level genetic interaction (GI) scores to gene-pair level scores. It can also be used independently as part of other `R` GI scoring pilelines. 
 
 # Quick start
 
+1 Install `devtools` from CRAN:
+
+```{r}
+if (!require("devtools", quietly = TRUE)) {
+	install.packages("devtools")
+	}
+```
+
+2. Install the `CeRberus` package:
+
+```{r}
+devtools::install_github("thorohde/CeRberus")
+```
+
+
+3. Follow the [Bioconductor](https://www.bioconductor.org/) installation routine to install the [limma](https://bioconductor.org/packages/release/bioc/html/limma.html) package:
+
+```{r}
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("limma")
+```
+
+4. Load the `CeRberus` package into the workspace:
+
+```{r}
+library(CeRberus)
+```
+
+5. After storing guide GI scores in a csv file, call the modules `full_run()` routine with an instruction yaml file: 
+
+```{r}
+full_run(yaml_fpath = "input_yaml_file.yaml")
+```
 
 
 
@@ -15,7 +50,7 @@ The CeRberus module is part of the Cerberus package and performs the final steps
 | output_directory | path where the package stores the computed scores | * |
 | FDR | method used for to estimate the False Discovery rate. Default: `BH` |  |
 | skip_update | Can be used to suppress package updates. |  |
-| verbose | should the pipeline print a feedback while running |  | 
+| verbose | should the pipeline print a feedback while running? |  | 
 | keep_all_configurations | Skip discarding configurations with negative duplicateCorrelation. |
 
 # Input file format
@@ -40,7 +75,7 @@ The input table of guide GI scores is required to be in long format, one observa
 
 
 
-# Procedure:
+# Procedure
 
 1. After importing the guide GI scores, CeRberus infers the experimental structure based on the query and library gene set. 
 
