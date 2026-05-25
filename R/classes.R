@@ -1,6 +1,14 @@
 #' @export
 
-setClass("GuideGI", 
+setClass("gRNA_LFC", 
+         slots = list(
+           "data" = "array", 
+           "space" = "character", 
+           "replicates" = "character"))
+
+
+
+setClass("gRNA_GI", 
          slots = list(
            "data" = "array", 
            "space" = "character", 
@@ -14,7 +22,8 @@ setClass("GuideGI",
 
 setClass("ScreenBase", 
          slots = list(
-           "guideGIs" = "GuideGI", 
+           "guideLFCs" = "gRNA_LFC",
+           "guideGIs" = "gRNA_GI", 
            "limma_models" = "list", 
            "geneGIs" = "array", 
            "screen_attr" = "list", 

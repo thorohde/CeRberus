@@ -1,41 +1,60 @@
 #' @export
 
+# gRNA_LFC
 
-# Slot accessors for guideGIs:
+#### Slot accessors
 
+#slotNames("gRNA_LFC")
 
-##### Active methods for guideGIs:
+#### Generics for active methods
+
+# gRNA_GIs
+
+#### Slot accessors
+# slotNames(gRNA_GI")
+
+#### Generics for active methods
+
 #setGeneric("fill_guideGIs", function(.x, ...) standardGeneric("fill_guideGIs"))
 setGeneric("collapse_replicates", function(.x, ...) standardGeneric("collapse_replicates"))
 setGeneric("flatten_guideGIs", function(.x, ...) standardGeneric("flatten_guideGIs"))
 setGeneric("compute_dupCorrelation", function(.x, ...) standardGeneric("compute_dupCorrelation"))
 
 
+# ScreenBase
 
+##### Slot accessors
+# slotNames("ScreenBase")
 
-# Slot accessors for GI_objects:
+setGeneric("checks", function(x) standardGeneric("checks"))
+setGeneric("checks<-", function(x, value) standardGeneric("checks<-"))
 
-walk(c(#"blocks", 
-  #"block_description", 
-  "checks", 
-  "dupCorrelation", 
-  "errors", 
-  "geneGIs", 
-  "guideGIs", 
-  "limma_models", 
-  #"replicates", 
-  "screen_attr", 
-  "symmGeneGIs"
-), function(name) {
-  setGeneric(name, eval(substitute(function(x) standardGeneric(NAME), list(NAME = name))))
-  setGeneric(paste0(name, "<-"), eval(substitute(function(x, value) standardGeneric(NAME),
-                                                 list(NAME = paste0(name, "<-")))))})
+setGeneric("dupCorrelation", function(x) standardGeneric("dupCorrelation"))
+setGeneric("dupCorrelation<-", function(x, value) standardGeneric("dupCorrelation<-"))
 
+setGeneric("errors", function(x) standardGeneric("errors"))
+setGeneric("errors<-", function(x, value) standardGeneric("errors<-"))
 
+setGeneric("geneGIs", function(x) standardGeneric("geneGIs"))
+setGeneric("geneGIs<-", function(x, value) standardGeneric("geneGIs<-"))
 
+setGeneric("guideGIs", function(x) standardGeneric("guideGIs"))
+setGeneric("guideGIs<-", function(x, value) standardGeneric("guideGIs<-"))
 
+setGeneric("guideLFCs", function(x) standardGeneric("guideLFCs"))
+setGeneric("guideLFCs<-", function(x, value) standardGeneric("guideLFCs<-"))
 
-##### Active methods for GI_objects:
+setGeneric("limma_models", function(x) standardGeneric("limma_models"))
+setGeneric("limma_models<-", function(x, value) standardGeneric("limma_models<-"))
+
+setGeneric("screen_attr", function(x) standardGeneric("screen_attr"))
+setGeneric("screen_attr<-", function(x, value) standardGeneric("screen_attr<-"))
+
+setGeneric("symmGeneGIs", function(x) standardGeneric("symmGeneGIs"))
+setGeneric("symmGeneGIs<-", function(x, value) standardGeneric("symmGeneGIs<-"))
+
+#### Generics for active methods
+
 #setGeneric("compute_dupCorrelation", function(GI_obj, ...) standardGeneric("compute_dupCorrelation"))
 setGeneric("compute_models", function(GI_obj, ...) standardGeneric("compute_models"))
 setGeneric("compute_GIs", function(GI_obj, ...) standardGeneric("compute_GIs"))

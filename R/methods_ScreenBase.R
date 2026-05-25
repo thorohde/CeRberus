@@ -1,9 +1,5 @@
 
-
-.f1 <- function(x) {return(slot(x, .x))}
-.f2 <- function(x, value) {slot(x, .x) <- value; return(x)}
-
-# guideGIs methods
+# gGRNA_GIs methods
 
 #purrr::walk(c("guideGIs"), ~ {
 #  .x2 <- paste0(.x, "<-")
@@ -14,18 +10,29 @@
 
 # ScreenBase methods
 
-purrr::walk(c(
-  #"blocks", 
-  "checks", "dupCorrelation", 
-  "errors", "geneGIs", "guideGIs", "limma_models", 
-  #"replicates", 
-  "screen_attr", "symmGeneGIs"), ~ {
-    
-    .x2 <- paste0(.x, "<-")
-    setMethod(.x, "ScreenBase", .f1)
-    setMethod(.x2, "ScreenBase", .f2)
-  }
-)
+setMethod("checks", "ScreenBase", function(x) {return(slot(x, "checks"))})
+setMethod("checks<-", "ScreenBase", function(x, value) {slot(x, "checks") <- value; return(x)})
+
+setMethod("dupCorrelation", "ScreenBase", function(x) {return(slot(x, "dupCorrelation"))})
+setMethod("dupCorrelation<-", "ScreenBase", function(x, value) {slot(x, "dupCorrelation") <- value; return(x)})
+
+setMethod("errors", "ScreenBase", function(x) {return(slot(x, "errors"))})
+setMethod("errors<-", "ScreenBase", function(x, value) {slot(x, "errors") <- value; return(x)})
+
+setMethod("geneGIs", "ScreenBase", function(x) {return(slot(x, "geneGIs"))})
+setMethod("geneGIs<-", "ScreenBase", function(x, value) {slot(x, "geneGIs") <- value; return(x)})
+
+setMethod("guideGIs", "ScreenBase", function(x) {return(slot(x, "guideGIs"))})
+setMethod("guideGIs<-", "ScreenBase", function(x, value) {slot(x, "guideGIs") <- value; return(x)})
+
+setMethod("limma_models", "ScreenBase", function(x) {return(slot(x, "limma_models"))})
+setMethod("limma_models<-", "ScreenBase", function(x, value) {slot(x, "limma_models") <- value; return(x)})
+
+setMethod("screen_attr", "ScreenBase", function(x) {return(slot(x, "screen_attr"))})
+setMethod("screen_attr<-", "ScreenBase", function(x, value) {slot(x, "screen_attr") <- value; return(x)})
+
+setMethod("symmGeneGIs", "ScreenBase", function(x) {return(slot(x, "symmGeneGIs"))})
+setMethod("symmGeneGIs<-", "ScreenBase", function(x, value) {slot(x, "symmGeneGIs") <- value; return(x)})
 
 
 
@@ -280,7 +287,7 @@ setMethod("collect_GIs",
                 else {
                   .x$GI <- .m$coefficients[, 1]
                   .x$pval <- .m$p.value[, 1]
-                  .x$FDR <- p.adjust(.m$p.value[, 1])
+                  .x$FDR <- p.adjust(.m$p.value[, 1], method = FDR_method)
                 }
                 return(.x)})
             
@@ -308,8 +315,6 @@ setMethod("collect_GIs",
 
 
 
-
-
 setMethod(
   "collect_GIs", 
   signature = signature(GI_obj = "PosAgnMultiplexScreen"), 
@@ -332,7 +337,6 @@ setMethod(
     
     return(GI_obj)
   })
-
 
 
 setMethod("screenReport", 
@@ -405,7 +409,7 @@ setMethod(
   "GI_df", 
   signature = signature(GI_obj = "PosAgnMultiplexScreen"), 
   function(GI_obj) {
-    symmGeneGIs(GI_obj)
+    GI_obj@symmGeneGIs
   })
 
 

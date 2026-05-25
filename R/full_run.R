@@ -1,7 +1,10 @@
+#' Run the Full GI Analysis Pipeline.
+#' 
 #' @param yaml_path Path to a YAML instruction file. 
 #' @param return_output Binary that defines if the function should save 
-#' @returns Saves the GI scores and plots to the output directory defined in the YAML file. 
-#' #' @export
+#' @returns Saves the GI scores and plots to the output directory defined in 
+#' the YAML file. 
+#' @export
 
 
 full_run <- function(yaml_fpath, return_output = T) {

@@ -1,11 +1,7 @@
 
-
 setMethod("collapse_replicates", 
-          signature = signature(.x = "GuideGI"), 
+          signature = signature(.x = "gRNA_GI"), 
           function(.x) {
-            
-          #  print("Before: ")
-          #  print(str(.x))
             
             if (length(.x@collapse) > 0) {
               stopifnot(all(.x@collapse %in% .x@replicates))
@@ -20,18 +16,14 @@ setMethod("collapse_replicates",
               .x@replicates <- setdiff(.x@replicates, .x@collapse)
             }
             
-            
-         #   print("After: ")
-         #   print(str(.x))
-            
-            return(.x)
+           return(.x)
           })
 
 
 
 
 setMethod("flatten_guideGIs", 
-          signature = signature(.x = "GuideGI"), 
+          signature = signature(.x = "gRNA_GI"), 
           function(.x) {
             
             .x@use_blocks <- .x@block_layer != "" & 
@@ -62,7 +54,7 @@ setMethod("flatten_guideGIs",
 
 
 setMethod("compute_dupCorrelation", 
-          signature = signature(.x = "GuideGI"), 
+          signature = signature(.x = "gRNA_GI"), 
           function(.x) {
             if (length(.x@space) == 1) {
               
@@ -102,19 +94,5 @@ setMethod("compute_dupCorrelation",
             }
             return(output)
           })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

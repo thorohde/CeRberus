@@ -1,5 +1,43 @@
 #' @export
 
+normalizeReadcounts <- function(readcounts, cf1 = 100, cf2 = 1) {
+  # replaced 1e6 with 100 x length(readcounts), cf1 = 1e6, cf2 = 0.5
+  x <- log2((readcounts / sum(readcounts, na.rm = T)) * cf1 * length(readcounts) + cf2) #NA will stay NA
+  if (!all(is.na(x))) { #not run if replicate is missing (= all NA)
+    x <- x - min(x, na.rm = T)} #smallest value is 0 regardless of cf2
+  x}
+
+
+remove_PCs <- \(.x, to_remove = NA, .center = T, .scale = T) {
+  pca_result <- prcomp(.x, center = .center, scale. = .scale)
+  pcs <- pca_result$x
+  center <- pca_result$center
+  scale <- pca_result$scale
+  
+  if (all(is.na(to_remove))) {return(.x)}
+  
+  to_remove <- unique(to_remove) # Validate to_remove indices
+  if (any(to_remove > ncol(pcs))) {
+    stop("Some PCs to remove exceed the number of available principal components.")
+  }
+  
+  pcs[,to_remove] <- 0
+  .x <- pcs %*% t(pca_result$rotation)
+  if (.scale) {.x <- sweep(.x, 2, scale, FUN = "*")}
+  if (.center) {.x <- sweep(.x, 2, center, FUN = "+")}
+  return(.x)
+}
+
+
+
+
+
+
+
+
+
+
+
 read_instructions <- function(yaml_fpath) {
   
   stopifnot("Instruction file does not exist!" = file.exists(yaml_fpath))
@@ -74,13 +112,9 @@ read_instructions <- function(yaml_fpath) {
 
 
 
-
-
-
-
 collect_all_layer_configurations <- function(GI_data, 
                                              .to_use = c("tech_rep", "bio_rep", "guide_pair"), 
-                                             make_pos_agnostic = F) {
+                                             make_pos_agnostic) {
   
   .collapsable_layers <- intersect(c("tech_rep", "bio_rep", "guide_pair"), colnames(GI_data))
   .to_use = intersect(.to_use, colnames(GI_data))
