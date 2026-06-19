@@ -46,10 +46,9 @@ full_run(yaml_fpath = "input_yaml_file.yaml")
 
 | parameter | description | default | required |
 |---|---|---|---|
-| scores_file | path to a `csv` file of guide GI scores |  | * |
-| output_directory | path where the package stores the computed scores |  | * |
+| scores_file | path to a `csv` file of guide GI scores | / | * |
+| output_directory | path where the package stores the computed scores | / | * |
 | FDR | method used for to estimate the False Discovery rate. | `BH` |  |
-| skip_update | Can be used to suppress package updates. | `False` |  |
 | make_symmetric | Can be used to aggregate symmetric multiplex screens to produce one GI and FDR per gene pair. Useful if all pairs exist twice, e.g. Cas12/Cas9 & Cas9/ Cas12. | `False` |  |
 | verbose | should the pipeline print a feedback while running? | `True` |  | 
 | keep_all_configurations | Skip discarding configurations with negative duplicateCorrelation. |  |  |
