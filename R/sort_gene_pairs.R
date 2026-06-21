@@ -27,8 +27,10 @@ sort_gene_pairs <- function(g1, g2, sep = ";", pairs, pair_sep = ";", invert = F
   stopifnot("invert needs to be logical." = is.logical(invert), 
             "No input pairs given!" = !(missing(pairs) & missing(g1) & missing(g2)))
   
-  if (!(missing(g1) | missing(g2))) {
-    "g1 and g2 have to be of equal length!" = (!missing(g1) & !missing(g2) & length(g1) == length(g2))
+  if (!(missing(g1) || missing(g2))) {
+    stopifnot(
+      "g1 and g2 have to be of equal length!" = length(g1) == length(g2)
+    )
   }
   
   stopifnot(

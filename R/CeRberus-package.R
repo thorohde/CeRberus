@@ -39,6 +39,7 @@
 #' @importFrom purrr map_int
 #' @importFrom purrr map_lgl
 #' @importFrom purrr map2
+#' @importFrom purrr map2_dbl
 #' @importFrom purrr modify
 #' @importFrom purrr modify_if
 #' @importFrom purrr pwalk
