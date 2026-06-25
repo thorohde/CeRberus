@@ -66,11 +66,26 @@ setMethod("screen_attr<-", "ScreenBase", function(x, value) {
 })
 
 setMethod("symmGeneGIs", "ScreenBase", function(x) {
-  return(slot(x, "symmGeneGIs"))
+  stop(
+    "symmGeneGIs is only available for PosAgnMultiplexScreen objects. ",
+    "Run with make_symmetric = TRUE / position-agnostic multiplex mode first.",
+    call. = FALSE
+  )
 })
 setMethod("symmGeneGIs<-", "ScreenBase", function(x, value) {
+  stop(
+    "symmGeneGIs can only be assigned for PosAgnMultiplexScreen objects.",
+    call. = FALSE
+  )
+})
+
+setMethod("symmGeneGIs", "PosAgnMultiplexScreen", function(x) {
+  slot(x, "symmGeneGIs")
+})
+
+setMethod("symmGeneGIs<-", "PosAgnMultiplexScreen", function(x, value) {
   slot(x, "symmGeneGIs") <- value
-  return(x)
+  x
 })
 
 
@@ -80,10 +95,10 @@ setMethod(
   function(GI_obj) {
     .md <- GI_obj@metadata
 
-    #input <- data.table::copy(.m$input)
+    .md$input <- copy(.md$input)
 
     stopifnot(
-      "The input object needs to be a data frame." = data.table::is.data.table(
+      "The input object needs to be a data frame or data table." = is.data.frame(
         .md$input
       ),
       "The query gene column is not in the provided dataset." = .md$query_col %in%
@@ -91,6 +106,8 @@ setMethod(
       "The library gene column is not in the provided dataset." = .md$lib_col %in%
         colnames(.md$input)
     )
+
+    .md$input <- as.data.table(.md$input)
 
     setnames(
       .md$input,
@@ -110,7 +127,7 @@ setMethod(
         "library_gene",
         "GI"
       ),
-      skip_absent = T
+      skip_absent = TRUE
     )
 
     .md$input[,
@@ -133,9 +150,6 @@ setMethod(
   function(GI_obj) {
     .i <- GI_obj@metadata$input
     .a <- list(contrasts = NULL)
-
-    #pair <- NULL # to prevent package environment errors
-
     .a$query_genes <- .i[, unique(get("query_gene"))]
     .a$library_genes <- .i[, unique(get("library_gene"))]
     .a$all_genes <- union(.a$query_genes, .a$library_genes)
@@ -179,14 +193,14 @@ setMethod(
       library_sufficient = .a$n_lib_genes >= min_library_size,
       stable_library_size = sum(
         .a$observations_per_query !=
-          median(.a$observations_per_query, na.rm = T)
+          median(.a$observations_per_query, na.rm = TRUE)
       ) <=
         10,
       sufficient_tests_per_query = sum(
         .a$observations_per_query >= min_library_size
       ) >=
         0.95 * length(.a$observations_per_query),
-      avg_tests_per_query = median(.a$observations_per_query, na.rm = T)
+      avg_tests_per_query = median(.a$observations_per_query, na.rm = TRUE)
     )
     return(GI_obj)
   }
@@ -209,7 +223,7 @@ setMethod(
         .c$sufficient_tests_per_query
     ) {
       .type <- "MultiplexScreen"
-    } # SymmMultiplexScreen
+    }
 
     if (
       !.c$gene_sets_equal &
@@ -219,7 +233,7 @@ setMethod(
         .c$sufficient_tests_per_query
     ) {
       .type <- "MultiplexScreen"
-    } # AsymmMultiplexScreen
+    }
 
     if (
       !.c$library_sufficient |
@@ -341,7 +355,7 @@ setMethod(
   function(GI_obj, FDR_method = "BH") {
     stopifnot("Unknown FDR method provided." = FDR_method %in% p.adjust.methods)
 
-    output <- list(rownames(GI_obj@guideGIs), c("GI", "pval", "FDR"))
+    output <- list(rownames(GI_obj@guideGIs@data), c("GI", "pval", "FDR"))
 
     output <- array(
       data = NA,
@@ -382,34 +396,40 @@ setMethod(
         } else {
           .x$GI <- .m$coefficients[, 1]
           .x$pval <- .m$p.value[, 1]
-          .x$FDR <- p.adjust(.m$p.value[, 1], method = FDR_method)
+          .x$FDR <- stats::p.adjust(.m$p.value[, 1], method = FDR_method)
         }
         return(.x)
       })
 
     output <- output |>
-      data.table::rbindlist(fill = T) |>
+      data.table::rbindlist(fill = TRUE) |>
       data.table::melt.data.table(measure.vars = c("GI", "pval", "FDR")) |>
       reshape2::acast(
         formula = as.formula("query_gene ~ library_gene ~ variable"),
         value.var = "value",
-        drop = F
+        drop = FALSE
       )
 
     GI_obj@geneGIs <- output
 
     if (
-      length(setdiff(rownames(GI_obj@guideGIs), rownames(GI_obj@geneGIs))) !=
+      length(setdiff(
+        rownames(GI_obj@guideGIs@data),
+        rownames(GI_obj@geneGIs)
+      )) !=
         0 |
-        length(setdiff(colnames(GI_obj@guideGIs), colnames(GI_obj@geneGIs))) !=
+        length(setdiff(
+          colnames(GI_obj@guideGIs@data),
+          colnames(GI_obj@geneGIs)
+        )) !=
           0
     ) {
       warning("Some genes were lost!")
       print(str(GI_obj@guideGIs))
       print(str(GI_obj@geneGIs))
 
-      print(setdiff(rownames(GI_obj@guideGIs), rownames(GI_obj@geneGIs)))
-      print(setdiff(colnames(GI_obj@guideGIs), colnames(GI_obj@geneGIs)))
+      print(setdiff(rownames(GI_obj@guideGIs@data), rownames(GI_obj@geneGIs)))
+      print(setdiff(colnames(GI_obj@guideGIs@data), colnames(GI_obj@geneGIs)))
     }
     return(GI_obj)
   }
@@ -422,26 +442,26 @@ setMethod(
   function(GI_obj, FDR_method = "BH") {
     GI_obj <- methods::callNextMethod(GI_obj)
 
-    .x <- data.table(pair = GI_obj@screen_attr$unique_pairs)
+    .x <- data.table(gene_pair = GI_obj@screen_attr$unique_pairs)
 
-    .x[, query_gene := str_split_i(pair, ";", 1)]
-    .x[, library_gene := str_split_i(pair, ";", 2)]
+    .x[, query_gene := str_split_i(gene_pair, ";", 1)]
+    .x[, library_gene := str_split_i(gene_pair, ";", 2)]
     .x[,
       GI := gather_symmetric_scores(
-        pairs = pair,
+        pairs = gene_pair,
         .arr = GI_obj@geneGIs[,, "GI"]
       )
     ]
     .x[, GI_z := z_transform(GI)]
     .x[,
       pval := gather_symmetric_scores(
-        pairs = pair,
+        pairs = gene_pair,
         .arr = GI_obj@geneGIs[,, "pval"]
       )
     ]
     .x[,
       FDR := balanced_FDR(
-        pairs = pair,
+        pairs = gene_pair,
         pval_array = GI_obj@geneGIs[,, "pval"],
         fdr_method = FDR_method
       )
@@ -495,7 +515,7 @@ setMethod(
     output <- GI_obj@geneGIs
 
     output <- data.table::data.table(
-      pair = rownames(output),
+      gene_pair = rownames(output),
       query_gene = str_split_i(rownames(output), ";", 1),
       library_gene = str_split_i(rownames(output), ";", 2),
       output
@@ -519,10 +539,17 @@ setMethod(
         formula = query_gene + library_gene ~ variable,
         value.var = "value"
       )
-    output[, pair := str_c(query_gene, ";", library_gene)]
+    output[, gene_pair := str_c(query_gene, ";", library_gene)]
     output <- output[,
       .SD,
-      .SDcols = c("pair", "query_gene", "library_gene", "GI", "pval", "FDR")
+      .SDcols = c(
+        "gene_pair",
+        "query_gene",
+        "library_gene",
+        "GI",
+        "pval",
+        "FDR"
+      )
     ]
 
     return(output)
@@ -578,7 +605,7 @@ setMethod(
   signature = signature(GI_obj = "MultiplexScreen"),
   function(GI_obj, cutoff = 0.99) {
     .test <- map_lgl(set_names(GI_obj@guideGIs@replicates), \(.r) {
-      .x <- GI_obj@guideGIs[,, .r]
+      .x <- GI_obj@guideGIs@data[,, .r]
       if (all(.x == t(.x)) || all(dplyr::near(.x, t(.x)))) {
         return(T)
       } else {

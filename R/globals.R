@@ -1,0 +1,18 @@
+utils::globalVariables(c(
+  ":=",
+  ".N",
+  ".SD",
+  "query_gene",
+  "library_gene",
+  "g1",
+  "g2",
+  "gene_pair",
+  "gene_pair2",
+  "pval",
+  "FDR",
+  "GI",
+  "GI_z",
+  "dcor",
+  "config",
+  "kept"
+))

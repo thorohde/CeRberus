@@ -3,17 +3,20 @@
 normalizeReadcounts <- function(readcounts, cf1 = 100, cf2 = 1) {
   # replaced 1e6 with 100 x length(readcounts), cf1 = 1e6, cf2 = 0.5
   x <- log2(
-    (readcounts / sum(readcounts, na.rm = T)) * cf1 * length(readcounts) + cf2
+    (readcounts / sum(readcounts, na.rm = TRUE)) *
+      cf1 *
+      length(readcounts) +
+      cf2
   ) #NA will stay NA
   if (!all(is.na(x))) {
     #not run if replicate is missing (= all NA)
-    x <- x - min(x, na.rm = T)
+    x <- x - min(x, na.rm = TRUE)
   } #smallest value is 0 regardless of cf2
   x
 }
 
 
-remove_PCs <- \(.x, to_remove = NA, .center = T, .scale = T) {
+remove_PCs <- \(.x, to_remove = NA, .center = TRUE, .scale = TRUE) {
   pca_result <- prcomp(.x, center = .center, scale. = .scale)
   pcs <- pca_result$x
   center <- pca_result$center
@@ -75,7 +78,8 @@ read_instructions <- function(yaml_fpath) {
       names(instr),
     "Given scores file does not exist!" = file.exists(instr$scores_file),
     "Output directory required!" = "output_directory" %in% names(instr),
-    "Output directory must not be empty!" = length(instr$output_directory) == 1 &&
+    "Output directory must not be empty!" = length(instr$output_directory) ==
+      1 &&
       !is.na(instr$output_directory) &&
       nzchar(instr$output_directory)
   )
@@ -115,7 +119,7 @@ collect_all_layer_configurations <- function(
     c("tech_rep", "bio_rep", "guide_pair"),
     colnames(GI_data)
   )
-  .to_use = intersect(.to_use, colnames(GI_data))
+  .to_use <- intersect(.to_use, colnames(GI_data))
 
   output <- list()
 
@@ -129,7 +133,7 @@ collect_all_layer_configurations <- function(
   }
 
   for (.i in seq_len(length(.collapsable_layers) - 1)) {
-    for (.to_collapse in combn(.collapsable_layers, .i, simplify = F)) {
+    for (.to_collapse in combn(.collapsable_layers, .i, simplify = FALSE)) {
       for (.use in setdiff(.collapsable_layers, .to_collapse)) {
         .n <- str_c(
           str_c(.to_collapse, collapse = "_"),
@@ -154,14 +158,14 @@ collect_all_layer_configurations <- function(
 }
 
 
-find_optimal_configuration <- function(GI_list, keep_all = F) {
-  .x <- GI_list |> map(~ .x@dupCorrelation) |> map_dbl(mean, na.rm = T)
+find_optimal_configuration <- function(GI_list, keep_all = FALSE) {
+  .x <- GI_list |> map(~ .x@dupCorrelation) |> map_dbl(mean, na.rm = TRUE)
 
   .d <- data.table(
     config = names(GI_list),
     dcor = GI_list |>
       map(~ .x@dupCorrelation) |>
-      map_dbl(mean, na.rm = T) |>
+      map_dbl(mean, na.rm = TRUE) |>
       round(3)
   )
 
@@ -203,7 +207,7 @@ compute_dupcor_plot <- function(GI_list, .fpath = NULL, verbose = FALSE) {
     ) +
       theme_light() +
       geom_col(aes(fill = kept)) +
-      scale_color_manual(values = c("TRUE" = "seagreen", "FALSE" = "NA")) +
+      scale_fill_manual(values = c("TRUE" = "seagreen", "FALSE" = "NA")) +
       geom_vline(xintercept = c(0, 0.25), linetype = "dashed", linewidth = 1) +
       labs(
         #caption = "It is recommended to choose a configuration with most values between 0 and 0.25.",
@@ -212,7 +216,7 @@ compute_dupcor_plot <- function(GI_list, .fpath = NULL, verbose = FALSE) {
       )
 
     if (isTRUE(verbose)) {
-      plot(GI_list[[1]]@metadata$dupcor_plot)
+      plot(GI_list[[.n]]@metadata$dupcor_plot)
     }
 
     if (!is.null(.fpath)) {
@@ -220,7 +224,7 @@ compute_dupcor_plot <- function(GI_list, .fpath = NULL, verbose = FALSE) {
 
       ggplot2::ggsave(
         filename = .fpath,
-        plot = GI_list[[1]]@metadata$dupcor_plot,
+        plot = GI_list[[.n]]@metadata$dupcor_plot,
         width = 8,
         height = 5,
         dpi = 300

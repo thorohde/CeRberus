@@ -1,6 +1,6 @@
 # CeRberus
 
-The CeRberus module is part of the Cerberus package and performs the final steps of aggregating guide-level genetic interaction (GI) scores to gene-pair level scores. It can also be used independently as part of other `R` GI scoring pilelines. 
+The CeRberus module is part of the Cerberus package and performs the final steps of aggregating guide-level genetic interaction (GI) scores to gene-pair level scores. It can also be used independently as part of other `R` GI scoring pipelines. 
 
 # Quick start
 
@@ -49,8 +49,8 @@ full_run(yaml_fpath = "input_yaml_file.yaml")
 | scores_file | path to a `csv` file of guide GI scores | / | * |
 | output_directory | path where the package stores the computed scores | / | * |
 | FDR | method used for to estimate the False Discovery rate. | `BH` |  |
-| make_symmetric | Can be used to aggregate symmetric multiplex screens to produce one GI and FDR per gene pair. Useful if all pairs exist twice, e.g. Cas12/Cas9 & Cas9/ Cas12. | `False` |  |
-| verbose | should the pipeline print a feedback while running? | `True` |  | 
+| make_symmetric | Can be used to aggregate symmetric multiplex screens to produce one GI and FDR per gene pair. Useful if all pairs exist twice, e.g. Cas12/Cas9 & Cas9/ Cas12. | `FALSE` |  |
+| verbose | should the pipeline print a feedback while running? | `TRUE` |  | 
 | keep_all_configurations | Skip discarding configurations with negative duplicateCorrelation. |  |  |
 
 # Input file format
