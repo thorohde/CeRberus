@@ -607,7 +607,7 @@ setMethod(
     .test <- map_lgl(set_names(GI_obj@guideGIs@replicates), \(.r) {
       .x <- GI_obj@guideGIs@data[,, .r]
       if (all(.x == t(.x)) || all(dplyr::near(.x, t(.x)))) {
-        return(T)
+        return(TRUE)
       } else {
         return(
           cor(as.vector(.x), as.vector(t(.x)), use = "pairwise.complete.obs") >=

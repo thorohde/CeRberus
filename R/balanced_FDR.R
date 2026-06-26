@@ -1,3 +1,25 @@
+#' Compute balanced FDR values for position-agnostic gene pairs
+#'
+#' @description
+#' For each unordered gene pair, `balanced_FDR()` builds a local set of
+#' directional p-values involving the two genes and adjusts those p-values for
+#' multiple testing. The returned value for each pair is the adjusted p-value
+#' corresponding to the original pair orientation.
+#'
+#' This helper is used when aggregating symmetric or position-agnostic multiplex
+#' screens, where both `A;B` and `B;A` directional tests may contribute to the
+#' final gene-pair-level result.
+#'
+#' @param pairs Character vector of gene-pair identifiers in the form
+#'   `"gene1;gene2"`.
+#' @param pval_array Numeric matrix-like object of p-values with query genes in
+#'   rows and library genes in columns.
+#' @param fdr_method Multiple-testing correction method passed to
+#'   [stats::p.adjust()].
+#'
+#' @return A numeric vector of adjusted p-values with one value per element of
+#'   `pairs`.
+#'
 #' @export
 
 balanced_FDR <- function(pairs, pval_array, fdr_method) {

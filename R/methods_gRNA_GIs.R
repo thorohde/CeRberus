@@ -1,12 +1,15 @@
+#' @describeIn collapse_replicates Collapse replicate dimensions in a
+#'   [`gRNA_GI-class`] object by averaging over layers listed in the `collapse`
+#'   slot.
+#' @aliases collapse_replicates,gRNA_GI-method
 setMethod(
   "collapse_replicates",
   signature = signature(.x = "gRNA_GI"),
   function(.x) {
-    
     if (length(.x@collapse) == 0) {
       return(.x)
     }
-    
+
     current_dims <- c(.x@space, .x@replicates)
 
     if (!all(.x@collapse %in% .x@replicates)) {
@@ -16,12 +19,11 @@ setMethod(
         call. = FALSE
       )
     }
-    
-        keep_dims <- setdiff(current_dims, .x@collapse)
+
+    keep_dims <- setdiff(current_dims, .x@collapse)
     keep_margin <- match(keep_dims, current_dims)
 
-
-collapsed <- apply(
+    collapsed <- apply(
       X = .x@data,
       MARGIN = keep_margin,
       FUN = mean,
@@ -38,17 +40,13 @@ collapsed <- apply(
       dimnames = keep_dimnames
     )
 
+    .x@data <- collapsed
 
-      .x@data <- collapsed
-
-      .x@replicates <- setdiff(.x@replicates, .x@collapse)
-    }
+    .x@replicates <- setdiff(.x@replicates, .x@collapse)
 
     return(.x)
   }
 )
-
-
 
 
 setMethod(

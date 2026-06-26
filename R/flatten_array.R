@@ -1,7 +1,34 @@
-#' @export flatten_array
+#' Flatten an array to long format
+#'
+#' @description
+#' Converts an array into a long-format `data.table` with one row per array
+#' cell. Array dimension names become columns and array values are stored in a
+#' separate value column.
+#'
+#' If the input array has no `dimnames`, integer sequence labels are generated
+#' for each dimension before flattening.
+#'
+#' @param x An array or array-like object with a non-`NULL` `dim` attribute.
+#' @param dnames Optional character vector used to rename the generated
+#'   dimension columns. Its length should match the number of dimensions in
+#'   `x`.
+#' @param value.name Character scalar naming the output column that stores array
+#'   values. Defaults to `"value"`.
+#'
+#' @return A `data.table` in long format containing one column per array
+#'   dimension and one value column named by `value.name`.
+#'
+#' @examples
+#' x <- array(
+#'   1:4,
+#'   dim = c(2, 2),
+#'   dimnames = list(c("A", "B"), c("C", "D"))
+#' )
+#' flatten_array(x, dnames = c("query_gene", "library_gene"))
+#'
+#' @export
 
 flatten_array <- \(x, dnames, value.name = "value") {
-
   stopifnot("Please provide an array!" = !is.null(dim(x)))
 
   if (is.null(dimnames(x))) {
@@ -21,12 +48,20 @@ flatten_array <- \(x, dnames, value.name = "value") {
     required_dnames <- length(dim(x))
 
     if (given_dnames != required_dnames) {
-      warning(paste(given_dnames, "dimnames given, but", required_dnames, "dimensions found!"))
+      warning(paste(
+        given_dnames,
+        "dimnames given, but",
+        required_dnames,
+        "dimensions found!"
+      ))
     }
 
-    data.table::setnames(output,
-                         old = paste0("Var", 1:length(dim(x)))[1:given_dnames],
-                         new = dnames)}
+    data.table::setnames(
+      output,
+      old = paste0("Var", 1:length(dim(x)))[1:given_dnames],
+      new = dnames
+    )
+  }
 
-return(output)
+  return(output)
 }

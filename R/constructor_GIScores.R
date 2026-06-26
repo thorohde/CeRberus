@@ -1,3 +1,35 @@
+#' Construct a genetic-interaction screen object
+#'
+#' @description
+#' `GIScores()` imports guide-level genetic-interaction scores, infers the
+#' screen structure, stores the scores in CeRberus S4 containers, and prepares
+#' the object for duplicate-correlation estimation and limma-based aggregation.
+#'
+#' The input table is expected in long format with one guide-pair observation
+#' per row. Column names can be customized with the `*_col` arguments and are
+#' standardized internally.
+#'
+#' @param input A data frame or data.table containing guide-level GI scores.
+#' @param query_col Name of the column containing query-gene identifiers.
+#' @param lib_col Name of the column containing library-gene identifiers.
+#' @param bio_rep_col Name of the biological-replicate column.
+#' @param tech_rep_col Name of the technical-replicate column.
+#' @param guide_col Name of the guide-pair column.
+#' @param gi_col Name of the numeric genetic-interaction score column.
+#' @param collapse_layers Optional character vector of replicate layers to
+#'   average before model fitting, for example `"guide_pair"`, `"tech_rep"`, or
+#'   `"bio_rep"`.
+#' @param block_layer Optional replicate layer used as the limma blocking layer
+#'   for duplicate-correlation modelling.
+#' @param force_fixed_pair Logical. If `TRUE`, force construction as a
+#'   fixed-pair screen regardless of the inferred screen attributes.
+#' @param pos_agnostic Logical. If `TRUE` and the inferred screen is multiplex,
+#'   symmetrize guide-level scores and return a `PosAgnMultiplexScreen` object.
+#' @param verbose Logical. If `TRUE`, print a short screen summary.
+#'
+#' @return An S4 object inheriting from `ScreenBase`, typically a
+#'   `FixedPairScreen`, `MultiplexScreen`, or `PosAgnMultiplexScreen`.
+#'
 #' @export
 
 GIScores <- function(
