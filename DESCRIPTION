@@ -1,17 +1,39 @@
 Package: CeRberus
 Title: Aggregate Guide-Level CRISPR Genetic Interaction Scores
-Version: 0.1
+Version: 0.2
 Authors@R: 
     person("Thomas", "Rohde", , "thorohde@uni-bonn.de", role = c("aut", "cre"),
            comment = c(ORCID = "0009-0004-5159-4635"))
 Description: Aggregates guide-level CRISPR genetic interaction scores to
     gene-pair-level scores using limma-based models.
 License: MIT + file LICENSE
+URL: https://github.com/thorohde/CeRberus
 Depends: 
     R (>= 4.1.0)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 8.0.0
+Collate: 
+    'classes_gRNA_LFC.R'
+    'classes_gRNA_GI.R'
+    'classes_ScreenBase.R'
+    'CeRberus-package.R'
+    'constructor_GIScores.R'
+    'constructor_gRNA_GI.R'
+    'flatten_array.R'
+    'full_run.R'
+    'generics.R'
+    'globals.R'
+    'methods_gRNA_GI.R'
+    'methods_gRNA_LFC.R'
+    'methods_ScreenBase.R'
+    'normalize_Readcounts.R'
+    'remove_PCs.R'
+    'sort_gene_pairs.R'
+    'utils_pipeline_config.R'
+    'utils_plots.R'
+    'utils_symmetry.R'
+    'z_transform.R'
 Imports: 
     abind,
     data.table,
