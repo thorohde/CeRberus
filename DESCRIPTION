@@ -10,6 +10,9 @@ License: MIT + file LICENSE
 URL: https://github.com/thorohde/CeRberus
 Depends: 
     R (>= 4.1.0)
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 8.0.0
@@ -27,6 +30,7 @@ Collate:
     'methods_gRNA_GI.R'
     'methods_gRNA_LFC.R'
     'methods_ScreenBase.R'
+    'methods_Screenbase_ScreenReport.R'
     'normalize_Readcounts.R'
     'remove_PCs.R'
     'sort_gene_pairs.R'

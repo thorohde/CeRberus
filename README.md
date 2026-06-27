@@ -1,6 +1,6 @@
 # CeRberus
 
-The CeRberus module is part of the Cerberus package and performs the final steps of aggregating guide-level genetic interaction (GI) scores to gene-pair level scores. It can also be used independently as part of other `R` GI scoring pipelines. 
+The CeRberus module is part of the  [Cerberus python package] and performs the final steps of aggregating guide-level genetic interaction (GI) scores to gene-pair level scores. It can also be used independently as part of other `R` GI scoring pipelines. 
 
 # Quick start
 
