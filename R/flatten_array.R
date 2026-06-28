@@ -35,17 +35,21 @@ flatten_array <- \(x, dnames, value.name = "value") {
     dimnames(x) <- lapply(dim(x), seq_len)
   }
 
-  output <- expand.grid(dimnames(x), KEEP.OUT.ATTRS = F, stringsAsFactors = F)
+  required_dnames <- length(dim(x))
 
-  output <- data.table::data.table(output)
-
-  output[[value.name]] <- as.vector(x)
-
-  output <- data.table::data.table(data.frame(output))
+  if (required_dnames == 2) {
+    # Force 2D matrix to melt cleanly into a long data.table
+    output <- data.table::as.data.table(as.data.frame.table(
+      x,
+      responseName = value.name
+    ))
+  } else {
+    # 3D+ arrays use the native data.table array melting
+    output <- data.table::as.data.table(x, value.name = value.name)
+  }
 
   if (!missing(dnames)) {
     given_dnames <- length(dnames)
-    required_dnames <- length(dim(x))
 
     if (given_dnames != required_dnames) {
       warning(paste(
@@ -56,11 +60,10 @@ flatten_array <- \(x, dnames, value.name = "value") {
       ))
     }
 
-    data.table::setnames(
-      output,
-      old = paste0("Var", 1:length(dim(x)))[1:given_dnames],
-      new = dnames
-    )
+    old_prefix <- if (required_dnames == 2) "Var" else "V"
+    old_names <- paste0(old_prefix, 1:required_dnames)[1:given_dnames]
+
+    data.table::setnames(output, old = old_names, new = dnames[1:given_dnames])
   }
 
   return(output)

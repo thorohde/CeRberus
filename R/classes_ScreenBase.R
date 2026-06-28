@@ -15,7 +15,6 @@
 #' @slot checks List of screen-design checks.
 #' @slot errors List of recoverable modelling errors.
 #'
-#' @keywords internal
 #' @exportClass ScreenBase
 
 setClass(

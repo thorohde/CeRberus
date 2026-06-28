@@ -425,11 +425,6 @@ setMethod(
           0
     ) {
       warning("Some genes were lost!")
-      print(str(GI_obj@guideGIs))
-      print(str(GI_obj@geneGIs))
-
-      print(setdiff(rownames(GI_obj@guideGIs@data), rownames(GI_obj@geneGIs)))
-      print(setdiff(colnames(GI_obj@guideGIs@data), colnames(GI_obj@geneGIs)))
     }
     return(GI_obj)
   }
@@ -470,40 +465,6 @@ setMethod(
     GI_obj@symmGeneGIs <- .x
 
     return(GI_obj)
-  }
-)
-
-
-setMethod(
-  "screenReport",
-  signature = signature(GI_obj = "ScreenBase"),
-  function(GI_obj) {
-    .a <- GI_obj@screen_attr
-    .checks <- GI_obj@checks
-
-    .t <- c(
-      "FixedPairScreen" = "fixed pair",
-      "MultiplexScreen" = "multiplex",
-      "PosAgnMultiplexScreen" = "position-agnostic multiplex"
-    )
-    .t <- .t[class(GI_obj)]
-
-    cat(paste0(
-      "A ",
-      .t,
-      " CRISPR screen with ",
-      .a$n_query_genes,
-      " x ",
-      .a$n_lib_genes,
-      " genes.\n"
-    ))
-
-    #
-    #if (!.x@use_blocks) {warning("Not using any block structure.")}
-
-    cat(paste0("Using ", GI_obj@guideGIs@block_layer), " as blocks. ")
-    cat("")
-    #print(.checks)
   }
 )
 

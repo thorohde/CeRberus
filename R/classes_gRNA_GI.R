@@ -18,7 +18,6 @@
 #' @slot collapse Character vector of replicate layers collapsed before model
 #'   fitting.
 #'
-#' @keywords internal
 #' @exportClass gRNA_GI
 
 setClass(

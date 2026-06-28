@@ -77,6 +77,13 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
 
   .data <- map(.data, collect_GIs, FDR_method = instr$FDR)
 
+  if (isTRUE(instr$verbose)) {
+    purrr::iwalk(.data, function(.x, .y) {
+      cat("\nConfiguration: ", .y, "\n", sep = "")
+      screenReport(.x, interactive = FALSE, print = TRUE)
+    })
+  }
+
   if ("output_directory" %in% names(instr) & instr$overwrite_output) {
     .output <- list()
 

@@ -109,25 +109,27 @@ collect_all_layer_configurations <- function(
     )
   }
 
-  for (.i in seq_len(length(.collapsable_layers) - 1)) {
-    for (.to_collapse in combn(.collapsable_layers, .i, simplify = FALSE)) {
-      for (.use in setdiff(.collapsable_layers, .to_collapse)) {
-        .n <- str_c(
-          str_c(.to_collapse, collapse = "_"),
-          "_collapsed_",
-          .use,
-          "_used"
-        )
-        if (isTRUE(verbose)) {
-          print(.n)
+  if (length(.collapsable_layers) >= 2) {
+    for (.i in seq_len(length(.collapsable_layers) - 1)) {
+      for (.to_collapse in combn(.collapsable_layers, .i, simplify = FALSE)) {
+        for (.use in setdiff(.collapsable_layers, .to_collapse)) {
+          .n <- str_c(
+            str_c(.to_collapse, collapse = "_"),
+            "_collapsed_",
+            .use,
+            "_used"
+          )
+          if (isTRUE(verbose)) {
+            message(.n)
+          }
+          output[[.n]] <- GIScores(
+            GI_data,
+            collapse_layers = .to_collapse,
+            block_layer = .use,
+            pos_agnostic = make_pos_agnostic,
+            verbose = verbose
+          )
         }
-        output[[.n]] <- GIScores(
-          GI_data,
-          collapse_layers = .to_collapse,
-          block_layer = .use,
-          pos_agnostic = make_pos_agnostic,
-          verbose = verbose
-        )
       }
     }
   }
@@ -138,46 +140,73 @@ collect_all_layer_configurations <- function(
 find_optimal_configuration <- function(GI_list, keep_all = FALSE) {
   stopifnot(
     "GI_list must contain at least one screen object." = length(GI_list) > 0,
+    "GI_list must be named." = !is.null(names(GI_list)) &&
+      all(!is.na(names(GI_list))) &&
+      all(nzchar(names(GI_list))),
+    "GI_list must have unique names." = !anyDuplicated(names(GI_list)),
     "keep_all must be TRUE or FALSE." = is.logical(keep_all) &&
       length(keep_all) == 1 &&
       !is.na(keep_all)
   )
 
-  .x <- GI_list |> map(~ .x@dupCorrelation) |> map_dbl(mean, na.rm = TRUE)
-
-  .d <- data.table(
-    config = names(GI_list),
-    dcor = GI_list |>
-      map(~ .x@dupCorrelation) |>
-      map_dbl(mean, na.rm = TRUE) |>
-      round(3)
+  dupcor <- map_dbl(
+    GI_list,
+    ~ {
+      mean(.x@dupCorrelation, na.rm = TRUE)
+    }
   )
 
-  if (any(.x >= 0)) {
-    .x <- keep(.x, .x >= 0)
-  } # if greater or = 0 found, remove <= 0
-  if (any(.x > 0)) {
-    .x <- .x |> keep(.x > 0)
-  } # if any greater 0 found, remove = 0
-  if (length(.x) >= 1) {
-    .x <- .x[which.min(.x)]
-  } # if more than one option remains, choose weakest correlation
+  dupcor[is.nan(dupcor)] <- NA_real_
 
-  .d[,
-    kept := fcase(
-      config %in% names(.x) , "selected" ,
-      default = ""
+  dupcor_data <- data.table(
+    config = names(GI_list),
+    dcor = round(dupcor, 3)
+  )
+
+  usable <- dupcor[is.finite(dupcor)]
+
+  if (length(usable) == 0) {
+    stop(
+      "No usable duplicate-correlation estimates found for configuration selection.",
+      call. = FALSE
+    )
+  }
+
+  if (all(usable < 0)) {
+    selected_name <- names(usable)[which.max(usable)]
+  } else {
+    candidates <- usable
+
+    if (any(candidates >= 0)) {
+      # if greater or = 0 found, remove <= 0
+      candidates <- candidates[candidates >= 0]
+    }
+
+    if (any(candidates > 0)) {
+      # if any greater 0 found, remove = 0
+      candidates <- candidates[candidates > 0]
+    }
+    # if more than one option remains, choose weakest correlation
+    selected_name <- names(candidates)[which.min(candidates)]
+  }
+
+  dupcor_data[,
+    kept := fifelse(
+      config == selected_name,
+      "selected",
+      ""
     )
   ]
 
   for (.n in names(GI_list)) {
-    GI_list[[.n]]@metadata$dupcor_data <- .d
+    GI_list[[.n]]@metadata$dupcor_data <- dupcor_data
   }
 
-  if (keep_all) {
+  if (isTRUE(keep_all)) {
     return(GI_list)
-  }
-  if (!keep_all) {
-    return(GI_list[names(.x)])
+  } else {
+    return(
+      GI_list[selected_name]
+    )
   }
 }
