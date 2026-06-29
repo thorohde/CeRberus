@@ -64,14 +64,16 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
 
   .data <- find_optimal_configuration(.data, keep_all = .keep_all)
 
-  .data <- .data |>
-    compute_dupcor_plot(
-      .fpath = file.path(
-        instr$output_directory,
-        "duplicateCorrelationPlot.png"
-      ),
-      verbose = instr$verbose
-    )
+  if (isTRUE(instr$overwrite_output)) {
+    .data <- .data |>
+      compute_dupcor_plot(
+        .fpath = file.path(
+          instr$output_directory,
+          "duplicateCorrelationPlot.png"
+        ),
+        verbose = instr$verbose
+      )
+  }
 
   .data <- map(.data, compute_models)
 

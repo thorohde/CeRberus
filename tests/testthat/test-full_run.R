@@ -1,4 +1,9 @@
-write_full_run_instructions <- function(path, scores_file, output_directory, ...) {
+write_full_run_instructions <- function(
+  path,
+  scores_file,
+  output_directory,
+  ...
+) {
   yaml::write_yaml(
     c(
       list(
@@ -22,7 +27,10 @@ make_full_run_scores <- function() {
   )
 }
 
-make_full_run_screen <- function(name = "default_guide_pair_used", dupcor = 0.1) {
+make_full_run_screen <- function(
+  name = "default_guide_pair_used",
+  dupcor = 0.1
+) {
   methods::new(
     "ScreenBase",
     guideLFCs = methods::new(
@@ -48,14 +56,21 @@ make_full_run_screen <- function(name = "default_guide_pair_used", dupcor = 0.1)
     dupCorrelation = dupcor,
     metadata = list(
       config = name,
-      dupcor_data = data.table::data.table(config = name, dcor = dupcor, kept = "selected")
+      dupcor_data = data.table::data.table(
+        config = name,
+        dcor = dupcor,
+        kept = "selected"
+      )
     ),
     checks = list(),
     errors = list()
   )
 }
 
-with_mocked_full_run_pipeline <- function(code, calls = new.env(parent = emptyenv())) {
+with_mocked_full_run_pipeline <- function(
+  code,
+  calls = new.env(parent = emptyenv())
+) {
   calls$collected_input <- NULL
   calls$make_pos_agnostic <- NULL
   calls$collect_verbose <- NULL
@@ -66,13 +81,23 @@ with_mocked_full_run_pipeline <- function(code, calls = new.env(parent = emptyen
   calls$screen_report_called <- FALSE
 
   testthat::local_mocked_bindings(
-    collect_all_layer_configurations = function(GI_data, make_pos_agnostic, verbose = FALSE) {
+    collect_all_layer_configurations = function(
+      GI_data,
+      make_pos_agnostic,
+      verbose = FALSE
+    ) {
       calls$collected_input <- as.data.frame(GI_data)
       calls$make_pos_agnostic <- make_pos_agnostic
       calls$collect_verbose <- verbose
       list(
-        default_guide_pair_used = make_full_run_screen("default_guide_pair_used", 0.2),
-        default_tech_rep_used = make_full_run_screen("default_tech_rep_used", 0.4)
+        default_guide_pair_used = make_full_run_screen(
+          "default_guide_pair_used",
+          0.2
+        ),
+        default_tech_rep_used = make_full_run_screen(
+          "default_tech_rep_used",
+          0.4
+        )
       )
     },
     compute_dupCorrelation = function(.x, ...) {
@@ -146,7 +171,8 @@ test_that("full_run reads CSV scores and forwards options to the pipeline", {
   expect_true(calls$make_pos_agnostic)
   expect_true(calls$collect_verbose)
   expect_equal(calls$fdr_method, "bonferroni")
-  expect_true(calls$plot_verbose)
+  expect_null(calls$plot_verbose)
+  expect_null(calls$plot_path)
   expect_true(calls$screen_report_called)
 })
 
@@ -211,9 +237,18 @@ test_that("full_run writes intermediate and final outputs when overwrite_output 
   )
 
   expect_true(file.exists(file.path(output_directory, "all_GI_objects.rds")))
-  expect_true(file.exists(file.path(output_directory, "duplicateCorrelationPlot.png")))
-  expect_true(file.exists(file.path(output_directory, "duplicate_correlation.csv")))
-  expect_true(file.exists(file.path(output_directory, "GI_scores_default_guide_pair_used.csv")))
+  expect_true(file.exists(file.path(
+    output_directory,
+    "duplicateCorrelationPlot.png"
+  )))
+  expect_true(file.exists(file.path(
+    output_directory,
+    "duplicate_correlation.csv"
+  )))
+  expect_true(file.exists(file.path(
+    output_directory,
+    "GI_scores_default_guide_pair_used.csv"
+  )))
   expect_equal(
     calls$plot_path,
     file.path(
@@ -223,7 +258,10 @@ test_that("full_run writes intermediate and final outputs when overwrite_output 
   )
 
   intermediate <- readRDS(file.path(output_directory, "all_GI_objects.rds"))
-  expect_named(intermediate, c("default_guide_pair_used", "default_tech_rep_used"))
+  expect_named(
+    intermediate,
+    c("default_guide_pair_used", "default_tech_rep_used")
+  )
   expect_named(result, "default_guide_pair_used")
 })
 
@@ -244,9 +282,18 @@ test_that("full_run does not write CSV/RDS outputs when overwrite_output is FALS
   )
 
   expect_false(file.exists(file.path(output_directory, "all_GI_objects.rds")))
-  expect_false(file.exists(file.path(output_directory, "duplicate_correlation.csv")))
-  expect_false(file.exists(file.path(output_directory, "GI_scores_default_guide_pair_used.csv")))
-  expect_true(file.exists(file.path(output_directory, "duplicateCorrelationPlot.png")))
+  expect_false(file.exists(file.path(
+    output_directory,
+    "duplicate_correlation.csv"
+  )))
+  expect_false(file.exists(file.path(
+    output_directory,
+    "GI_scores_default_guide_pair_used.csv"
+  )))
+  expect_false(file.exists(file.path(
+    output_directory,
+    "duplicateCorrelationPlot.png"
+  )))
 })
 
 test_that("full_run can return NULL after running the pipeline", {
@@ -266,7 +313,10 @@ test_that("full_run can return NULL after running the pipeline", {
   )
 
   expect_null(result)
-  expect_true(file.exists(file.path(output_directory, "GI_scores_default_guide_pair_used.csv")))
+  expect_true(file.exists(file.path(
+    output_directory,
+    "GI_scores_default_guide_pair_used.csv"
+  )))
 })
 
 test_that("full_run forwards keep_all_configurations to configuration selection", {

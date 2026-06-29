@@ -1,62 +1,151 @@
 # CeRberus
 
-The CeRberus module is part of the  [Cerberus python package] and performs the final steps of aggregating guide-level genetic interaction (GI) scores to gene-pair level scores. It can also be used independently as part of other `R` GI scoring pipelines. 
+CeRberus is an R package for aggregating guide-level CRISPR genetic interaction (GI) scores to gene-pair-level scores using limma-based models.
 
-# Quick start
+CeRberus is intended to serve two roles:
 
-1 Install `devtools` from CRAN:
+- as the R analysis component of the broader Cerberus Python package workflow, and
+- as a standalone R package that can be used independently in other GI scoring pipelines.
 
-```{r}
-if (!require("devtools", quietly = TRUE)) {
-	install.packages("devtools")
-	}
+## What CeRberus does
+
+Starting from guide-level GI scores in long-table format, CeRberus:
+
+1. imports the score table,
+2. infers the screen structure,
+3. generates alternative replicate/blocking configurations,
+4. estimates duplicate correlations,
+5. fits limma-based models,
+6. aggregates guide-level scores to gene-pair-level GI scores, and
+7. optionally writes result tables and intermediate objects to disk.
+
+CeRberus supports both:
+
+- **fixed-pair screens**, where query and library gene sets differ, and
+- **multiplex screens**, where query and library gene sets are identical.
+
+## Installation
+
+CeRberus depends on CRAN packages and on [`limma`](https://bioconductor.org/packages/release/bioc/html/limma.html) from Bioconductor.
+
+### 1. Install BiocManager if needed
+
+```r
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
 ```
 
-2. Install the `CeRberus` package:
+### 2. Install limma
 
-```{r}
-devtools::install_github("thorohde/CeRberus")
-```
-
-
-3. Follow the [Bioconductor](https://www.bioconductor.org/) installation routine to install the [limma](https://bioconductor.org/packages/release/bioc/html/limma.html) package:
-
-```{r}
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-
+```r
 BiocManager::install("limma")
 ```
 
-4. Load the `CeRberus` package into the workspace:
+### 3. Install CeRberus from GitHub
 
-```{r}
+```r
+if (!requireNamespace("devtools", quietly = TRUE)) {
+  install.packages("devtools")
+}
+
+devtools::install_github("thorohde/CeRberus")
+```
+
+### 4. Load the package
+
+```r
 library(CeRberus)
 ```
 
-5. After storing guide GI scores in a csv file, call the modules `full_run()` routine with an instruction yaml file: 
+## Two ways to use CeRberus
 
-```{r}
-full_run(yaml_fpath = "input_yaml_file.yaml")
+CeRberus can be used in two main ways.
+
+### 1. Full pipeline execution with `full_run()`
+
+Use `full_run()` when you want a YAML-driven analysis workflow that reads input data, evaluates configurations, computes GI scores, and optionally writes output files.
+
+```r
+full_run("input_yaml_file.yaml")
 ```
 
+### 2. Direct object construction with `GIScores()`
 
+Use `GIScores()` when you want finer control inside an R workflow.
 
-# Input parameters
+```r
+gi_obj <- GIScores(input = my_scores)
+```
 
-| parameter | description | default | required |
-|---|---|---|---|
-| scores_file | path to a `csv` file of guide GI scores | / | * |
-| output_directory | path where the package stores the computed scores | / | * |
-| FDR | method used for to estimate the False Discovery rate. | `BH` |  |
-| make_symmetric | Can be used to aggregate symmetric multiplex screens to produce one GI and FDR per gene pair. Useful if all pairs exist twice, e.g. Cas12/Cas9 & Cas9/ Cas12. | `FALSE` |  |
-| verbose | should the pipeline print a feedback while running? | `TRUE` |  | 
-| keep_all_configurations | Skip discarding configurations with negative duplicateCorrelation. |  |  |
+This creates a CeRberus screen object that can then be processed with downstream package methods.
 
-# Input file format
+## Quick start: YAML-based workflow
 
-The input table of guide GI scores is required to be in long format, one observation per row. The columns `bio_rep`, `tech_rep` and `guide_pair` describe the experimental setup and will be used as replication layers by `CeRberus`. 
+The typical standalone workflow is:
 
+1. store guide-level GI scores in a `.csv` or `.rds` file,
+2. create a YAML instruction file,
+3. run `full_run()`, and
+4. inspect the returned objects and/or written output files.
+
+### Minimal example
+
+```r
+library(CeRberus)
+
+result <- full_run("input_yaml_file.yaml")
+```
+
+By default, `full_run()` returns the selected CeRberus screen object configuration as a named list. If `return_output = FALSE`, it returns `NULL` after running the pipeline.
+
+## YAML instruction file
+
+The YAML instruction file controls the pipeline run.
+
+### Required fields
+
+| parameter | description |
+|---|---|
+| `scores_file` | Path to a guide-level GI score file in `.csv` or `.rds` format |
+| `output_directory` | Directory where CeRberus writes outputs |
+
+### Optional fields
+
+| parameter | description | default |
+|---|---|---|
+| `FDR` | Multiple-testing correction method. Currently supported: `BH`, `bonferroni` | `BH` |
+| `overwrite_output` | Whether to write output files to `output_directory` | `TRUE` |
+| `make_symmetric` | Aggregate symmetric multiplex screens into one score per unordered gene pair | `FALSE` |
+| `keep_all_configurations` | Keep all tested replicate/blocking configurations instead of only the selected one | `FALSE` |
+| `verbose` | Print additional progress information and screen summaries | `FALSE` |
+
+### Example YAML file
+
+```yaml
+scores_file: "path/to/guide_scores.csv"
+output_directory: "path/to/output"
+FDR: "BH"
+overwrite_output: true
+make_symmetric: false
+keep_all_configurations: false
+verbose: false
+```
+
+## Input data format
+
+The input score table must be in **long format**, with one guide-pair observation per row.
+
+CeRberus expects the following columns by default:
+
+- `query_gene`
+- `library_gene`
+- `bio_rep`
+- `tech_rep`
+- `guide_pair`
+- `GI`
+
+Example input:
 
 | bio_rep | tech_rep | guide_pair | query_gene | library_gene | GI |
 |---|---|---|---|---|---|
@@ -65,28 +154,56 @@ The input table of guide GI scores is required to be in long format, one observa
 | b1 | t1 | g3 | IGF2 | ADRB2 | 1.01662498 |
 | b1 | t2 | g1 | IGF2 | ADRB2 | -0.94890821 |
 | b1 | t2 | g2 | IGF2 | ADRB2 | -0.44307736 |
-| b1 | t2 | g3 | IGF2 | ADRB2 | -0.5146814 |
-| b2 | t1 | g1 | MTOR | IMPDH1 | -1.1482365 |
-| b2 | t1 | g2 | MTOR | IMPDH1 | -2.6873593 |
-| b2 | t1 | g3 | MTOR | IMPDH1 | -0.6714192 |
+| b1 | t2 | g3 | IGF2 | ADRB2 | -0.51468140 |
+| b2 | t1 | g1 | MTOR | IMPDH1 | -1.14823650 |
+| b2 | t1 | g2 | MTOR | IMPDH1 | -2.68735930 |
+| b2 | t1 | g3 | MTOR | IMPDH1 | -0.67141920 |
 | b2 | t2 | g1 | MTOR | IMPDH1 | -0.79467931 |
 | b2 | t2 | g2 | MTOR | IMPDH1 | -2.05650114 |
 | b2 | t2 | g3 | MTOR | IMPDH1 | -0.32426398 |
 
+If needed, column names can be customized when using `GIScores()` directly.
 
+## Analysis procedure
 
-# Procedure
+CeRberus follows this general procedure:
 
-1. After importing the guide GI scores, CeRberus infers the experimental structure based on the query and library gene set. 
+1. **Infer screen type**  
+   Based on the query and library gene sets, CeRberus determines whether the data represent a fixed-pair or multiplex screen.
 
-- Fixed Pair Screen: Query genes and library genes are different.
-- Multiplex Screen: Query and library gene sets are identical.
+2. **Generate alternative replicate/blocking configurations**  
+   CeRberus tests different ways of using or collapsing `tech_rep`, `bio_rep`, and `guide_pair` layers.
 
+3. **Estimate duplicate correlations**  
+   CeRberus evaluates which configuration produces the most suitable duplicate-correlation structure for downstream modelling.
 
-2.  CeRberus tests which configuration produces desirable duplicateCorrelation values. A positive correlation between either the biological or technical replicates is expected. 
+4. **Fit limma models and compute gene-level GI scores**  
+   Guide-level scores are aggregated to gene-pair-level scores, p-values are computed, and multiple-testing correction is applied.
 
-3. For the configurations that pass these filters, genetic interactions are computed, using linear model fits. P-values are computed using Empirical Bayes Statistics, and corrected for multiple testing by a method of choice.
+5. **Return and optionally export results**  
+   Depending on settings, CeRberus returns the selected configuration and may also write output files to disk.
 
-4. The computed scores are exported to the given output directory. 
+## Output
 
+When `overwrite_output = TRUE`, CeRberus writes output files to `output_directory`. These can include:
 
+- `all_GI_objects.rds` — intermediate CeRberus screen objects before final selection
+- `duplicateCorrelationPlot.png` — duplicate-correlation summary plot
+- `duplicate_correlation.csv` — duplicate-correlation summary table
+- `GI_scores_<configuration>.csv` — gene-level GI scores for retained configurations
+
+When `overwrite_output = FALSE`, CeRberus still runs the analysis but does not write these files.
+
+## Standalone use in R pipelines
+
+Although CeRberus is part of the larger Cerberus Python package ecosystem, it is fully usable as a standalone R package.
+
+This is useful when you:
+
+- already have guide-level GI scores available in R,
+- want to integrate CeRberus into an R-based analysis workflow, or
+- want more direct control over object construction and downstream processing.
+
+## Development status
+
+CeRberus is under active development. If you use it as a standalone package, it is a good idea to pin a specific GitHub commit or release in reproducible analysis workflows.
