@@ -60,10 +60,14 @@ flatten_array <- \(x, dnames, value.name = "value") {
       ))
     }
 
-    old_prefix <- if (required_dnames == 2) "Var" else "V"
-    old_names <- paste0(old_prefix, 1:required_dnames)[1:given_dnames]
+    rename_n <- min(given_dnames, required_dnames)
+    dim_cols <- names(output)[seq_len(rename_n)]
 
-    data.table::setnames(output, old = old_names, new = dnames[1:given_dnames])
+    data.table::setnames(
+      output,
+      old = dim_cols,
+      new = dnames[seq_len(rename_n)]
+    )
   }
 
   return(output)

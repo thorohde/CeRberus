@@ -46,6 +46,21 @@ make_multiplex_fill_scores <- function() {
     transform(GI = seq_len(12L))
 }
 
+make_multiplex_fill_scores_with_all_na_gene_slices <- function() {
+  input <- expand.grid(
+    query_gene = c("G1", "G2", "G3"),
+    library_gene = c("G1", "G2", "G3", "G4"),
+    guide_pair = c("g1", "g2"),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+
+  input$GI <- seq_len(nrow(input))
+  input$GI[input$query_gene == "G3" | input$library_gene == "G4"] <- NA_real_
+
+  input
+}
+
 test_that("fill_gRNA_GIs fills fixed-pair guide GI arrays from long input", {
   input <- make_fixed_pair_fill_scores()
   object <- make_gRNA_GI_for_fill()
@@ -81,6 +96,26 @@ test_that("fill_gRNA_GIs fills multiplex guide GI arrays with two space dimensio
 
   expect_equal(result@data["G1", "G1", "g1"], 1L)
   expect_equal(result@data["G2", "G3", "g2"], 12L)
+})
+
+test_that("fill_gRNA_GIs keeps multiplex genes whose guide GI slices are entirely NA", {
+  input <- make_multiplex_fill_scores_with_all_na_gene_slices()
+  object <- make_gRNA_GI_for_fill(
+    space = c("query_gene", "library_gene"),
+    replicates = "guide_pair"
+  )
+
+  result <- CeRberus:::fill_gRNA_GIs(object, input)
+
+  expect_equal(dim(result@data), c(3L, 4L, 2L))
+  expect_equal(dimnames(result@data)[[1L]], c("G1", "G2", "G3"))
+  expect_equal(dimnames(result@data)[[2L]], c("G1", "G2", "G3", "G4"))
+  expect_equal(dimnames(result@data)[[3L]], c("g1", "g2"))
+
+  expect_true(all(is.na(result@data["G3", , ])))
+  expect_true(all(is.na(result@data[, "G4", ])))
+  expect_false(all(is.na(result@data["G1", , ])))
+  expect_false(all(is.na(result@data[, "G1", ])))
 })
 
 test_that("fill_gRNA_GIs supports custom value variables", {
@@ -123,12 +158,12 @@ test_that("fill_gRNA_GIs only changes the data slot", {
 
 test_that("fill_gRNA_GIs represents missing input combinations as NA", {
   input <- make_fixed_pair_fill_scores()
-  input <- input[!(
-    input$gene_pair == "B;D" &
+  input <- input[
+    !(input$gene_pair == "B;D" &
       input$guide_pair == "g2" &
       input$bio_rep == "b2" &
-      input$tech_rep == "t2"
-  ), ]
+      input$tech_rep == "t2"),
+  ]
   object <- make_gRNA_GI_for_fill()
 
   result <- CeRberus:::fill_gRNA_GIs(object, input)
@@ -145,9 +180,15 @@ test_that("fill_gRNA_GIs errors for unknown value variables and missing dimensio
     CeRberus:::fill_gRNA_GIs(object, input, value_var = "not_a_column")
   )
   expect_error(
-    CeRberus:::fill_gRNA_GIs(object, input[, setdiff(names(input), "gene_pair")])
+    CeRberus:::fill_gRNA_GIs(
+      object,
+      input[, setdiff(names(input), "gene_pair")]
+    )
   )
   expect_error(
-    CeRberus:::fill_gRNA_GIs(object, input[, setdiff(names(input), "guide_pair")])
+    CeRberus:::fill_gRNA_GIs(
+      object,
+      input[, setdiff(names(input), "guide_pair")]
+    )
   )
 })
