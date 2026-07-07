@@ -31,7 +31,7 @@ Collate:
     'methods_gRNA_LFC.R'
     'methods_ScreenBase.R'
     'methods_Screenbase_ScreenReport.R'
-    'normalize_Readcounts.R'
+    'normalize_readcounts.R'
     'remove_PCs.R'
     'sort_gene_pairs.R'
     'utils_pipeline_config.R'
