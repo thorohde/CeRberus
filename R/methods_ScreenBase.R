@@ -211,64 +211,37 @@ setMethod(
   signature = signature(GI_obj = "ScreenBase"),
   function(GI_obj) {
     .md <- GI_obj@metadata
-    .type <- "unknown"
-
     .c <- GI_obj@checks
 
-    if (
-      .c$gene_sets_equal &
-        .c$query_sufficient &
-        .c$library_sufficient &
-        #.attr$checks$stable_library_size &
-        .c$sufficient_tests_per_query
-    ) {
+    .type <- "FixedPairScreen"
+
+    .is_multiplex_candidate <- isTRUE(.c$query_sufficient) &&
+      isTRUE(.c$library_sufficient) &&
+      #isTRUE(.c$gene_sets_equal) &&
+      isTRUE(.c$sufficient_tests_per_query)
+
+    if (.is_multiplex_candidate) {
       .type <- "MultiplexScreen"
+
+      if (!isTRUE(.c$stable_library_size)) {
+        warning(
+          "Multiplex screen has variable observations per query; ",
+          "keeping multiplex classification.",
+          call. = FALSE
+        )
+      }
     }
 
-    if (
-      !.c$gene_sets_equal &
-        .c$library_sufficient &
-        .c$query_sufficient &
-        #.attr$checks$stable_library_size &
-        .c$sufficient_tests_per_query
-    ) {
-      .type <- "MultiplexScreen"
-    }
-
-    if (
-      !.c$library_sufficient |
-        !.c$stable_library_size |
-        !.c$sufficient_tests_per_query
-      # | #avg_tests_per_query <= 50
-    ) {
-      .type <- "FixedPairScreen"
-    }
-
-    # ...
-
-    if (.type == "unknown") {
-      warning("Unknown screen design! Forcing fixed pair run.")
-      .type <- "FixedPairScreen"
-    }
-
-    if (.md$force_fixed_pair) {
-      warning("Set up to use fixed pair structure.")
+    if (isTRUE(.md$force_fixed_pair)) {
+      warning("Set up to use fixed pair structure.", call. = FALSE)
       .type <- "FixedPairScreen"
     }
 
     GI_obj <- as(object = GI_obj, Class = .type)
 
-    if (
-      is(GI_obj)[1] %in%
-        c(
-          "AsymmMultiplexScreen",
-          "SymmMultiplexScreen",
-          "MultiplexScreen",
-          "PosAgnMultiplexScreen"
-        )
-    ) {
+    if (is(GI_obj, "MultiplexScreen")) {
       GI_obj@guideGIs@space <- c("query_gene", "library_gene")
-    } else if (is(GI_obj)[1] == "FixedPairScreen") {
+    } else if (is(GI_obj, "FixedPairScreen")) {
       GI_obj@guideGIs@space <- "gene_pair"
     }
 

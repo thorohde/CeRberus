@@ -65,7 +65,7 @@ test_that("set_screenType switches to fixed-pair when library checks fail", {
   expect_equal(result@guideGIs@replicates, "guide_pair")
 })
 
-test_that("set_screenType warns and falls back to fixed-pair for unknown designs", {
+test_that("set_screenType keeps fixed-pair fallback when multiplex criteria are not met", {
   screen <- GIScores(
     make_multiplex_like_scores_for_set_screenType(),
     block_layer = "guide_pair"
@@ -79,10 +79,7 @@ test_that("set_screenType warns and falls back to fixed-pair for unknown designs
     sufficient_tests_per_query = TRUE
   )
 
-  expect_warning(
-    result <- set_screenType(as(screen, "ScreenBase")),
-    "Unknown screen design! Forcing fixed pair run"
-  )
+  result <- set_screenType(as(screen, "ScreenBase"))
 
   expect_s4_class(result, "FixedPairScreen")
   expect_equal(result@guideGIs@space, "gene_pair")

@@ -74,11 +74,28 @@ GIScores <- function(
   GI_obj@guideGIs <- GI_obj@guideGIs |> collapse_replicates()
   GI_obj@guideGIs <- GI_obj@guideGIs |> flatten_guideGIs()
 
-  if (is(GI_obj, "MultiplexScreen") & pos_agnostic) {
-    for (.r in GI_obj@guideGIs@block_description) {
-      GI_obj@guideGIs@data[,, .r] <- makeSymmetric(GI_obj@guideGIs@data[,, .r])
+  #  if (is(GI_obj, "MultiplexScreen") & pos_agnostic) {
+  #for (.r in GI_obj@guideGIs@block_description) {
+  #  GI_obj@guideGIs@data[,, .r] <- makeSymmetric(GI_obj@guideGIs@data[,, .r])
+  #}
+  #GI_obj <- as(object = GI_obj, Class = "PosAgnMultiplexScreen")
+  #  }
+
+  if (is(GI_obj, "MultiplexScreen") && pos_agnostic) {
+    if (!isTRUE(GI_obj@checks$gene_sets_equal)) {
+      warning(
+        "Position-agnostic symmetrization requested, but query/library gene sets ",
+        "are not sufficiently overlapping. Keeping asymmetric MultiplexScreen.",
+        call. = FALSE
+      )
+    } else {
+      for (.r in GI_obj@guideGIs@block_description) {
+        GI_obj@guideGIs@data[,, .r] <- makeSymmetric(GI_obj@guideGIs@data[,,
+          .r
+        ])
+      }
+      GI_obj <- as(object = GI_obj, Class = "PosAgnMultiplexScreen")
     }
-    GI_obj <- as(object = GI_obj, Class = "PosAgnMultiplexScreen")
   }
 
   if (isTRUE(verbose)) {
