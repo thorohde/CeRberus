@@ -29,7 +29,10 @@ test_that("GIScores constructs a fixed-pair screen from guide-level scores", {
   expect_s4_class(result, "FixedPairScreen")
   expect_s4_class(result@guideGIs, "gRNA_GI")
   expect_equal(result@guideGIs@space, "gene_pair")
-  expect_equal(result@guideGIs@replicates, c("guide_pair", "tech_rep", "bio_rep"))
+  expect_equal(
+    result@guideGIs@replicates,
+    c("guide_pair", "tech_rep", "bio_rep")
+  )
   expect_setequal(rownames(result@guideGIs@data), c("A;C", "B;D"))
   expect_equal(result@screen_attr$n_query_genes, 2L)
   expect_equal(result@screen_attr$n_lib_genes, 2L)
@@ -47,7 +50,14 @@ test_that("GIScores accepts data.tables without modifying the input", {
 
 test_that("GIScores standardizes custom input column names", {
   input <- make_fixed_pair_scores()
-  names(input) <- c("query", "library", "biological", "technical", "guide", "score")
+  names(input) <- c(
+    "query",
+    "library",
+    "biological",
+    "technical",
+    "guide",
+    "score"
+  )
 
   result <- GIScores(
     input,
@@ -61,7 +71,14 @@ test_that("GIScores standardizes custom input column names", {
   )
 
   expect_true(all(
-    c("query_gene", "library_gene", "bio_rep", "tech_rep", "guide_pair", "GI") %in%
+    c(
+      "query_gene",
+      "library_gene",
+      "bio_rep",
+      "tech_rep",
+      "guide_pair",
+      "GI"
+    ) %in%
       names(result@metadata$input)
   ))
   expect_equal(result@metadata$input$GI, seq_len(8))
@@ -102,7 +119,8 @@ test_that("GIScores can force a multiplex-shaped input to fixed-pair mode", {
 
 test_that("GIScores creates a position-agnostic symmetric multiplex screen", {
   input <- make_multiplex_scores()
-  input$GI <- as.numeric(factor(input$query_gene)) * 100 +
+  input$GI <- as.numeric(factor(input$query_gene)) *
+    100 +
     as.numeric(factor(input$library_gene))
   result <- GIScores(
     input,
@@ -110,9 +128,48 @@ test_that("GIScores creates a position-agnostic symmetric multiplex screen", {
     block_layer = "guide_pair"
   )
 
+  test_that("GIScores creates a global position-agnostic pair matrix", {
+    input <- make_multiplex_scores()
+    input$GI <- as.numeric(factor(input$query_gene)) *
+      100 +
+      as.numeric(factor(input$library_gene))
+
+    result <- GIScores(
+      input,
+      pos_agnostic = TRUE,
+      symmetric_analysis_method = "global_preaverage",
+      block_layer = "guide_pair"
+    )
+
+    expect_s4_class(result, "PosAgnMultiplexScreen")
+    expect_identical(
+      result@metadata$symmetric_analysis_method,
+      "global_preaverage"
+    )
+    expect_identical(result@guideGIs@space, "gene_pair")
+    expect_equal(
+      rownames(result@guideGIs@data),
+      result@screen_attr$unique_pairs
+    )
+    expect_equal(
+      ncol(result@guideGIs@data),
+      length(result@guideGIs@block_description)
+    )
+    expect_equal(
+      length(result@guideGIs@blocks),
+      ncol(result@guideGIs@data)
+    )
+
+    expected <- mean(c(
+      input$GI[input$query_gene == "G1" & input$library_gene == "G2"],
+      input$GI[input$query_gene == "G2" & input$library_gene == "G1"]
+    ))
+
+    expect_equal(result@guideGIs@data["G1;G2", 1L], expected)
+  })
   expect_s4_class(result, "PosAgnMultiplexScreen")
   for (replicate_name in result@guideGIs@block_description) {
-    expect_true(isSymmetric(result@guideGIs@data[, , replicate_name]))
+    expect_true(isSymmetric(result@guideGIs@data[,, replicate_name]))
   }
   expected <- mean(c(
     input$GI[input$query_gene == "G1" & input$library_gene == "G2"],

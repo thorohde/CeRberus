@@ -1,3 +1,5 @@
+#####
+
 read_instructions <- function(yaml_fpath) {
   stopifnot(
     "yaml_fpath must be a single path string." = is.character(yaml_fpath) &&
@@ -62,13 +64,20 @@ read_instructions <- function(yaml_fpath) {
     instr$FDR <- "BH"
   }
 
-  #  if (!"output_prefix" %in% names(instr) ||
-  #      instr$output_prefix == "") {
-  #    instr$output_prefix <- gsub(".csv$|.rds$", "",
-  #                                basename(instr$scores_file))
-  #  }
+  if (!"symmetric_analysis_method" %in% names(instr)) {
+    instr$symmetric_analysis_method <- "preaverage"
+  }
+
+  instr$symmetric_analysis_method <- validate_symmetric_analysis_method(
+    instr$symmetric_analysis_method
+  )
 
   instr$overwrite_output <- as_bool(instr$overwrite_output, default = TRUE)
+  instr$pos_agnostic <- as_bool(instr$pos_agnostic, default = FALSE)
+  instr$keep_all_configurations <- as_bool(
+    instr$keep_all_configurations,
+    default = FALSE
+  )
   instr$verbose <- as_bool(instr$verbose, default = FALSE)
 
   instr$output_directory <- normalizePath(
@@ -85,11 +94,13 @@ read_instructions <- function(yaml_fpath) {
   return(instr)
 }
 
+#####
 
 collect_all_layer_configurations <- function(
   GI_data,
   .to_use = c("tech_rep", "bio_rep", "guide_pair"),
-  make_pos_agnostic,
+  pos_agnostic = FALSE,
+  symmetric_analysis_method = "preaverage",
   verbose = FALSE
 ) {
   .collapsable_layers <- intersect(
@@ -104,7 +115,8 @@ collect_all_layer_configurations <- function(
     output[[str_c("default_", .use, "_used")]] <- GIScores(
       GI_data,
       block_layer = .use,
-      pos_agnostic = make_pos_agnostic,
+      pos_agnostic = pos_agnostic,
+      symmetric_analysis_method = symmetric_analysis_method,
       verbose = verbose
     )
   }
@@ -126,7 +138,8 @@ collect_all_layer_configurations <- function(
             GI_data,
             collapse_layers = .to_collapse,
             block_layer = .use,
-            pos_agnostic = make_pos_agnostic,
+            pos_agnostic = pos_agnostic,
+            symmetric_analysis_method = symmetric_analysis_method,
             verbose = verbose
           )
         }
@@ -136,6 +149,7 @@ collect_all_layer_configurations <- function(
   return(output)
 }
 
+#####
 
 find_optimal_configuration <- function(GI_list, keep_all = FALSE) {
   stopifnot(
@@ -210,3 +224,5 @@ find_optimal_configuration <- function(GI_list, keep_all = FALSE) {
     )
   }
 }
+
+#####

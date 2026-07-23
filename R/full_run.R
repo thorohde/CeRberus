@@ -1,15 +1,24 @@
-#' Run the Full GI Analysis Pipeline.
+#' Run the full GI analysis pipeline
 #'
 #' @param yaml_fpath Path to a YAML instruction file.
-#' @param return_output Binary that defines if the function should save
-#' @returns Saves the GI scores and plots to the output directory defined in
-#' the YAML file.
+#' @param return_output Logical scalar. If `TRUE`, return the retained screen
+#'   configurations. If `FALSE`, return `NULL` after completing the pipeline.
+#'
+#' @return A named list of retained CeRberus screen objects when
+#'   `return_output = TRUE`; otherwise `NULL`.
+#'
 #' @export
 
-full_run <- function(yaml_fpath, return_output = TRUE) {
-  instr <- read_instructions(yaml_fpath)
+#####
 
-  stopifnot("Output directory required!" = !is.null(instr$output_directory))
+full_run <- function(yaml_fpath, return_output = TRUE) {
+  stopifnot(
+    "return_output must be TRUE or FALSE." = is.logical(return_output) &&
+      length(return_output) == 1L &&
+      !is.na(return_output)
+  )
+
+  instr <- read_instructions(yaml_fpath)
 
   dir.create(instr$output_directory, showWarnings = FALSE, recursive = TRUE)
 
@@ -39,13 +48,10 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
     )
   )
 
-  .make_symmetric <- "make_symmetric" %in%
-    names(instr) &&
-    (isTRUE(instr$make_symmetric))
-
   .data <- collect_all_layer_configurations(
     .data,
-    make_pos_agnostic = .make_symmetric,
+    pos_agnostic = instr$pos_agnostic,
+    symmetric_analysis_method = instr$symmetric_analysis_method,
     verbose = instr$verbose
   )
 
@@ -58,13 +64,12 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
     saveRDS(.data, file.path(instr$output_directory, "all_GI_objects.rds"))
   }
 
-  .keep_all <- "keep_all_configurations" %in%
-    names(instr) &&
-    (isTRUE(instr$keep_all_configurations))
+  .data <- find_optimal_configuration(
+    .data,
+    keep_all = instr$keep_all_configurations
+  )
 
-  .data <- find_optimal_configuration(.data, keep_all = .keep_all)
-
-  if (isTRUE(instr$overwrite_output)) {
+  if (instr$overwrite_output) {
     .data <- .data |>
       compute_dupcor_plot(
         .fpath = file.path(
@@ -86,7 +91,7 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
     })
   }
 
-  if ("output_directory" %in% names(instr) & instr$overwrite_output) {
+  if (instr$overwrite_output) {
     .output <- list()
 
     .output$duplicate_correlation <- .data[[1]]@metadata$dupcor_data
@@ -110,11 +115,11 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
     #writeLines(.log, file.path(instr$output_directory, "limma.log"))
   }
 
-  #}####
-
-  #if (instr$verbose) {print("(5/5)")}
   if (!return_output) {
-    .data <- NULL
+    return(NULL)
   }
+
   return(.data)
 }
+
+#####

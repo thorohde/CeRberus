@@ -2,6 +2,9 @@
 #'   [`gRNA_GI-class`] object by averaging over layers listed in the `collapse`
 #'   slot.
 #' @aliases collapse_replicates,gRNA_GI-method
+
+#####
+
 setMethod(
   "collapse_replicates",
   signature = signature(.x = "gRNA_GI"),
@@ -48,6 +51,7 @@ setMethod(
   }
 )
 
+#####
 
 setMethod(
   "flatten_guideGIs",
@@ -85,6 +89,7 @@ setMethod(
   }
 )
 
+#####
 
 setMethod(
   "compute_dupCorrelation",
@@ -136,3 +141,5 @@ setMethod(
     return(output)
   }
 )
+
+#####

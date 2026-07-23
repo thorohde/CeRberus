@@ -12,6 +12,8 @@
 #'
 #' @export
 
+#####
+
 normalize_readcounts <- function(readcounts, cf1 = 100, cf2 = 1) {
   stopifnot(
     "readcounts must be numeric." = is.numeric(readcounts),
@@ -41,3 +43,5 @@ normalize_readcounts <- function(readcounts, cf1 = 100, cf2 = 1) {
   } #smallest value is 0 regardless of cf2
   x
 }
+
+#####

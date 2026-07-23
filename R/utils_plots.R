@@ -1,3 +1,5 @@
+#####
+
 compute_dupcor_plot <- function(GI_list, .fpath = NULL, verbose = FALSE) {
   stopifnot(
     "GI_list must contain at least one screen object." = length(GI_list) > 0,
@@ -41,3 +43,5 @@ compute_dupcor_plot <- function(GI_list, .fpath = NULL, verbose = FALSE) {
   }
   return(GI_list)
 }
+
+#####

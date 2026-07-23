@@ -21,10 +21,12 @@ make_compute_models_screen <- function(
   class,
   guideGIs,
   dupCorrelation,
-  screen_attr = list()
+  screen_attr = list(),
+  metadata = list(),
+  symmGeneGIs = data.table::data.table()
 ) {
-  methods::new(
-    class,
+  args <- list(
+    Class = class,
     guideLFCs = methods::new(
       "gRNA_LFC",
       data = array(numeric(), dim = 0),
@@ -36,10 +38,16 @@ make_compute_models_screen <- function(
     geneGIs = array(numeric(), dim = 0),
     screen_attr = screen_attr,
     dupCorrelation = dupCorrelation,
-    metadata = list(),
+    metadata = metadata,
     checks = list(),
     errors = list()
   )
+
+  if (identical(class, "PosAgnMultiplexScreen")) {
+    args$symmGeneGIs <- symmGeneGIs
+  }
+
+  do.call(methods::new, args)
 }
 
 make_fixed_pair_model_matrix <- function() {
@@ -159,6 +167,55 @@ test_that("compute_models fits one limma model per multiplex query gene", {
   expect_equal(result@errors$query_genes_not_usable, character())
   expect_named(result@errors$GI_computation_errors, c("Q1", "Q2"))
   expect_true(all(purrr::map_lgl(result@errors$GI_computation_errors, is.null)))
+})
+
+
+test_that("compute_models fits one global model for global_preaverage screens", {
+  data <- make_fixed_pair_model_matrix()
+  guideGIs <- make_gRNA_GI_for_compute_models(
+    data = data,
+    space = "gene_pair"
+  )
+  screen <- make_compute_models_screen(
+    class = "PosAgnMultiplexScreen",
+    guideGIs = guideGIs,
+    dupCorrelation = 0.1,
+    screen_attr = list(unique_pairs = rownames(data)),
+    metadata = list(symmetric_analysis_method = "global_preaverage")
+  )
+
+  result <- compute_models(screen)
+
+  expect_s4_class(result, "PosAgnMultiplexScreen")
+  expect_true(inherits(result@limma_models, "MArrayLM"))
+  expect_equal(rownames(result@limma_models$coefficients), rownames(data))
+  expect_equal(nrow(result@limma_models$coefficients), nrow(data))
+  expect_equal(nrow(result@limma_models$p.value), nrow(data))
+})
+
+
+test_that("compute_models retains per-query models for preaverage screens", {
+  data <- make_multiplex_model_array()
+  guideGIs <- make_gRNA_GI_for_compute_models(
+    data = data,
+    space = c("query_gene", "library_gene")
+  )
+  screen <- make_compute_models_screen(
+    class = "PosAgnMultiplexScreen",
+    guideGIs = guideGIs,
+    dupCorrelation = c(Q1 = 0.05, Q2 = 0.1),
+    screen_attr = list(
+      query_genes = c("Q1", "Q2"),
+      library_genes = c("L1", "L2", "L3")
+    ),
+    metadata = list(symmetric_analysis_method = "preaverage")
+  )
+
+  result <- compute_models(screen)
+
+  expect_s4_class(result, "PosAgnMultiplexScreen")
+  expect_named(result@limma_models, c("Q1", "Q2"))
+  expect_true(all(purrr::map_lgl(result@limma_models, inherits, "MArrayLM")))
 })
 
 test_that("compute_models stores failed multiplex query models and warns", {

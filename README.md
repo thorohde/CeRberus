@@ -116,7 +116,8 @@ The YAML instruction file controls the pipeline run.
 |---|---|---|
 | `FDR` | Multiple-testing correction method. Currently supported: `BH`, `bonferroni` | `BH` |
 | `overwrite_output` | Whether to write output files to `output_directory` | `TRUE` |
-| `make_symmetric` | Aggregate symmetric multiplex screens into one score per unordered gene pair | `FALSE` |
+| `pos_agnostic` | Average both orientations for position-agnostic multiplex analysis | `FALSE` |
+| `symmetric_analysis_method` | Position-agnostic strategy: `preaverage` or `global_preaverage` | `preaverage` |
 | `keep_all_configurations` | Keep all tested replicate/blocking configurations instead of only the selected one | `FALSE` |
 | `verbose` | Print additional progress information and screen summaries | `FALSE` |
 
@@ -127,7 +128,8 @@ scores_file: "path/to/guide_scores.csv"
 output_directory: "path/to/output"
 FDR: "BH"
 overwrite_output: true
-make_symmetric: false
+pos_agnostic: false
+symmetric_analysis_method: "preaverage"
 keep_all_configurations: false
 verbose: false
 ```

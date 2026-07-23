@@ -23,6 +23,9 @@ test_that("read_instructions reads a valid YAML instruction file", {
     output_directory = output_directory,
     FDR = "bonferroni",
     overwrite_output = FALSE,
+    pos_agnostic = TRUE,
+    symmetric_analysis_method = "global_preaverage",
+    keep_all_configurations = TRUE,
     verbose = TRUE
   )
 
@@ -40,6 +43,9 @@ test_that("read_instructions reads a valid YAML instruction file", {
   )
   expect_equal(result$FDR, "bonferroni")
   expect_false(result$overwrite_output)
+  expect_true(result$pos_agnostic)
+  expect_identical(result$symmetric_analysis_method, "global_preaverage")
+  expect_true(result$keep_all_configurations)
   expect_true(result$verbose)
 })
 
@@ -140,6 +146,64 @@ test_that("read_instructions defaults invalid or missing FDR to BH", {
   )
 
   expect_equal(read_instructions(yaml_fpath)$FDR, "BH")
+})
+
+test_that("read_instructions preserves position-agnostic pipeline defaults", {
+  scores_file <- tempfile(fileext = ".csv")
+  output_directory <- tempdir()
+  yaml_fpath <- tempfile(fileext = ".yaml")
+  file.create(scores_file)
+
+  write_instruction_file(
+    yaml_fpath,
+    scores_file = scores_file,
+    output_directory = output_directory
+  )
+
+  result <- read_instructions(yaml_fpath)
+
+  expect_false(result$pos_agnostic)
+  expect_identical(result$symmetric_analysis_method, "preaverage")
+  expect_false(result$keep_all_configurations)
+})
+
+test_that("read_instructions rejects unsupported symmetric analysis methods", {
+  scores_file <- tempfile(fileext = ".csv")
+  output_directory <- tempdir()
+  yaml_fpath <- tempfile(fileext = ".yaml")
+  file.create(scores_file)
+
+  write_instruction_file(
+    yaml_fpath,
+    scores_file = scores_file,
+    output_directory = output_directory,
+    symmetric_analysis_method = "joint_orientation"
+  )
+
+  expect_error(
+    read_instructions(yaml_fpath),
+    "should be.*preaverage"
+  )
+})
+
+
+test_that("read_instructions accepts global_preaverage", {
+  scores_file <- tempfile(fileext = ".csv")
+  output_directory <- tempdir()
+  yaml_fpath <- tempfile(fileext = ".yaml")
+  file.create(scores_file)
+
+  write_instruction_file(
+    yaml_fpath,
+    scores_file = scores_file,
+    output_directory = output_directory,
+    symmetric_analysis_method = "global_preaverage"
+  )
+
+  expect_identical(
+    read_instructions(yaml_fpath)$symmetric_analysis_method,
+    "global_preaverage"
+  )
 })
 
 test_that("read_instructions parses boolean-like values", {

@@ -6,7 +6,9 @@
 #'
 #' @slot guideLFCs A [`gRNA_LFC-class`] object.
 #' @slot guideGIs A [`gRNA_GI-class`] object.
-#' @slot limma_models List of fitted limma model objects.
+#' @slot limma_models Fitted limma output. Multiplex analyses usually store a
+#'   list of per-query models; global position-agnostic analysis stores one
+#'   `MArrayLM` object covering all unordered pairs.
 #' @slot geneGIs Numeric array of aggregated gene-level GI scores, p-values, and
 #'   FDR values.
 #' @slot screen_attr List of inferred screen attributes.
@@ -58,8 +60,11 @@ setClass("MultiplexScreen", contains = "ScreenBase")
 #' Position-agnostic multiplex CRISPR screen
 #'
 #' @description
-#' S4 class for multiplex screens whose directional guide-level scores have
-#' been symmetrized before gene-pair aggregation.
+#' S4 class for multiplex screens analyzed without distinguishing query-library
+#' orientation in the final gene-pair output. Pair orientations are averaged
+#' before model fitting. Depending on the selected symmetric analysis method,
+#' limma models are fitted either per query gene or once across all unordered
+#' gene pairs.
 #'
 #' @slot symmGeneGIs Data table with one row per unordered gene pair.
 #'

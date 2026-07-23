@@ -1,3 +1,5 @@
+#####
+
 setMethod(
   "screenReport",
   signature = signature(GI_obj = "ScreenBase"),
@@ -69,6 +71,18 @@ setMethod(
       )
     )
 
+    .symmetric_method <- if (methods::is(GI_obj, "PosAgnMultiplexScreen")) {
+      get_symmetric_analysis_method(GI_obj)
+    } else {
+      "not applicable"
+    }
+
+    .model_count <- if (inherits(GI_obj@limma_models, "MArrayLM")) {
+      1L
+    } else {
+      length(GI_obj@limma_models)
+    }
+
     .decisions <- c(
       paste0("Selected model strategy: ", .type),
       paste0("Forced fixed-pair run: ", isTRUE(.md$force_fixed_pair)),
@@ -76,7 +90,8 @@ setMethod(
         "Position-agnostic output: ",
         methods::is(GI_obj, "PosAgnMultiplexScreen")
       ),
-      paste0("Model objects available: ", length(GI_obj@limma_models)),
+      paste0("Symmetric analysis method: ", .symmetric_method),
+      paste0("Model objects available: ", .model_count),
       paste0("Gene-level GI array available: ", length(GI_obj@geneGIs) > 0)
     )
 
@@ -162,3 +177,5 @@ setMethod(
     invisible(.report)
   }
 )
+
+#####

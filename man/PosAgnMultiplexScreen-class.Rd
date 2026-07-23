@@ -5,8 +5,11 @@
 \alias{PosAgnMultiplexScreen-class}
 \title{Position-agnostic multiplex CRISPR screen}
 \description{
-S4 class for multiplex screens whose directional guide-level scores have
-been symmetrized before gene-pair aggregation.
+S4 class for multiplex screens analyzed without distinguishing query-library
+orientation in the final gene-pair output. Pair orientations are averaged
+before model fitting. Depending on the selected symmetric analysis method,
+limma models are fitted either per query gene or once across all unordered
+gene pairs.
 }
 \section{Slots}{
 

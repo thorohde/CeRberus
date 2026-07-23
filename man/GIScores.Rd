@@ -16,6 +16,7 @@ GIScores(
   block_layer = NULL,
   force_fixed_pair = FALSE,
   pos_agnostic = FALSE,
+  symmetric_analysis_method = "preaverage",
   verbose = FALSE
 )
 }
@@ -44,8 +45,18 @@ for duplicate-correlation modelling.}
 \item{force_fixed_pair}{Logical. If \code{TRUE}, force construction as a
 fixed-pair screen regardless of the inferred screen attributes.}
 
-\item{pos_agnostic}{Logical. If \code{TRUE} and the inferred screen is multiplex,
-symmetrize guide-level scores and return a \code{PosAgnMultiplexScreen} object.}
+\item{pos_agnostic}{Logical. If \code{TRUE}, opt into position-agnostic analysis
+for an inferred multiplex screen by averaging both orientations of each
+gene pair. The default, \code{FALSE}, retains directional query-by-library
+analysis.}
+
+\item{symmetric_analysis_method}{Character scalar specifying how
+position-agnostic multiplex screens are modeled. \code{preaverage} averages
+both pair orientations before fitting one limma model per query gene.
+\code{global_preaverage} performs the same orientation averaging, converts the
+result to one row per unordered gene pair, and fits one limma model across
+all unordered pairs. This argument is only used when
+\code{pos_agnostic = TRUE}; directional analysis remains the default.}
 
 \item{verbose}{Logical. If \code{TRUE}, print a short screen summary.}
 }

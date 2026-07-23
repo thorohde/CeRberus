@@ -85,6 +85,21 @@ make_multiplex_dupCorrelation_array <- function() {
   )
 }
 
+
+make_global_dupCorrelation_scores <- function(n_genes = 20L) {
+  genes <- paste0("G", seq_len(n_genes))
+  input <- expand.grid(
+    query_gene = genes,
+    library_gene = genes,
+    guide_pair = c("g1", "g2"),
+    bio_rep = c("b1", "b2"),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  input$GI <- seq_len(nrow(input))
+  input
+}
+
 test_that("compute_dupCorrelation for one space dimension calls limma without blocks when use_blocks is FALSE", {
   data <- make_fixed_pair_dupCorrelation_matrix()
   object <- make_gRNA_GI_for_dupCorrelation(data)
@@ -187,5 +202,28 @@ test_that("compute_dupCorrelation for ScreenBase stores the guide-level duplicat
   expect_equal(mocked$result@dupCorrelation, c(Q1 = 0.5, Q2 = 0.6))
   expect_equal(mocked$result@guideGIs, guideGIs)
   expect_length(mocked$calls, 2L)
-}
-)
+})
+
+
+test_that("global_preaverage computes one duplicate correlation over all pairs", {
+  screen <- GIScores(
+    make_global_dupCorrelation_scores(),
+    pos_agnostic = TRUE,
+    symmetric_analysis_method = "global_preaverage",
+    block_layer = "guide_pair"
+  )
+  expected_data <- screen@guideGIs@data
+  expected_blocks <- screen@guideGIs@blocks
+
+  mocked <- with_mocked_duplicateCorrelation(
+    compute_dupCorrelation(screen),
+    correlations = list(0.321)
+  )
+
+  expect_s4_class(mocked$result, "PosAgnMultiplexScreen")
+  expect_equal(mocked$result@dupCorrelation, 0.321)
+  expect_length(mocked$calls, 1L)
+  expect_equal(mocked$calls[[1L]]$object, expected_data)
+  expect_equal(mocked$calls[[1L]]$block, expected_blocks)
+  expect_null(mocked$calls[[1L]]$ndups)
+})

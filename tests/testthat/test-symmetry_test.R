@@ -1,4 +1,9 @@
-make_multiplex_screen_for_symmetry <- function(data, replicates = dimnames(data)[[3L]]) {
+#####
+
+make_multiplex_screen_for_symmetry <- function(
+  data,
+  replicates = dimnames(data)[[3L]]
+) {
   guideGIs <- methods::new(
     "gRNA_GI",
     data = data,
@@ -30,12 +35,19 @@ make_multiplex_screen_for_symmetry <- function(data, replicates = dimnames(data)
   )
 }
 
+#####
+
 make_screenbase_for_symmetry <- function(data) {
   screen <- make_multiplex_screen_for_symmetry(data)
   methods::as(screen, "ScreenBase")
 }
 
-make_symmetry_array <- function(..., replicate_names = paste0("r", seq_along(list(...)))) {
+#####
+
+make_symmetry_array <- function(
+  ...,
+  replicate_names = paste0("r", seq_along(list(...)))
+) {
   matrices <- list(...)
   stopifnot(length(matrices) > 0L)
 
@@ -51,6 +63,8 @@ make_symmetry_array <- function(..., replicate_names = paste0("r", seq_along(lis
   output
 }
 
+#####
+
 make_named_matrix <- function(values) {
   matrix(
     values,
@@ -63,11 +77,19 @@ make_named_matrix <- function(values) {
   )
 }
 
+#####
+
 test_that("symmetry_test returns TRUE for exactly symmetric guide GI matrices", {
   symmetric_matrix <- make_named_matrix(c(
-    1, 2, 3,
-    2, 4, 5,
-    3, 5, 6
+    1,
+    2,
+    3,
+    2,
+    4,
+    5,
+    3,
+    5,
+    6
   ))
   screen <- make_multiplex_screen_for_symmetry(
     make_symmetry_array(symmetric_matrix, replicate_names = "rep1")
@@ -76,11 +98,19 @@ test_that("symmetry_test returns TRUE for exactly symmetric guide GI matrices", 
   expect_true(symmetry_test(screen))
 })
 
+#####
+
 test_that("symmetry_test accepts matrices that are symmetric within dplyr near tolerance", {
   near_symmetric_matrix <- make_named_matrix(c(
-    1, 2, 3,
-    2 + 1e-9, 4, 5,
-    3, 5 + 1e-9, 6
+    1,
+    2,
+    3,
+    2 + 1e-9,
+    4,
+    5,
+    3,
+    5 + 1e-9,
+    6
   ))
   screen <- make_multiplex_screen_for_symmetry(
     make_symmetry_array(near_symmetric_matrix, replicate_names = "rep1")
@@ -89,11 +119,19 @@ test_that("symmetry_test accepts matrices that are symmetric within dplyr near t
   expect_true(symmetry_test(screen))
 })
 
+#####
+
 test_that("symmetry_test uses correlation cutoff for non-exactly symmetric matrices", {
   correlated_matrix <- make_named_matrix(c(
-    1.0, 2.0, 3.0,
-    2.1, 4.0, 5.0,
-    3.1, 5.1, 6.0
+    1.0,
+    2.0,
+    3.0,
+    2.1,
+    4.0,
+    5.0,
+    3.1,
+    5.1,
+    6.0
   ))
   screen <- make_multiplex_screen_for_symmetry(
     make_symmetry_array(correlated_matrix, replicate_names = "rep1")
@@ -110,16 +148,30 @@ test_that("symmetry_test uses correlation cutoff for non-exactly symmetric matri
   expect_false(symmetry_test(screen, cutoff = observed_correlation + 1e-6))
 })
 
+#####
+
 test_that("symmetry_test requires all replicate layers to pass", {
   symmetric_matrix <- make_named_matrix(c(
-    1, 2, 3,
-    2, 4, 5,
-    3, 5, 6
+    1,
+    2,
+    3,
+    2,
+    4,
+    5,
+    3,
+    5,
+    6
   ))
   asymmetric_matrix <- make_named_matrix(c(
-    1, 2, 9,
-    4, 5, 6,
-    7, 8, 3
+    1,
+    2,
+    9,
+    4,
+    5,
+    6,
+    7,
+    8,
+    3
   ))
   screen <- make_multiplex_screen_for_symmetry(
     make_symmetry_array(
@@ -132,11 +184,19 @@ test_that("symmetry_test requires all replicate layers to pass", {
   expect_false(symmetry_test(screen, cutoff = 0.99))
 })
 
+#####
+
 test_that("symmetry_test uses pairwise complete observations for missing values", {
   matrix_with_missing_values <- make_named_matrix(c(
-    1.0, 2.0, NA,
-    2.1, 4.0, 5.0,
-    NA, 5.1, 6.0
+    1.0,
+    2.0,
+    NA,
+    2.1,
+    4.0,
+    5.0,
+    NA,
+    5.1,
+    6.0
   ))
   screen <- make_multiplex_screen_for_symmetry(
     make_symmetry_array(matrix_with_missing_values, replicate_names = "rep1")
@@ -145,11 +205,19 @@ test_that("symmetry_test uses pairwise complete observations for missing values"
   expect_true(symmetry_test(screen, cutoff = 0.99))
 })
 
+#####
+
 test_that("symmetry_test is only implemented for multiplex screens", {
   symmetric_matrix <- make_named_matrix(c(
-    1, 2, 3,
-    2, 4, 5,
-    3, 5, 6
+    1,
+    2,
+    3,
+    2,
+    4,
+    5,
+    3,
+    5,
+    6
   ))
   screen <- make_screenbase_for_symmetry(
     make_symmetry_array(symmetric_matrix, replicate_names = "rep1")

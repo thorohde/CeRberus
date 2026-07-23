@@ -23,8 +23,17 @@
 #'   for duplicate-correlation modelling.
 #' @param force_fixed_pair Logical. If `TRUE`, force construction as a
 #'   fixed-pair screen regardless of the inferred screen attributes.
-#' @param pos_agnostic Logical. If `TRUE` and the inferred screen is multiplex,
-#'   symmetrize guide-level scores and return a `PosAgnMultiplexScreen` object.
+#' @param pos_agnostic Logical. If `TRUE`, opt into position-agnostic analysis
+#'   for an inferred multiplex screen by averaging both orientations of each
+#'   gene pair. The default, `FALSE`, retains directional query-by-library
+#'   analysis.
+#' @param symmetric_analysis_method Character scalar specifying how
+#'   position-agnostic multiplex screens are modeled. `preaverage` averages
+#'   both pair orientations before fitting one limma model per query gene.
+#'   `global_preaverage` performs the same orientation averaging, converts the
+#'   result to one row per unordered gene pair, and fits one limma model across
+#'   all unordered pairs. This argument is only used when
+#'   `pos_agnostic = TRUE`; directional analysis remains the default.
 #' @param verbose Logical. If `TRUE`, print a short screen summary.
 #'
 #' @return An S4 object inheriting from `ScreenBase`, typically a
@@ -44,9 +53,25 @@ GIScores <- function(
   block_layer = NULL,
   force_fixed_pair = FALSE,
   pos_agnostic = FALSE,
+  symmetric_analysis_method = "preaverage",
   verbose = FALSE
 ) {
-  #message(paste0("Collapsing layers: ", collapse_layers, collapse = ", "))
+  if (
+    !is.logical(pos_agnostic) ||
+      length(pos_agnostic) != 1L ||
+      is.na(pos_agnostic)
+  ) {
+    stop(
+      "pos_agnostic must be TRUE or FALSE.",
+      call. = FALSE
+    )
+  }
+
+  if (isTRUE(pos_agnostic)) {
+    symmetric_analysis_method <- validate_symmetric_analysis_method(
+      symmetric_analysis_method
+    )
+  }
 
   GI_obj <- new(
     "ScreenBase",
@@ -58,7 +83,8 @@ GIScores <- function(
       tech_rep_col = tech_rep_col,
       guide_col = guide_col,
       gi_col = gi_col,
-      force_fixed_pair = force_fixed_pair
+      force_fixed_pair = force_fixed_pair,
+      symmetric_analysis_method = symmetric_analysis_method
     )
   )
 
@@ -70,32 +96,54 @@ GIScores <- function(
   GI_obj <- run_checks(GI_obj)
   GI_obj <- set_screenType(GI_obj)
 
+  if (pos_agnostic && !methods::is(GI_obj, "MultiplexScreen")) {
+    stop(
+      "Position-agnostic analysis is only available for inferred multiplex screens.",
+      call. = FALSE
+    )
+  }
+
   GI_obj@guideGIs <- GI_obj@guideGIs |> fill_gRNA_GIs(GI_obj@metadata$input)
   GI_obj@guideGIs <- GI_obj@guideGIs |> collapse_replicates()
   GI_obj@guideGIs <- GI_obj@guideGIs |> flatten_guideGIs()
 
-  #  if (is(GI_obj, "MultiplexScreen") & pos_agnostic) {
-  #for (.r in GI_obj@guideGIs@block_description) {
-  #  GI_obj@guideGIs@data[,, .r] <- makeSymmetric(GI_obj@guideGIs@data[,, .r])
-  #}
-  #GI_obj <- as(object = GI_obj, Class = "PosAgnMultiplexScreen")
-  #  }
+  if (methods::is(GI_obj, "MultiplexScreen") && pos_agnostic) {
+    query_genes <- rownames(GI_obj@guideGIs@data)
+    library_genes <- colnames(GI_obj@guideGIs@data)
 
-  if (is(GI_obj, "MultiplexScreen") && pos_agnostic) {
-    if (!isTRUE(GI_obj@checks$gene_sets_equal)) {
-      warning(
-        "Position-agnostic symmetrization requested, but query/library gene sets ",
-        "are not sufficiently overlapping. Keeping asymmetric MultiplexScreen.",
+    if (!setequal(query_genes, library_genes)) {
+      stop(
+        "Position-agnostic analysis requires identical query and library gene sets.",
         call. = FALSE
       )
-    } else {
-      for (.r in GI_obj@guideGIs@block_description) {
-        GI_obj@guideGIs@data[,, .r] <- makeSymmetric(GI_obj@guideGIs@data[,,
-          .r
-        ])
-      }
-      GI_obj <- as(object = GI_obj, Class = "PosAgnMultiplexScreen")
     }
+
+    GI_obj@guideGIs@data <- GI_obj@guideGIs@data[
+      query_genes,
+      query_genes,
+      ,
+      drop = FALSE
+    ]
+
+    for (.r in GI_obj@guideGIs@block_description) {
+      GI_obj@guideGIs@data[,, .r] <- makeSymmetric(
+        GI_obj@guideGIs@data[,, .r]
+      )
+    }
+
+    if (identical(symmetric_analysis_method, "global_preaverage")) {
+      GI_obj@guideGIs@data <- flatten_symmetric_pairs(
+        .arr = GI_obj@guideGIs@data,
+        pairs = GI_obj@screen_attr$unique_pairs
+      )
+
+      GI_obj@guideGIs@space <- "gene_pair"
+    }
+
+    GI_obj <- methods::as(
+      object = GI_obj,
+      Class = "PosAgnMultiplexScreen"
+    )
   }
 
   if (isTRUE(verbose)) {

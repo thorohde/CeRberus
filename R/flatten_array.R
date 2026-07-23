@@ -28,6 +28,8 @@
 #'
 #' @export
 
+#####
+
 flatten_array <- \(x, dnames, value.name = "value") {
   stopifnot("Please provide an array!" = !is.null(dim(x)))
 
@@ -72,3 +74,5 @@ flatten_array <- \(x, dnames, value.name = "value") {
 
   return(output)
 }
+
+#####

@@ -12,66 +12,104 @@
 setMethod("checks", "ScreenBase", function(x) {
   return(slot(x, "checks"))
 })
+
+#####
+
 setMethod("checks<-", "ScreenBase", function(x, value) {
   slot(x, "checks") <- value
   return(x)
 })
 
+#####
+
 setMethod("dupCorrelation", "ScreenBase", function(x) {
   return(slot(x, "dupCorrelation"))
 })
+
+#####
+
 setMethod("dupCorrelation<-", "ScreenBase", function(x, value) {
   slot(x, "dupCorrelation") <- value
   return(x)
 })
 
+#####
+
 setMethod("errors", "ScreenBase", function(x) {
   return(slot(x, "errors"))
 })
+
+#####
+
 setMethod("errors<-", "ScreenBase", function(x, value) {
   slot(x, "errors") <- value
   return(x)
 })
 
+#####
+
 setMethod("geneGIs", "ScreenBase", function(x) {
   return(slot(x, "geneGIs"))
 })
+
+#####
+
 setMethod("geneGIs<-", "ScreenBase", function(x, value) {
   slot(x, "geneGIs") <- value
   return(x)
 })
 
+#####
+
 setMethod("guideGIs", "ScreenBase", function(x) {
   return(slot(x, "guideGIs"))
 })
+
+#####
+
 setMethod("guideGIs<-", "ScreenBase", function(x, value) {
   slot(x, "guideGIs") <- value
   return(x)
 })
 
+#####
+
 setMethod("limma_models", "ScreenBase", function(x) {
   return(slot(x, "limma_models"))
 })
+
+#####
+
 setMethod("limma_models<-", "ScreenBase", function(x, value) {
   slot(x, "limma_models") <- value
   return(x)
 })
 
+#####
+
 setMethod("screen_attr", "ScreenBase", function(x) {
   return(slot(x, "screen_attr"))
 })
+
+#####
+
 setMethod("screen_attr<-", "ScreenBase", function(x, value) {
   slot(x, "screen_attr") <- value
   return(x)
 })
 
+#####
+
 setMethod("symmGeneGIs", "ScreenBase", function(x) {
   stop(
     "symmGeneGIs is only available for PosAgnMultiplexScreen objects. ",
-    "Run with make_symmetric = TRUE / position-agnostic multiplex mode first.",
+    "Run with pos_agnostic = TRUE first.",
     call. = FALSE
   )
 })
+
+#####
+
 setMethod("symmGeneGIs<-", "ScreenBase", function(x, value) {
   stop(
     "symmGeneGIs can only be assigned for PosAgnMultiplexScreen objects.",
@@ -79,15 +117,20 @@ setMethod("symmGeneGIs<-", "ScreenBase", function(x, value) {
   )
 })
 
+#####
+
 setMethod("symmGeneGIs", "PosAgnMultiplexScreen", function(x) {
   slot(x, "symmGeneGIs")
 })
+
+#####
 
 setMethod("symmGeneGIs<-", "PosAgnMultiplexScreen", function(x, value) {
   slot(x, "symmGeneGIs") <- value
   x
 })
 
+#####
 
 setMethod(
   "import_scores",
@@ -143,6 +186,7 @@ setMethod(
   }
 )
 
+#####
 
 setMethod(
   "get_screen_attributes",
@@ -178,6 +222,7 @@ setMethod(
   }
 )
 
+#####
 
 setMethod(
   "run_checks",
@@ -205,6 +250,8 @@ setMethod(
     return(GI_obj)
   }
 )
+
+#####
 
 setMethod(
   "set_screenType",
@@ -255,6 +302,7 @@ setMethod(
   }
 )
 
+#####
 
 setMethod(
   "compute_dupCorrelation",
@@ -265,6 +313,7 @@ setMethod(
   }
 )
 
+#####
 
 setMethod(
   "compute_models",
@@ -279,6 +328,8 @@ setMethod(
     return(GI_obj)
   }
 )
+
+#####
 
 setMethod(
   "compute_models",
@@ -319,8 +370,74 @@ setMethod(
   }
 )
 
+#####
 
-###
+setMethod(
+  "compute_models",
+  signature = signature(GI_obj = "PosAgnMultiplexScreen"),
+  function(GI_obj) {
+    symmetric_analysis_method <- get_symmetric_analysis_method(GI_obj)
+
+    if (identical(symmetric_analysis_method, "preaverage")) {
+      return(methods::callNextMethod(GI_obj))
+    }
+
+    if (!identical(symmetric_analysis_method, "global_preaverage")) {
+      stop(
+        "Unsupported symmetric analysis method: ",
+        symmetric_analysis_method,
+        call. = FALSE
+      )
+    }
+
+    if (length(dim(GI_obj@guideGIs@data)) != 2L) {
+      stop(
+        "global_preaverage requires a pair-by-observation guide-level matrix.",
+        call. = FALSE
+      )
+    }
+
+    if (
+      !identical(
+        rownames(GI_obj@guideGIs@data),
+        GI_obj@screen_attr$unique_pairs
+      )
+    ) {
+      stop(
+        "The global model matrix rows do not match the stored unordered pairs.",
+        call. = FALSE
+      )
+    }
+
+    if (length(GI_obj@dupCorrelation) != 1L) {
+      stop(
+        "global_preaverage requires one global duplicate-correlation estimate.",
+        call. = FALSE
+      )
+    }
+
+    if (
+      isTRUE(GI_obj@guideGIs@use_blocks) &&
+        length(GI_obj@guideGIs@blocks) != ncol(GI_obj@guideGIs@data)
+    ) {
+      stop(
+        "The number of block assignments does not match the global model columns.",
+        call. = FALSE
+      )
+    }
+
+    GI_obj@limma_models <- limma::lmFit(
+      object = GI_obj@guideGIs@data,
+      block = GI_obj@guideGIs@blocks,
+      correlation = GI_obj@dupCorrelation
+    ) |>
+      limma::eBayes()
+
+    return(GI_obj)
+  }
+)
+
+#####
 
 setMethod(
   "collect_GIs",
@@ -349,6 +466,7 @@ setMethod(
   }
 )
 
+#####
 
 setMethod(
   "collect_GIs",
@@ -403,44 +521,96 @@ setMethod(
   }
 )
 
+#####
 
 setMethod(
   "collect_GIs",
   signature = signature(GI_obj = "PosAgnMultiplexScreen"),
   function(GI_obj, FDR_method = "BH") {
-    GI_obj <- methods::callNextMethod(GI_obj)
+    stopifnot(
+      "Unknown FDR method provided." = FDR_method %in% p.adjust.methods
+    )
 
-    .x <- data.table(gene_pair = GI_obj@screen_attr$unique_pairs)
+    symmetric_analysis_method <- get_symmetric_analysis_method(GI_obj)
 
-    .x[, query_gene := str_split_i(gene_pair, ";", 1)]
-    .x[, library_gene := str_split_i(gene_pair, ";", 2)]
-    .x[,
-      GI := gather_symmetric_scores(
-        pairs = gene_pair,
-        .arr = GI_obj@geneGIs[,, "GI"]
-      )
-    ]
-    .x[, GI_z := z_transform(GI)]
-    .x[,
-      pval := gather_symmetric_scores(
-        pairs = gene_pair,
-        .arr = GI_obj@geneGIs[,, "pval"]
-      )
-    ]
-    .x[,
-      FDR := balanced_FDR(
-        pairs = gene_pair,
-        pval_array = GI_obj@geneGIs[,, "pval"],
-        fdr_method = FDR_method
-      )
-    ]
+    if (identical(symmetric_analysis_method, "preaverage")) {
+      GI_obj <- methods::callNextMethod(GI_obj)
 
-    GI_obj@symmGeneGIs <- .x
+      .x <- data.table(gene_pair = GI_obj@screen_attr$unique_pairs)
+
+      .x[, query_gene := str_split_i(gene_pair, ";", 1)]
+      .x[, library_gene := str_split_i(gene_pair, ";", 2)]
+      .x[,
+        GI := gather_symmetric_scores(
+          pairs = gene_pair,
+          .arr = GI_obj@geneGIs[,, "GI"]
+        )
+      ]
+      .x[, GI_z := z_transform(GI)]
+      .x[,
+        pval := gather_symmetric_scores(
+          pairs = gene_pair,
+          .arr = GI_obj@geneGIs[,, "pval"]
+        )
+      ]
+      .x[,
+        FDR := balanced_FDR(
+          pairs = gene_pair,
+          pval_array = GI_obj@geneGIs[,, "pval"],
+          fdr_method = FDR_method
+        )
+      ]
+
+      GI_obj@symmGeneGIs <- .x
+
+      return(GI_obj)
+    }
+
+    if (!identical(symmetric_analysis_method, "global_preaverage")) {
+      stop(
+        "Unsupported symmetric analysis method: ",
+        symmetric_analysis_method,
+        call. = FALSE
+      )
+    }
+
+    model_pairs <- rownames(GI_obj@limma_models$coefficients)
+    expected_pairs <- GI_obj@screen_attr$unique_pairs
+
+    if (!identical(model_pairs, expected_pairs)) {
+      stop(
+        "The global limma output rows do not match the stored unordered pairs.",
+        call. = FALSE
+      )
+    }
+
+    GI <- GI_obj@limma_models$coefficients[, 1L]
+    pval <- GI_obj@limma_models$p.value[, 1L]
+    FDR <- stats::p.adjust(pval, method = FDR_method)
+
+    GI_obj@geneGIs <- cbind(
+      GI = as.numeric(GI),
+      pval = as.numeric(pval),
+      FDR = as.numeric(FDR)
+    )
+
+    rownames(GI_obj@geneGIs) <- model_pairs
+
+    GI_obj@symmGeneGIs <- data.table::data.table(
+      gene_pair = model_pairs,
+      query_gene = stringr::str_split_i(model_pairs, ";", 1),
+      library_gene = stringr::str_split_i(model_pairs, ";", 2),
+      GI = as.numeric(GI),
+      GI_z = z_transform(as.numeric(GI)),
+      pval = as.numeric(pval),
+      FDR = as.numeric(FDR)
+    )
 
     return(GI_obj)
   }
 )
 
+#####
 
 setMethod(
   "GI_df",
@@ -457,6 +627,8 @@ setMethod(
     return(output)
   }
 )
+
+#####
 
 setMethod(
   "GI_df",
@@ -490,6 +662,7 @@ setMethod(
   }
 )
 
+#####
 
 setMethod(
   "GI_df",
@@ -499,6 +672,7 @@ setMethod(
   }
 )
 
+#####
 
 setMethod(
   "dupCorrelation_df",
@@ -508,6 +682,8 @@ setMethod(
     return(output)
   }
 )
+
+#####
 
 setMethod(
   "create_log",
@@ -527,12 +703,12 @@ setMethod(
       #paste0("Possible layer used for p-values: ", GI_obj@blocks$chosen),
       "Median duplicate correlation levels: ",
       "",
-      "... and many other useful log information."
     ) |>
       paste(collapse = "\n")
   }
 )
 
+#####
 
 setMethod(
   "symmetry_test",
@@ -553,3 +729,5 @@ setMethod(
     return(all(.test))
   }
 )
+
+#####

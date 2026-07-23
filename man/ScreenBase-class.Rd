@@ -15,7 +15,9 @@ aggregation workflow. Concrete screen types inherit from this class.
 
 \item{\code{guideGIs}}{A \code{\link[=gRNA_GI-class]{gRNA_GI}} object.}
 
-\item{\code{limma_models}}{List of fitted limma model objects.}
+\item{\code{limma_models}}{Fitted limma output. Multiplex analyses usually store a
+list of per-query models; global position-agnostic analysis stores one
+\code{MArrayLM} object covering all unordered pairs.}
 
 \item{\code{geneGIs}}{Numeric array of aggregated gene-level GI scores, p-values, and
 FDR values.}

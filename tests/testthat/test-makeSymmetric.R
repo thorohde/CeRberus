@@ -82,7 +82,7 @@ test_that("makeSymmetric ignores one-sided missing values", {
   expect_equal(result["C", "B"], 8)
 })
 
-test_that("makeSymmetric returns NaN when both directional values are missing", {
+test_that("makeSymmetric returns NA when both directional values are missing", {
   x <- matrix(
     c(
       1,
@@ -97,8 +97,10 @@ test_that("makeSymmetric returns NaN when both directional values are missing", 
 
   result <- makeSymmetric(x)
 
-  expect_true(is.nan(result["A", "B"]))
-  expect_true(is.nan(result["B", "A"]))
+  expect_true(is.na(result["A", "B"]))
+  expect_true(is.na(result["B", "A"]))
+  expect_false(is.nan(result["A", "B"]))
+  expect_false(is.nan(result["B", "A"]))
 })
 
 test_that("makeSymmetric keeps already symmetric matrices unchanged", {

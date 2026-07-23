@@ -1,3 +1,5 @@
+#####
+
 fill_gRNA_GIs <- function(gRNA_GI, input, value_var = "GI") {
   #  stopifnot("Value variable not in input data" = value_var %in% colnames(.x),
   #            "Not all dimensions given as structure found in input data!" = all(structure %in% colnames(.x)))
@@ -19,3 +21,5 @@ fill_gRNA_GIs <- function(gRNA_GI, input, value_var = "GI") {
   )
   return(gRNA_GI)
 }
+
+#####

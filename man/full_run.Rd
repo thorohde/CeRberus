@@ -2,19 +2,20 @@
 % Please edit documentation in R/full_run.R
 \name{full_run}
 \alias{full_run}
-\title{Run the Full GI Analysis Pipeline.}
+\title{Run the full GI analysis pipeline}
 \usage{
 full_run(yaml_fpath, return_output = TRUE)
 }
 \arguments{
 \item{yaml_fpath}{Path to a YAML instruction file.}
 
-\item{return_output}{Binary that defines if the function should save}
+\item{return_output}{Logical scalar. If \code{TRUE}, return the retained screen
+configurations. If \code{FALSE}, return \code{NULL} after completing the pipeline.}
 }
 \value{
-Saves the GI scores and plots to the output directory defined in
-the YAML file.
+A named list of retained CeRberus screen objects when
+\code{return_output = TRUE}; otherwise \code{NULL}.
 }
 \description{
-Run the Full GI Analysis Pipeline.
+Run the full GI analysis pipeline
 }

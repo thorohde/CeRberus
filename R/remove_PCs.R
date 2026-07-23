@@ -30,6 +30,8 @@
 #'
 #' @export
 
+#####
+
 remove_PCs <- \(.x, to_remove = NA, .center = TRUE, .scale = TRUE) {
   pca_result <- prcomp(.x, center = .center, scale. = .scale)
   pcs <- pca_result$x
@@ -57,3 +59,5 @@ remove_PCs <- \(.x, to_remove = NA, .center = TRUE, .scale = TRUE) {
   }
   return(.x)
 }
+
+#####

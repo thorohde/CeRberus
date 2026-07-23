@@ -22,6 +22,8 @@
 #'
 #' @export sort_gene_pairs
 
+#####
+
 sort_gene_pairs <- function(
   g1,
   g2,
@@ -59,3 +61,5 @@ sort_gene_pairs <- function(
     "FALSE" = paste(pmin(g1, g2), pmax(g1, g2), sep = sep)
   ))
 }
+
+#####

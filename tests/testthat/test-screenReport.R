@@ -26,7 +26,9 @@ make_screen_for_screenReport <- function(
   force_fixed_pair = FALSE,
   gene_gis_length = 0L,
   replicate_layers = c("guide_pair", "tech_rep"),
-  block_layer = "guide_pair"
+  block_layer = "guide_pair",
+  metadata = list(),
+  limma_models = list()
 ) {
   construction_block_layer <- if (length(block_layer) == 0) {
     "guide_pair"
@@ -44,6 +46,8 @@ make_screen_for_screenReport <- function(
   screen@errors$query_genes_not_usable <- failed_queries
   screen@errors$GI_computation_errors <- gi_errors
   screen@metadata$force_fixed_pair <- force_fixed_pair
+  screen@metadata <- utils::modifyList(screen@metadata, metadata)
+  screen@limma_models <- limma_models
   screen@guideGIs@replicates <- replicate_layers
   screen@guideGIs@block_layer <- block_layer
   screen@geneGIs <- array(numeric(gene_gis_length), dim = gene_gis_length)
@@ -216,4 +220,27 @@ test_that("screenReport summarizes failed queries and truncates long affected-qu
     fixed = TRUE
   )))
   expect_true(any(grepl("+2 more", result$problems, fixed = TRUE)))
+})
+
+
+test_that("screenReport identifies one global position-agnostic model", {
+  fit <- limma::lmFit(matrix(c(1, 2, 3, 4), nrow = 2L))
+  screen <- make_screen_for_screenReport(
+    class = "PosAgnMultiplexScreen",
+    metadata = list(symmetric_analysis_method = "global_preaverage"),
+    limma_models = fit
+  )
+
+  result <- screenReport(screen, interactive = TRUE, print = FALSE)
+
+  expect_true(any(grepl(
+    "Symmetric analysis method: global_preaverage",
+    result$decisions,
+    fixed = TRUE
+  )))
+  expect_true(any(grepl(
+    "Model objects available: 1",
+    result$decisions,
+    fixed = TRUE
+  )))
 })

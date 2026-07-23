@@ -22,6 +22,8 @@
 #'
 #' @export
 
+#####
+
 z_transform <- function(.x, .mean, .sd) {
   if (missing(.mean)) {
     .mean <- mean(.x, na.rm = TRUE)
@@ -36,3 +38,5 @@ z_transform <- function(.x, .mean, .sd) {
 
   return((.x - .mean) / .sd)
 }
+
+#####

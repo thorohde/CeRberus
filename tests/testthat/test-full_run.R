@@ -72,7 +72,8 @@ with_mocked_full_run_pipeline <- function(
   calls = new.env(parent = emptyenv())
 ) {
   calls$collected_input <- NULL
-  calls$make_pos_agnostic <- NULL
+  calls$pos_agnostic <- NULL
+  calls$symmetric_analysis_method <- NULL
   calls$collect_verbose <- NULL
   calls$plot_path <- NULL
   calls$plot_verbose <- NULL
@@ -83,11 +84,13 @@ with_mocked_full_run_pipeline <- function(
   testthat::local_mocked_bindings(
     collect_all_layer_configurations = function(
       GI_data,
-      make_pos_agnostic,
+      pos_agnostic,
+      symmetric_analysis_method = "preaverage",
       verbose = FALSE
     ) {
       calls$collected_input <- as.data.frame(GI_data)
-      calls$make_pos_agnostic <- make_pos_agnostic
+      calls$pos_agnostic <- pos_agnostic
+      calls$symmetric_analysis_method <- symmetric_analysis_method
       calls$collect_verbose <- verbose
       list(
         default_guide_pair_used = make_full_run_screen(
@@ -155,7 +158,8 @@ test_that("full_run reads CSV scores and forwards options to the pipeline", {
     FDR = "bonferroni",
     overwrite_output = FALSE,
     verbose = TRUE,
-    make_symmetric = TRUE
+    pos_agnostic = TRUE,
+    symmetric_analysis_method = "preaverage"
   )
   calls <- new.env(parent = emptyenv())
 
@@ -168,7 +172,8 @@ test_that("full_run reads CSV scores and forwards options to the pipeline", {
   expect_named(result, "default_guide_pair_used")
   expect_s4_class(result[[1]], "ScreenBase")
   expect_equal(calls$collected_input, make_full_run_scores())
-  expect_true(calls$make_pos_agnostic)
+  expect_true(calls$pos_agnostic)
+  expect_identical(calls$symmetric_analysis_method, "preaverage")
   expect_true(calls$collect_verbose)
   expect_equal(calls$fdr_method, "bonferroni")
   expect_null(calls$plot_verbose)

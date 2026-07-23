@@ -1,12 +1,107 @@
+#####
+
+symmetric_analysis_methods <- function() {
+  c("preaverage", "global_preaverage")
+}
+
+validate_symmetric_analysis_method <- function(
+  symmetric_analysis_method = "preaverage"
+) {
+  if (
+    !is.character(symmetric_analysis_method) ||
+      length(symmetric_analysis_method) != 1L ||
+      is.na(symmetric_analysis_method)
+  ) {
+    stop(
+      "symmetric_analysis_method must be a single non-missing character value.",
+      call. = FALSE
+    )
+  }
+
+  match.arg(
+    symmetric_analysis_method,
+    symmetric_analysis_methods()
+  )
+}
+
+#####
+
+flatten_symmetric_pairs <- function(.arr, pairs, sep = ";") {
+  stopifnot(
+    "The symmetric guide-level input must be a three-dimensional array." = length(
+      dim(.arr)
+    ) ==
+      3L,
+    "pairs must be a character vector." = is.character(pairs),
+    "pairs must not contain missing values." = !anyNA(pairs),
+    "pairs must be unique." = !anyDuplicated(pairs)
+  )
+
+  genes1 <- stringr::str_split_i(pairs, sep, 1)
+  genes2 <- stringr::str_split_i(pairs, sep, 2)
+
+  stopifnot(
+    "Some first-position genes are absent from the query-gene dimension." = all(
+      genes1 %in% rownames(.arr)
+    ),
+    "Some second-position genes are absent from the library-gene dimension." = all(
+      genes2 %in% colnames(.arr)
+    )
+  )
+
+  n_observations <- dim(.arr)[3L]
+
+  output <- base::matrix(
+    data = base::unlist(
+      lapply(seq_along(pairs), function(.i) {
+        as.numeric(.arr[genes1[.i], genes2[.i], , drop = TRUE])
+      }),
+      use.names = FALSE
+    ),
+    nrow = length(pairs),
+    ncol = n_observations,
+    byrow = TRUE,
+    dimnames = list(
+      gene_pair = pairs,
+      replicate = dimnames(.arr)[[3L]]
+    )
+  )
+
+  # mean(..., na.rm = TRUE) returns NaN when both orientations are missing.
+  # limma should receive those values as ordinary missing observations.
+  output[is.nan(output)] <- NA_real_
+
+  return(output)
+}
+
+#####
+
+get_symmetric_analysis_method <- function(GI_obj) {
+  method <- GI_obj@metadata$symmetric_analysis_method
+
+  if (is.null(method) || length(method) == 0L) {
+    return("preaverage")
+  }
+
+  validate_symmetric_analysis_method(method)
+}
+
+#####
+
 makeSymmetric <- function(.x) {
-  base::apply(
+  output <- base::apply(
     abind::abind(.x, base::t(.x), along = 3),
     1:2,
     base::mean,
     na.rm = TRUE
   )
+
+  output[is.nan(output)] <- NA_real_
+
+  return(output)
 }
 
+#####
 
 gather_symmetric_scores <- function(pairs, .arr, sep = ";") {
   #  if (!isSymmetric(.arr)) {
@@ -26,6 +121,7 @@ gather_symmetric_scores <- function(pairs, .arr, sep = ";") {
   }))
 }
 
+#####
 
 #' Compute balanced FDR values for position-agnostic gene pairs
 #'
@@ -50,6 +146,8 @@ gather_symmetric_scores <- function(pairs, .arr, sep = ";") {
 #'   `pairs`.
 #'
 
+#####
+
 balanced_FDR <- function(pairs, pval_array, fdr_method) {
   pair_template <- \(pair) {
     .g1 <- str_split_i(pair, ";", 1)
@@ -70,3 +168,5 @@ balanced_FDR <- function(pairs, pval_array, fdr_method) {
     .d[gene_pair == gene_pair2, get("FDR")]
   }))
 }
+
+#####

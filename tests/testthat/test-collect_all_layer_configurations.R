@@ -1,4 +1,6 @@
-make_layer_configuration_scores <- function(include = c("tech_rep", "bio_rep", "guide_pair")) {
+make_layer_configuration_scores <- function(
+  include = c("tech_rep", "bio_rep", "guide_pair")
+) {
   base <- data.frame(
     query_gene = c("A", "A", "B", "B"),
     library_gene = c("A", "B", "A", "B"),
@@ -22,17 +24,21 @@ with_mocked_GIScores <- function(code, calls = new.env(parent = emptyenv())) {
   calls$args <- list()
 
   testthat::local_mocked_bindings(
-    GIScores = function(input,
-                        collapse_layers = NULL,
-                        block_layer = NULL,
-                        pos_agnostic = FALSE,
-                        verbose = FALSE,
-                        ...) {
+    GIScores = function(
+      input,
+      collapse_layers = NULL,
+      block_layer = NULL,
+      pos_agnostic = FALSE,
+      symmetric_analysis_method = "preaverage",
+      verbose = FALSE,
+      ...
+    ) {
       calls$args[[length(calls$args) + 1L]] <- list(
         input = input,
         collapse_layers = collapse_layers,
         block_layer = block_layer,
         pos_agnostic = pos_agnostic,
+        symmetric_analysis_method = symmetric_analysis_method,
         verbose = verbose
       )
 
@@ -40,6 +46,7 @@ with_mocked_GIScores <- function(code, calls = new.env(parent = emptyenv())) {
         collapse_layers = collapse_layers,
         block_layer = block_layer,
         pos_agnostic = pos_agnostic,
+        symmetric_analysis_method = symmetric_analysis_method,
         verbose = verbose
       )
     },
@@ -56,7 +63,8 @@ test_that("collect_all_layer_configurations builds all default and collapsed lay
   result <- with_mocked_GIScores(
     CeRberus:::collect_all_layer_configurations(
       scores,
-      make_pos_agnostic = TRUE,
+      pos_agnostic = TRUE,
+      symmetric_analysis_method = "preaverage",
       verbose = TRUE
     ),
     calls = calls
@@ -84,6 +92,10 @@ test_that("collect_all_layer_configurations builds all default and collapsed lay
 
   expect_length(calls$args, 12L)
   expect_true(all(purrr::map_lgl(calls$args, "pos_agnostic")))
+  expect_true(all(purrr::map_lgl(
+    calls$args,
+    ~ identical(.x$symmetric_analysis_method, "preaverage")
+  )))
   expect_true(all(purrr::map_lgl(calls$args, "verbose")))
   expect_true(all(purrr::map_lgl(calls$args, ~ identical(.x$input, scores))))
 
@@ -103,7 +115,7 @@ test_that("collect_all_layer_configurations respects requested use layers and ig
     CeRberus:::collect_all_layer_configurations(
       scores,
       .to_use = c("bio_rep", "guide_pair", "not_a_column"),
-      make_pos_agnostic = FALSE,
+      pos_agnostic = FALSE,
       verbose = FALSE
     ),
     calls = calls
@@ -118,7 +130,10 @@ test_that("collect_all_layer_configurations respects requested use layers and ig
     )
   )
   expect_length(calls$args, 3L)
-  expect_equal(purrr::map_chr(calls$args, "block_layer"), c("bio_rep", "bio_rep", "tech_rep"))
+  expect_equal(
+    purrr::map_chr(calls$args, "block_layer"),
+    c("bio_rep", "bio_rep", "tech_rep")
+  )
   expect_equal(calls$args[[1L]]$collapse_layers, NULL)
   expect_equal(calls$args[[2L]]$collapse_layers, "tech_rep")
   expect_equal(calls$args[[3L]]$collapse_layers, "bio_rep")
@@ -133,7 +148,7 @@ test_that("collect_all_layer_configurations only creates defaults when a single 
   result <- with_mocked_GIScores(
     CeRberus:::collect_all_layer_configurations(
       scores,
-      make_pos_agnostic = FALSE
+      pos_agnostic = FALSE
     ),
     calls = calls
   )
