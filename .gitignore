@@ -1,5 +1,17 @@
+# R session state
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
-.positai
+
+# IDE state
+.positai/
+
+# R package build and check artifacts
+*.Rcheck/
+/*.tar.gz
+
+# R example and test output
+Rplots.pdf
+*.Rout
+*.Rout.fail

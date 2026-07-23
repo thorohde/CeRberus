@@ -72,6 +72,22 @@ read_instructions <- function(yaml_fpath) {
     instr$symmetric_analysis_method
   )
 
+  if (!"screen_type" %in% names(instr)) {
+    instr$screen_type <- "auto"
+  }
+
+  if (
+    !is.character(instr$screen_type) ||
+      length(instr$screen_type) != 1L ||
+      is.na(instr$screen_type) ||
+      !instr$screen_type %in% c("auto", "fixed_pair", "multiplex")
+  ) {
+    stop(
+      "screen_type must be one of: 'auto', 'fixed_pair', or 'multiplex'.",
+      call. = FALSE
+    )
+  }
+
   instr$overwrite_output <- as_bool(instr$overwrite_output, default = TRUE)
   instr$pos_agnostic <- as_bool(instr$pos_agnostic, default = FALSE)
   instr$keep_all_configurations <- as_bool(
@@ -99,10 +115,13 @@ read_instructions <- function(yaml_fpath) {
 collect_all_layer_configurations <- function(
   GI_data,
   .to_use = c("tech_rep", "bio_rep", "guide_pair"),
+  screen_type = c("auto", "fixed_pair", "multiplex"),
   pos_agnostic = FALSE,
   symmetric_analysis_method = "preaverage",
   verbose = FALSE
 ) {
+  screen_type <- match.arg(screen_type)
+
   .collapsable_layers <- intersect(
     c("tech_rep", "bio_rep", "guide_pair"),
     colnames(GI_data)
@@ -115,6 +134,7 @@ collect_all_layer_configurations <- function(
     output[[str_c("default_", .use, "_used")]] <- GIScores(
       GI_data,
       block_layer = .use,
+      screen_type = screen_type,
       pos_agnostic = pos_agnostic,
       symmetric_analysis_method = symmetric_analysis_method,
       verbose = verbose
@@ -138,6 +158,7 @@ collect_all_layer_configurations <- function(
             GI_data,
             collapse_layers = .to_collapse,
             block_layer = .use,
+            screen_type = screen_type,
             pos_agnostic = pos_agnostic,
             symmetric_analysis_method = symmetric_analysis_method,
             verbose = verbose

@@ -17,7 +17,8 @@ GIScores(
   force_fixed_pair = FALSE,
   pos_agnostic = FALSE,
   symmetric_analysis_method = "preaverage",
-  verbose = FALSE
+  verbose = FALSE,
+  screen_type = c("auto", "fixed_pair", "multiplex")
 )
 }
 \arguments{
@@ -42,8 +43,8 @@ average before model fitting, for example \code{"guide_pair"}, \code{"tech_rep"}
 \item{block_layer}{Optional replicate layer used as the limma blocking layer
 for duplicate-correlation modelling.}
 
-\item{force_fixed_pair}{Logical. If \code{TRUE}, force construction as a
-fixed-pair screen regardless of the inferred screen attributes.}
+\item{force_fixed_pair}{Deprecated logical override. Use
+\code{screen_type = "fixed_pair"} instead.}
 
 \item{pos_agnostic}{Logical. If \code{TRUE}, opt into position-agnostic analysis
 for an inferred multiplex screen by averaging both orientations of each
@@ -59,6 +60,10 @@ all unordered pairs. This argument is only used when
 \code{pos_agnostic = TRUE}; directional analysis remains the default.}
 
 \item{verbose}{Logical. If \code{TRUE}, print a short screen summary.}
+
+\item{screen_type}{Character scalar controlling screen classification.
+\code{"auto"} uses the inferred screen attributes, while \code{"fixed_pair"} and
+\code{"multiplex"} explicitly select the corresponding screen structure.}
 }
 \value{
 An S4 object inheriting from \code{ScreenBase}, typically a

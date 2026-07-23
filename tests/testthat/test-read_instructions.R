@@ -23,6 +23,7 @@ test_that("read_instructions reads a valid YAML instruction file", {
     output_directory = output_directory,
     FDR = "bonferroni",
     overwrite_output = FALSE,
+    screen_type = "multiplex",
     pos_agnostic = TRUE,
     symmetric_analysis_method = "global_preaverage",
     keep_all_configurations = TRUE,
@@ -43,6 +44,7 @@ test_that("read_instructions reads a valid YAML instruction file", {
   )
   expect_equal(result$FDR, "bonferroni")
   expect_false(result$overwrite_output)
+  expect_identical(result$screen_type, "multiplex")
   expect_true(result$pos_agnostic)
   expect_identical(result$symmetric_analysis_method, "global_preaverage")
   expect_true(result$keep_all_configurations)
@@ -163,8 +165,51 @@ test_that("read_instructions preserves position-agnostic pipeline defaults", {
   result <- read_instructions(yaml_fpath)
 
   expect_false(result$pos_agnostic)
+  expect_identical(result$screen_type, "auto")
   expect_identical(result$symmetric_analysis_method, "preaverage")
   expect_false(result$keep_all_configurations)
+})
+
+test_that("read_instructions validates explicit screen types", {
+  scores_file <- tempfile(fileext = ".csv")
+  output_directory <- tempdir()
+  yaml_fpath <- tempfile(fileext = ".yaml")
+  file.create(scores_file)
+
+  for (screen_type in c("fixed_pair", "multiplex")) {
+    write_instruction_file(
+      yaml_fpath,
+      scores_file = scores_file,
+      output_directory = output_directory,
+      screen_type = screen_type
+    )
+
+    expect_identical(read_instructions(yaml_fpath)$screen_type, screen_type)
+  }
+
+  write_instruction_file(
+    yaml_fpath,
+    scores_file = scores_file,
+    output_directory = output_directory,
+    screen_type = "fixed"
+  )
+
+  expect_error(
+    read_instructions(yaml_fpath),
+    "screen_type must be one of"
+  )
+
+  write_instruction_file(
+    yaml_fpath,
+    scores_file = scores_file,
+    output_directory = output_directory,
+    screen_type = c("auto", "multiplex")
+  )
+
+  expect_error(
+    read_instructions(yaml_fpath),
+    "screen_type must be one of"
+  )
 })
 
 test_that("read_instructions rejects unsupported symmetric analysis methods", {

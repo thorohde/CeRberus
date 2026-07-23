@@ -103,18 +103,102 @@ test_that("GIScores infers a multiplex screen for a complete gene grid", {
   expect_true(result@checks$sufficient_tests_per_query)
 })
 
-test_that("GIScores can force a multiplex-shaped input to fixed-pair mode", {
+test_that("GIScores can select fixed-pair mode for multiplex-shaped input", {
   expect_warning(
     result <- GIScores(
       make_multiplex_scores(),
-      force_fixed_pair = TRUE,
+      screen_type = "fixed_pair",
       block_layer = "guide_pair"
     ),
-    "Set up to use fixed pair structure"
+    "overrides inferred screen type 'multiplex'"
   )
 
   expect_s4_class(result, "FixedPairScreen")
   expect_equal(result@guideGIs@space, "gene_pair")
+  expect_identical(result@metadata$requested_screen_type, "fixed_pair")
+  expect_identical(result@metadata$inferred_screen_type, "multiplex")
+  expect_identical(result@metadata$selected_screen_type, "fixed_pair")
+})
+
+test_that("GIScores can select multiplex mode for fixed-pair-shaped input", {
+  expect_warning(
+    result <- GIScores(
+      make_fixed_pair_scores(),
+      screen_type = "multiplex",
+      block_layer = "guide_pair"
+    ),
+    "overrides inferred screen type 'fixed_pair'"
+  )
+
+  expect_s4_class(result, "MultiplexScreen")
+  expect_equal(result@guideGIs@space, c("query_gene", "library_gene"))
+})
+
+test_that("GIScores supports the deprecated force_fixed_pair override", {
+  warning_messages <- character()
+  result <- withCallingHandlers(
+    GIScores(
+      make_multiplex_scores(),
+      force_fixed_pair = TRUE,
+      block_layer = "guide_pair"
+    ),
+    warning = function(warning_condition) {
+      warning_messages <<- c(
+        warning_messages,
+        conditionMessage(warning_condition)
+      )
+      invokeRestart("muffleWarning")
+    }
+  )
+
+  expect_s4_class(result, "FixedPairScreen")
+  expect_identical(result@metadata$requested_screen_type, "fixed_pair")
+  expect_true(any(grepl(
+    "force_fixed_pair is deprecated",
+    warning_messages,
+    fixed = TRUE
+  )))
+  expect_true(any(grepl(
+    "overrides inferred screen type 'multiplex'",
+    warning_messages,
+    fixed = TRUE
+  )))
+})
+
+test_that("GIScores validates screen type selection", {
+  expect_error(
+    GIScores(make_fixed_pair_scores(), screen_type = "unknown"),
+    "should be one of"
+  )
+  expect_error(
+    suppressWarnings(GIScores(
+      make_fixed_pair_scores(),
+      force_fixed_pair = TRUE,
+      screen_type = "multiplex"
+    )),
+    "Do not use force_fixed_pair"
+  )
+})
+
+test_that("GIScores preserves the legacy positional argument order", {
+  result <- GIScores(
+    make_fixed_pair_scores(),
+    "query_gene",
+    "library_gene",
+    "bio_rep",
+    "tech_rep",
+    "guide_pair",
+    "GI",
+    NULL,
+    "guide_pair",
+    FALSE,
+    FALSE,
+    "preaverage",
+    FALSE
+  )
+
+  expect_s4_class(result, "FixedPairScreen")
+  expect_identical(result@metadata$requested_screen_type, "auto")
 })
 
 test_that("GIScores creates a position-agnostic symmetric multiplex screen", {

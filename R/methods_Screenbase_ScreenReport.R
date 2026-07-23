@@ -85,7 +85,27 @@ setMethod(
 
     .decisions <- c(
       paste0("Selected model strategy: ", .type),
-      paste0("Forced fixed-pair run: ", isTRUE(.md$force_fixed_pair)),
+      paste0(
+        "Requested screen type: ",
+        .value(.md$requested_screen_type, "auto")
+      ),
+      paste0(
+        "Inferred screen type: ",
+        .value(.md$inferred_screen_type)
+      ),
+      paste0(
+        "Selected screen type: ",
+        .value(
+          .md$selected_screen_type,
+          switch(
+            .class,
+            FixedPairScreen = "fixed_pair",
+            MultiplexScreen = "multiplex",
+            PosAgnMultiplexScreen = "multiplex",
+            .class
+          )
+        )
+      ),
       paste0(
         "Position-agnostic output: ",
         methods::is(GI_obj, "PosAgnMultiplexScreen")

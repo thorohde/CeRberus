@@ -260,16 +260,29 @@ setMethod(
     .md <- GI_obj@metadata
     .c <- GI_obj@checks
 
-    .type <- "FixedPairScreen"
-
     .is_multiplex_candidate <- isTRUE(.c$query_sufficient) &&
       isTRUE(.c$library_sufficient) &&
       #isTRUE(.c$gene_sets_equal) &&
       isTRUE(.c$sufficient_tests_per_query)
 
-    if (.is_multiplex_candidate) {
-      .type <- "MultiplexScreen"
+    .inferred_screen_type <- if (.is_multiplex_candidate) {
+      "multiplex"
+    } else {
+      "fixed_pair"
+    }
 
+    .requested_screen_type <- .md$requested_screen_type
+    if (is.null(.requested_screen_type)) {
+      .requested_screen_type <- "auto"
+    }
+
+    .selected_screen_type <- if (identical(.requested_screen_type, "auto")) {
+      .inferred_screen_type
+    } else {
+      .requested_screen_type
+    }
+
+    if (.is_multiplex_candidate) {
       if (!isTRUE(.c$stable_library_size)) {
         warning(
           "Multiplex screen has variable observations per query; ",
@@ -279,10 +292,26 @@ setMethod(
       }
     }
 
-    if (isTRUE(.md$force_fixed_pair)) {
-      warning("Set up to use fixed pair structure.", call. = FALSE)
-      .type <- "FixedPairScreen"
+    if (!identical(.selected_screen_type, .inferred_screen_type)) {
+      warning(
+        "Requested screen_type '",
+        .selected_screen_type,
+        "' overrides inferred screen type '",
+        .inferred_screen_type,
+        "'.",
+        call. = FALSE
+      )
     }
+
+    .type <- switch(
+      .selected_screen_type,
+      fixed_pair = "FixedPairScreen",
+      multiplex = "MultiplexScreen"
+    )
+
+    .md$requested_screen_type <- .requested_screen_type
+    .md$inferred_screen_type <- .inferred_screen_type
+    .md$selected_screen_type <- .selected_screen_type
 
     GI_obj <- as(object = GI_obj, Class = .type)
 
@@ -688,23 +717,219 @@ setMethod(
 setMethod(
   "create_log",
   signature = signature(GI_obj = "ScreenBase"),
-  function(GI_obj) {
-    list(
+  function(
+    GI_obj,
+    status = "available",
+    stage = "not specified",
+    condition = NULL,
+    max_items = 10L
+  ) {
+    stopifnot(
+      "status must be a single non-missing character value." = is.character(
+        status
+      ) &&
+        length(status) == 1L &&
+        !is.na(status),
+      "stage must be a single non-missing character value." = is.character(
+        stage
+      ) &&
+        length(stage) == 1L &&
+        !is.na(stage),
+      "max_items must be a single positive whole number." = is.numeric(
+        max_items
+      ) &&
+        length(max_items) == 1L &&
+        !is.na(max_items) &&
+        is.finite(max_items) &&
+        max_items >= 1L &&
+        max_items == as.integer(max_items)
+    )
+
+    max_items <- as.integer(max_items)
+
+    value_or <- function(x, default = "not available") {
+      if (is.null(x) || length(x) == 0L || all(is.na(x))) {
+        return(default)
+      }
+      paste(as.character(x), collapse = ", ")
+    }
+
+    show_items <- function(x) {
+      if (is.null(x) || length(x) == 0L) {
+        return("none")
+      }
+      x <- as.character(x)
+      shown <- utils::head(x, max_items)
+      suffix <- if (length(x) > max_items) {
+        paste0(" ... +", length(x) - max_items, " more")
+      } else {
+        ""
+      }
+      paste0(paste(shown, collapse = " | "), suffix)
+    }
+
+    array_summary <- function(x) {
+      if (length(x) == 0L) {
+        return("empty")
+      }
+      dims <- dim(x)
+      dim_text <- if (is.null(dims)) {
+        length(x)
+      } else {
+        paste(dims, collapse = " x ")
+      }
       paste0(
-        "CRISPR screen with ",
-        GI_obj@screen_attr$n_query_genes,
-        " query genes and ",
-        GI_obj@screen_attr$n_lib_genes,
-        " library genes."
+        "dimensions=",
+        dim_text,
+        "; values=",
+        length(x),
+        "; missing=",
+        sum(is.na(x))
+      )
+    }
+
+    collect_error_messages <- function(x) {
+      if (is.null(x)) {
+        return(character())
+      }
+      if (inherits(x, "condition")) {
+        return(conditionMessage(x))
+      }
+      if (is.list(x)) {
+        return(unlist(lapply(x, collect_error_messages), use.names = FALSE))
+      }
+      if (is.character(x)) {
+        return(x[!is.na(x) & nzchar(x)])
+      }
+      character()
+    }
+
+    condition_message <- if (is.null(condition)) {
+      "none"
+    } else if (inherits(condition, "condition")) {
+      conditionMessage(condition)
+    } else {
+      paste(as.character(condition), collapse = " | ")
+    }
+
+    package_version <- tryCatch(
+      as.character(utils::packageVersion("CeRberus")),
+      error = function(e) "development version"
+    )
+
+    .a <- GI_obj@screen_attr
+    .checks <- GI_obj@checks
+    .md <- GI_obj@metadata
+    .errors <- GI_obj@errors
+    .guide <- GI_obj@guideGIs
+
+    dupcor <- GI_obj@dupCorrelation
+    finite_dupcor <- dupcor[is.finite(dupcor)]
+    dupcor_summary <- if (length(dupcor) == 0L) {
+      "not available"
+    } else {
+      paste0(
+        "values=",
+        length(dupcor),
+        "; finite=",
+        length(finite_dupcor),
+        "; missing=",
+        sum(is.na(dupcor)),
+        if (length(finite_dupcor) > 0L) {
+          paste0(
+            "; min=",
+            signif(min(finite_dupcor), 4L),
+            "; median=",
+            signif(stats::median(finite_dupcor), 4L),
+            "; max=",
+            signif(max(finite_dupcor), 4L)
+          )
+        } else {
+          ""
+        }
+      )
+    }
+
+    model_count <- if (inherits(GI_obj@limma_models, "MArrayLM")) {
+      1L
+    } else {
+      sum(!purrr::map_lgl(GI_obj@limma_models, is.null))
+    }
+
+    check_lines <- if (length(.checks) == 0L) {
+      "- none recorded"
+    } else {
+      paste0(
+        "- ",
+        names(.checks),
+        "=",
+        purrr::map_chr(.checks, value_or),
+        collapse = "\n"
+      )
+    }
+
+    failed_queries <- .errors$query_genes_not_usable
+    stored_errors <- collect_error_messages(.errors$GI_computation_errors)
+
+    lines <- c(
+      "CeRberus diagnostic log",
+      "========================",
+      paste0("Timestamp: ", format(Sys.time(), tz = "UTC", usetz = TRUE)),
+      paste0("Status: ", status),
+      paste0("Pipeline stage: ", stage),
+      paste0("Condition: ", condition_message),
+      "",
+      "Runtime",
+      "-------",
+      paste0("CeRberus version: ", package_version),
+      paste0("R version: ", R.version.string),
+      paste0("Platform: ", R.version$platform),
+      paste0("Operating system: ", value_or(Sys.info()["sysname"])),
+      "",
+      "Screen",
+      "------",
+      paste0("Configuration: ", value_or(.md$config)),
+      paste0("Class: ", class(GI_obj)[1L]),
+      paste0("Query genes: ", value_or(.a$n_query_genes)),
+      paste0("Library genes: ", value_or(.a$n_lib_genes)),
+      paste0("All genes: ", value_or(.a$n_all_genes)),
+      paste0("Directional pairs: ", value_or(length(.a$all_pairs))),
+      paste0("Unordered pairs: ", value_or(length(.a$unique_pairs))),
+      paste0("Guide GI data: ", array_summary(.guide@data)),
+      paste0("Gene GI data: ", array_summary(GI_obj@geneGIs)),
+      "",
+      "Replicates and modelling",
+      "------------------------",
+      paste0("Replicate layers: ", value_or(.guide@replicates)),
+      paste0("Collapsed layers: ", value_or(.guide@collapse, "none")),
+      paste0("Block layer: ", value_or(.guide@block_layer, "none")),
+      paste0("Uses blocks: ", value_or(.guide@use_blocks)),
+      paste0("Block assignments: ", length(.guide@blocks)),
+      paste0("Duplicate correlation: ", dupcor_summary),
+      paste0("Fitted models: ", model_count),
+      "",
+      "Checks",
+      "------",
+      check_lines,
+      "",
+      "Errors and incomplete results",
+      "-----------------------------",
+      paste0(
+        "Failed queries (",
+        length(failed_queries),
+        "): ",
+        show_items(failed_queries)
       ),
-      paste0("Identified screen design: ", class(GI_obj)[1], "."),
-      "",
-      #paste0("Possible replicate layers: ", paste(GI_obj@blocks$options, collapse = ", ")),
-      #paste0("Possible layer used for p-values: ", GI_obj@blocks$chosen),
-      "Median duplicate correlation levels: ",
-      "",
-    ) |>
-      paste(collapse = "\n")
+      paste0(
+        "Stored model errors (",
+        length(stored_errors),
+        "): ",
+        show_items(stored_errors)
+      ),
+      paste0("Gene-level results available: ", length(GI_obj@geneGIs) > 0L)
+    )
+
+    paste(lines, collapse = "\n")
   }
 )
 

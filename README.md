@@ -80,6 +80,19 @@ gi_obj <- GIScores(input = my_scores)
 
 This creates a CeRberus screen object that can then be processed with downstream package methods.
 
+By default, CeRberus infers the screen structure. You can explicitly select a
+structure when the automatic decision does not match the experimental design:
+
+```r
+fixed_pair_obj <- GIScores(my_scores, screen_type = "fixed_pair")
+multiplex_obj <- GIScores(my_scores, screen_type = "multiplex")
+```
+
+Supported values are `"auto"`, `"fixed_pair"`, and `"multiplex"`. An explicit
+selection overrides the inferred type and produces a warning when the two
+disagree. CeRberus records the requested, inferred, and selected types in the
+object metadata and displays them in `screenReport()`.
+
 ## Quick start: YAML-based workflow
 
 The typical standalone workflow is:
@@ -116,6 +129,7 @@ The YAML instruction file controls the pipeline run.
 |---|---|---|
 | `FDR` | Multiple-testing correction method. Currently supported: `BH`, `bonferroni` | `BH` |
 | `overwrite_output` | Whether to write output files to `output_directory` | `TRUE` |
+| `screen_type` | Screen structure: `auto`, `fixed_pair`, or `multiplex` | `auto` |
 | `pos_agnostic` | Average both orientations for position-agnostic multiplex analysis | `FALSE` |
 | `symmetric_analysis_method` | Position-agnostic strategy: `preaverage` or `global_preaverage` | `preaverage` |
 | `keep_all_configurations` | Keep all tested replicate/blocking configurations instead of only the selected one | `FALSE` |
@@ -128,6 +142,7 @@ scores_file: "path/to/guide_scores.csv"
 output_directory: "path/to/output"
 FDR: "BH"
 overwrite_output: true
+screen_type: "auto"
 pos_agnostic: false
 symmetric_analysis_method: "preaverage"
 keep_all_configurations: false
@@ -170,8 +185,8 @@ If needed, column names can be customized when using `GIScores()` directly.
 
 CeRberus follows this general procedure:
 
-1. **Infer screen type**  
-   Based on the query and library gene sets, CeRberus determines whether the data represent a fixed-pair or multiplex screen.
+1. **Determine screen type**
+   With `screen_type: "auto"`, CeRberus infers whether the data represent a fixed-pair or multiplex screen. Set `screen_type` explicitly to override that decision when experimental knowledge should take precedence.
 
 2. **Generate alternative replicate/blocking configurations**  
    CeRberus tests different ways of using or collapsing `tech_rep`, `bio_rep`, and `guide_pair` layers.

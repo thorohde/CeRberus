@@ -23,7 +23,9 @@ make_screen_for_screenReport <- function(
   ),
   failed_queries = character(),
   gi_errors = list(),
-  force_fixed_pair = FALSE,
+  requested_screen_type = "auto",
+  inferred_screen_type = NULL,
+  selected_screen_type = NULL,
   gene_gis_length = 0L,
   replicate_layers = c("guide_pair", "tech_rep"),
   block_layer = "guide_pair",
@@ -42,10 +44,24 @@ make_screen_for_screenReport <- function(
   )
 
   screen <- as(base_screen, match.arg(class))
+  class_screen_type <- switch(
+    class(screen)[1L],
+    FixedPairScreen = "fixed_pair",
+    MultiplexScreen = "multiplex",
+    PosAgnMultiplexScreen = "multiplex"
+  )
+  if (is.null(inferred_screen_type)) {
+    inferred_screen_type <- class_screen_type
+  }
+  if (is.null(selected_screen_type)) {
+    selected_screen_type <- class_screen_type
+  }
   screen@checks <- checks
   screen@errors$query_genes_not_usable <- failed_queries
   screen@errors$GI_computation_errors <- gi_errors
-  screen@metadata$force_fixed_pair <- force_fixed_pair
+  screen@metadata$requested_screen_type <- requested_screen_type
+  screen@metadata$inferred_screen_type <- inferred_screen_type
+  screen@metadata$selected_screen_type <- selected_screen_type
   screen@metadata <- utils::modifyList(screen@metadata, metadata)
   screen@limma_models <- limma_models
   screen@guideGIs@replicates <- replicate_layers
@@ -89,7 +105,17 @@ test_that("screenReport returns structured report content in interactive mode", 
     fixed = TRUE
   )))
   expect_true(any(grepl(
-    "Forced fixed-pair run: FALSE",
+    "Requested screen type: auto",
+    result$decisions,
+    fixed = TRUE
+  )))
+  expect_true(any(grepl(
+    "Inferred screen type: multiplex",
+    result$decisions,
+    fixed = TRUE
+  )))
+  expect_true(any(grepl(
+    "Selected screen type: multiplex",
     result$decisions,
     fixed = TRUE
   )))
@@ -193,8 +219,7 @@ test_that("screenReport summarizes failed queries and truncates long affected-qu
         list(simpleError("bad2"))
       ),
       failed_queries
-    ),
-    force_fixed_pair = TRUE
+    )
   )
 
   result <- screenReport(screen, interactive = TRUE, print = FALSE)

@@ -28,6 +28,7 @@ with_mocked_GIScores <- function(code, calls = new.env(parent = emptyenv())) {
       input,
       collapse_layers = NULL,
       block_layer = NULL,
+      screen_type = "auto",
       pos_agnostic = FALSE,
       symmetric_analysis_method = "preaverage",
       verbose = FALSE,
@@ -37,6 +38,7 @@ with_mocked_GIScores <- function(code, calls = new.env(parent = emptyenv())) {
         input = input,
         collapse_layers = collapse_layers,
         block_layer = block_layer,
+        screen_type = screen_type,
         pos_agnostic = pos_agnostic,
         symmetric_analysis_method = symmetric_analysis_method,
         verbose = verbose
@@ -45,6 +47,7 @@ with_mocked_GIScores <- function(code, calls = new.env(parent = emptyenv())) {
       list(
         collapse_layers = collapse_layers,
         block_layer = block_layer,
+        screen_type = screen_type,
         pos_agnostic = pos_agnostic,
         symmetric_analysis_method = symmetric_analysis_method,
         verbose = verbose
@@ -63,6 +66,7 @@ test_that("collect_all_layer_configurations builds all default and collapsed lay
   result <- with_mocked_GIScores(
     CeRberus:::collect_all_layer_configurations(
       scores,
+      screen_type = "multiplex",
       pos_agnostic = TRUE,
       symmetric_analysis_method = "preaverage",
       verbose = TRUE
@@ -91,6 +95,10 @@ test_that("collect_all_layer_configurations builds all default and collapsed lay
   )
 
   expect_length(calls$args, 12L)
+  expect_true(all(purrr::map_lgl(
+    calls$args,
+    ~ identical(.x$screen_type, "multiplex")
+  )))
   expect_true(all(purrr::map_lgl(calls$args, "pos_agnostic")))
   expect_true(all(purrr::map_lgl(
     calls$args,
@@ -138,6 +146,10 @@ test_that("collect_all_layer_configurations respects requested use layers and ig
   expect_equal(calls$args[[2L]]$collapse_layers, "tech_rep")
   expect_equal(calls$args[[3L]]$collapse_layers, "bio_rep")
   expect_false(any(purrr::map_lgl(calls$args, "pos_agnostic")))
+  expect_true(all(purrr::map_lgl(
+    calls$args,
+    ~ identical(.x$screen_type, "auto")
+  )))
   expect_false(any(purrr::map_lgl(calls$args, "verbose")))
 })
 

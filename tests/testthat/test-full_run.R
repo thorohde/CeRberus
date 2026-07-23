@@ -72,6 +72,7 @@ with_mocked_full_run_pipeline <- function(
   calls = new.env(parent = emptyenv())
 ) {
   calls$collected_input <- NULL
+  calls$screen_type <- NULL
   calls$pos_agnostic <- NULL
   calls$symmetric_analysis_method <- NULL
   calls$collect_verbose <- NULL
@@ -84,11 +85,13 @@ with_mocked_full_run_pipeline <- function(
   testthat::local_mocked_bindings(
     collect_all_layer_configurations = function(
       GI_data,
+      screen_type = "auto",
       pos_agnostic,
       symmetric_analysis_method = "preaverage",
       verbose = FALSE
     ) {
       calls$collected_input <- as.data.frame(GI_data)
+      calls$screen_type <- screen_type
       calls$pos_agnostic <- pos_agnostic
       calls$symmetric_analysis_method <- symmetric_analysis_method
       calls$collect_verbose <- verbose
@@ -158,6 +161,7 @@ test_that("full_run reads CSV scores and forwards options to the pipeline", {
     FDR = "bonferroni",
     overwrite_output = FALSE,
     verbose = TRUE,
+    screen_type = "fixed_pair",
     pos_agnostic = TRUE,
     symmetric_analysis_method = "preaverage"
   )
@@ -172,6 +176,7 @@ test_that("full_run reads CSV scores and forwards options to the pipeline", {
   expect_named(result, "default_guide_pair_used")
   expect_s4_class(result[[1]], "ScreenBase")
   expect_equal(calls$collected_input, make_full_run_scores())
+  expect_identical(calls$screen_type, "fixed_pair")
   expect_true(calls$pos_agnostic)
   expect_identical(calls$symmetric_analysis_method, "preaverage")
   expect_true(calls$collect_verbose)
@@ -254,6 +259,18 @@ test_that("full_run writes intermediate and final outputs when overwrite_output 
     output_directory,
     "GI_scores_default_guide_pair_used.csv"
   )))
+  expect_true(file.exists(file.path(output_directory, "CeRberus.log")))
+  success_log <- paste(
+    readLines(file.path(output_directory, "CeRberus.log"), warn = FALSE),
+    collapse = "\n"
+  )
+  expect_match(success_log, "Status: completed", fixed = TRUE)
+  expect_match(success_log, "Pipeline stage: complete", fixed = TRUE)
+  expect_match(
+    success_log,
+    "Configuration entry: default_guide_pair_used",
+    fixed = TRUE
+  )
   expect_equal(
     calls$plot_path,
     file.path(
@@ -299,6 +316,57 @@ test_that("full_run does not write CSV/RDS outputs when overwrite_output is FALS
     output_directory,
     "duplicateCorrelationPlot.png"
   )))
+  expect_false(file.exists(file.path(output_directory, "CeRberus.log")))
+})
+
+test_that("full_run writes a failure log and preserves the original error", {
+  scores_file <- tempfile(fileext = ".csv")
+  output_directory <- tempfile("full-run-output-")
+  yaml_fpath <- tempfile(fileext = ".yaml")
+  data.table::fwrite(make_full_run_scores(), scores_file)
+  write_full_run_instructions(
+    yaml_fpath,
+    scores_file = scores_file,
+    output_directory = output_directory,
+    overwrite_output = FALSE
+  )
+
+  testthat::local_mocked_bindings(
+    collect_all_layer_configurations = function(...) {
+      list(
+        default_guide_pair_used = make_full_run_screen(
+          "default_guide_pair_used",
+          0.2
+        )
+      )
+    },
+    compute_dupCorrelation = function(.x, ...) .x,
+    find_optimal_configuration = function(GI_list, ...) GI_list,
+    compute_models = function(GI_obj, ...) {
+      stop("deliberate model failure", call. = FALSE)
+    },
+    .package = "CeRberus"
+  )
+
+  expect_error(
+    full_run(yaml_fpath),
+    "deliberate model failure",
+    fixed = TRUE
+  )
+
+  error_log_path <- file.path(output_directory, "CeRberus_error.log")
+  expect_true(file.exists(error_log_path))
+  error_log <- paste(readLines(error_log_path, warn = FALSE), collapse = "\n")
+  expect_match(error_log, "Status: failed", fixed = TRUE)
+  expect_match(error_log, "Pipeline stage: fit_models", fixed = TRUE)
+  expect_match(error_log, "Condition: i In index: 1.", fixed = TRUE)
+  expect_match(error_log, "deliberate model failure", fixed = TRUE)
+  expect_match(
+    error_log,
+    "Configuration entry: default_guide_pair_used",
+    fixed = TRUE
+  )
+  expect_false(file.exists(file.path(output_directory, "CeRberus.log")))
 })
 
 test_that("full_run can return NULL after running the pipeline", {

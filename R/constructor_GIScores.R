@@ -21,8 +21,11 @@
 #'   `"bio_rep"`.
 #' @param block_layer Optional replicate layer used as the limma blocking layer
 #'   for duplicate-correlation modelling.
-#' @param force_fixed_pair Logical. If `TRUE`, force construction as a
-#'   fixed-pair screen regardless of the inferred screen attributes.
+#' @param force_fixed_pair Deprecated logical override. Use
+#'   `screen_type = "fixed_pair"` instead.
+#' @param screen_type Character scalar controlling screen classification.
+#'   `"auto"` uses the inferred screen attributes, while `"fixed_pair"` and
+#'   `"multiplex"` explicitly select the corresponding screen structure.
 #' @param pos_agnostic Logical. If `TRUE`, opt into position-agnostic analysis
 #'   for an inferred multiplex screen by averaging both orientations of each
 #'   gene pair. The default, `FALSE`, retains directional query-by-library
@@ -54,8 +57,37 @@ GIScores <- function(
   force_fixed_pair = FALSE,
   pos_agnostic = FALSE,
   symmetric_analysis_method = "preaverage",
-  verbose = FALSE
+  verbose = FALSE,
+  screen_type = c("auto", "fixed_pair", "multiplex")
 ) {
+  screen_type <- match.arg(screen_type)
+
+  if (
+    !is.logical(force_fixed_pair) ||
+      length(force_fixed_pair) != 1L ||
+      is.na(force_fixed_pair)
+  ) {
+    stop("force_fixed_pair must be TRUE or FALSE.", call. = FALSE)
+  }
+
+  if (isTRUE(force_fixed_pair)) {
+    .Deprecated(
+      msg = paste0(
+        "force_fixed_pair is deprecated; use ",
+        "screen_type = \"fixed_pair\" instead."
+      )
+    )
+
+    if (!identical(screen_type, "auto")) {
+      stop(
+        "Do not use force_fixed_pair together with a non-'auto' screen_type.",
+        call. = FALSE
+      )
+    }
+
+    screen_type <- "fixed_pair"
+  }
+
   if (
     !is.logical(pos_agnostic) ||
       length(pos_agnostic) != 1L ||
@@ -83,7 +115,7 @@ GIScores <- function(
       tech_rep_col = tech_rep_col,
       guide_col = guide_col,
       gi_col = gi_col,
-      force_fixed_pair = force_fixed_pair,
+      requested_screen_type = screen_type,
       symmetric_analysis_method = symmetric_analysis_method
     )
   )
