@@ -36,7 +36,7 @@ test_that("flatten_array supports a custom value column name", {
     dimnames = list(c("A", "B"), c("C", "D"))
   )
 
-  result <- flatten_array(x, value.name = "score")
+  result <- flatten_array(x, value_name = "score")
 
   expect_named(result, c("Var1", "Var2", "score"))
   expect_equal(result$score, 1:4)
@@ -64,7 +64,7 @@ test_that("flatten_array supports 3D arrays", {
     )
   )
 
-  result <- flatten_array(x, value.name = "score")
+  result <- flatten_array(x, value_name = "score")
 
   expect_s3_class(result, "data.table")
   expect_named(result, c("query_gene", "library_gene", "replicate", "score"))

@@ -83,7 +83,7 @@ make_multiplex_collect_data <- function() {
   )
 }
 
-test_that("collect_GIs extracts fixed-pair coefficients, p-values, and adjusted FDR", {
+test_that("collect_gis extracts fixed-pair coefficients, p-values, and adjusted FDR", {
   guide_data <- make_fixed_pair_collect_data()
   screen <- make_collect_screen(
     class = "FixedPairScreen",
@@ -95,7 +95,7 @@ test_that("collect_GIs extracts fixed-pair coefficients, p-values, and adjusted 
     )
   )
 
-  result <- collect_GIs(screen, FDR_method = "BH")
+  result <- collect_gis(screen, fdr_method = "BH")
 
   expect_s4_class(result, "FixedPairScreen")
   expect_equal(dim(result@geneGIs), c(3L, 3L))
@@ -109,7 +109,7 @@ test_that("collect_GIs extracts fixed-pair coefficients, p-values, and adjusted 
   )
 })
 
-test_that("collect_GIs respects requested FDR method for fixed-pair screens", {
+test_that("collect_gis respects requested FDR method for fixed-pair screens", {
   guide_data <- make_fixed_pair_collect_data()
   screen <- make_collect_screen(
     class = "FixedPairScreen",
@@ -121,7 +121,7 @@ test_that("collect_GIs respects requested FDR method for fixed-pair screens", {
     )
   )
 
-  result <- collect_GIs(screen, FDR_method = "bonferroni")
+  result <- collect_gis(screen, fdr_method = "bonferroni")
 
   expect_equal(
     unname(result@geneGIs[, "FDR"]),
@@ -129,7 +129,7 @@ test_that("collect_GIs respects requested FDR method for fixed-pair screens", {
   )
 })
 
-test_that("collect_GIs rejects unknown FDR methods", {
+test_that("collect_gis rejects unknown FDR methods", {
   guide_data <- make_fixed_pair_collect_data()
   screen <- make_collect_screen(
     class = "FixedPairScreen",
@@ -142,12 +142,12 @@ test_that("collect_GIs rejects unknown FDR methods", {
   )
 
   expect_error(
-    collect_GIs(screen, FDR_method = "not-a-method"),
+    collect_gis(screen, fdr_method = "not-a-method"),
     "Unknown FDR method provided"
   )
 })
 
-test_that("collect_GIs builds a query-by-library-by-variable array for multiplex screens", {
+test_that("collect_gis builds a query-by-library-by-variable array for multiplex screens", {
   guide_data <- make_multiplex_collect_data()
   screen <- make_collect_screen(
     class = "MultiplexScreen",
@@ -178,7 +178,7 @@ test_that("collect_GIs builds a query-by-library-by-variable array for multiplex
     )
   )
 
-  result <- collect_GIs(screen, FDR_method = "BH")
+  result <- collect_gis(screen, fdr_method = "BH")
 
   expect_s4_class(result, "MultiplexScreen")
   expect_equal(dim(result@geneGIs), c(3L, 3L, 3L))
@@ -193,7 +193,7 @@ test_that("collect_GIs builds a query-by-library-by-variable array for multiplex
   )
 })
 
-test_that("collect_GIs keeps failed multiplex models as NA rows", {
+test_that("collect_gis keeps failed multiplex models as NA rows", {
   guide_data <- make_multiplex_collect_data()
   screen <- make_collect_screen(
     class = "MultiplexScreen",
@@ -220,7 +220,7 @@ test_that("collect_GIs keeps failed multiplex models as NA rows", {
     )
   )
 
-  result <- collect_GIs(screen)
+  result <- collect_gis(screen)
 
   expect_true(all(is.na(result@geneGIs["B", , "GI"])))
   expect_true(all(is.na(result@geneGIs["B", , "pval"])))
@@ -228,7 +228,7 @@ test_that("collect_GIs keeps failed multiplex models as NA rows", {
   expect_equal(result@geneGIs["A", "A", "GI"], 0.1)
 })
 
-test_that("collect_GIs warns when multiplex output loses guide-level genes", {
+test_that("collect_gis warns when multiplex output loses guide-level genes", {
   guide_data <- make_multiplex_collect_data()
   screen <- make_collect_screen(
     class = "MultiplexScreen",
@@ -247,13 +247,13 @@ test_that("collect_GIs warns when multiplex output loses guide-level genes", {
   )
 
   expect_warning(
-    result <- collect_GIs(screen),
+    result <- collect_gis(screen),
     "Some genes were lost"
   )
   expect_equal(dim(result@geneGIs), c(2L, 2L, 3L))
 })
 
-test_that("collect_GIs creates symmetrized output for position-agnostic multiplex screens", {
+test_that("collect_gis creates symmetrized output for position-agnostic multiplex screens", {
   guide_data <- make_multiplex_collect_data()
   screen <- make_collect_screen(
     class = "PosAgnMultiplexScreen",
@@ -286,7 +286,7 @@ test_that("collect_GIs creates symmetrized output for position-agnostic multiple
     symmGeneGIs = data.table::data.table()
   )
 
-  result <- collect_GIs(screen, FDR_method = "BH")
+  result <- collect_gis(screen, fdr_method = "BH")
 
   expect_s4_class(result, "PosAgnMultiplexScreen")
   expect_s3_class(result@symmGeneGIs, "data.table")
@@ -301,7 +301,7 @@ test_that("collect_GIs creates symmetrized output for position-agnostic multiple
   expect_equal(result@symmGeneGIs$pval, c(0.01, 0.02, 0.04))
   expect_equal(
     result@symmGeneGIs$FDR,
-    balanced_FDR(
+    balanced_fdr(
       pairs = c("A;B", "A;C", "B;C"),
       pval_array = result@geneGIs[,, "pval"],
       fdr_method = "BH"
@@ -311,7 +311,7 @@ test_that("collect_GIs creates symmetrized output for position-agnostic multiple
 })
 
 
-test_that("collect_GIs applies one global FDR correction in canonical pair order", {
+test_that("collect_gis applies one global FDR correction in canonical pair order", {
   pairs <- c("B;C", "A;B", "A;C")
   coefficients <- c(-0.5, 0.8, 0.1)
   pvalues <- c(0.001, 0.02, 0.40)
@@ -335,7 +335,7 @@ test_that("collect_GIs applies one global FDR correction in canonical pair order
     metadata = list(symmetric_analysis_method = "global_preaverage")
   )
 
-  result <- collect_GIs(screen, FDR_method = "BH")
+  result <- collect_gis(screen, fdr_method = "BH")
   expected_fdr <- stats::p.adjust(pvalues, method = "BH")
 
   expect_equal(result@symmGeneGIs$gene_pair, pairs)
@@ -377,7 +377,7 @@ test_that("global position-agnostic collection respects the requested FDR method
     metadata = list(symmetric_analysis_method = "global_preaverage")
   )
 
-  result <- collect_GIs(screen, FDR_method = "bonferroni")
+  result <- collect_gis(screen, fdr_method = "bonferroni")
 
   expect_equal(
     result@symmGeneGIs$FDR,
@@ -410,7 +410,7 @@ test_that("global position-agnostic collection rejects reordered model pairs", {
   )
 
   expect_error(
-    collect_GIs(screen),
+    collect_gis(screen),
     "global limma output rows do not match"
   )
 })

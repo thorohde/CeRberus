@@ -100,12 +100,12 @@ make_global_dupCorrelation_scores <- function(n_genes = 20L) {
   input
 }
 
-test_that("compute_dupCorrelation for one space dimension calls limma without blocks when use_blocks is FALSE", {
+test_that("compute_dup_correlation for one space dimension calls limma without blocks when use_blocks is FALSE", {
   data <- make_fixed_pair_dupCorrelation_matrix()
   object <- make_gRNA_GI_for_dupCorrelation(data)
 
   mocked <- with_mocked_duplicateCorrelation(
-    compute_dupCorrelation(object),
+    compute_dup_correlation(object),
     correlations = list(0.123)
   )
 
@@ -116,7 +116,7 @@ test_that("compute_dupCorrelation for one space dimension calls limma without bl
   expect_equal(mocked$calls[[1L]]$ndups, 1)
 })
 
-test_that("compute_dupCorrelation for one space dimension forwards blocks when use_blocks is TRUE", {
+test_that("compute_dup_correlation for one space dimension forwards blocks when use_blocks is TRUE", {
   data <- make_fixed_pair_dupCorrelation_matrix()
   blocks <- c("b1", "b1", "b2", "b2")
   object <- make_gRNA_GI_for_dupCorrelation(
@@ -126,7 +126,7 @@ test_that("compute_dupCorrelation for one space dimension forwards blocks when u
   )
 
   mocked <- with_mocked_duplicateCorrelation(
-    compute_dupCorrelation(object),
+    compute_dup_correlation(object),
     correlations = list(0.456)
   )
 
@@ -137,7 +137,7 @@ test_that("compute_dupCorrelation for one space dimension forwards blocks when u
   expect_null(mocked$calls[[1L]]$ndups)
 })
 
-test_that("compute_dupCorrelation for two space dimensions computes one correlation per query without blocks", {
+test_that("compute_dup_correlation for two space dimensions computes one correlation per query without blocks", {
   data <- make_multiplex_dupCorrelation_array()
   object <- make_gRNA_GI_for_dupCorrelation(
     data,
@@ -146,7 +146,7 @@ test_that("compute_dupCorrelation for two space dimensions computes one correlat
   )
 
   mocked <- with_mocked_duplicateCorrelation(
-    compute_dupCorrelation(object),
+    compute_dup_correlation(object),
     correlations = list(0.1, 0.2)
   )
 
@@ -160,7 +160,7 @@ test_that("compute_dupCorrelation for two space dimensions computes one correlat
   expect_null(mocked$calls[[2L]]$block)
 })
 
-test_that("compute_dupCorrelation for two space dimensions forwards blocks to each query", {
+test_that("compute_dup_correlation for two space dimensions forwards blocks to each query", {
   data <- make_multiplex_dupCorrelation_array()
   blocks <- c("b1", "b1", "b2", "b2")
   object <- make_gRNA_GI_for_dupCorrelation(
@@ -172,7 +172,7 @@ test_that("compute_dupCorrelation for two space dimensions forwards blocks to ea
   )
 
   mocked <- with_mocked_duplicateCorrelation(
-    compute_dupCorrelation(object),
+    compute_dup_correlation(object),
     correlations = list(0.3, 0.4)
   )
 
@@ -184,7 +184,7 @@ test_that("compute_dupCorrelation for two space dimensions forwards blocks to ea
   expect_null(mocked$calls[[2L]]$ndups)
 })
 
-test_that("compute_dupCorrelation for ScreenBase stores the guide-level duplicate correlation", {
+test_that("compute_dup_correlation for ScreenBase stores the guide-level duplicate correlation", {
   data <- make_multiplex_dupCorrelation_array()
   guideGIs <- make_gRNA_GI_for_dupCorrelation(
     data,
@@ -194,7 +194,7 @@ test_that("compute_dupCorrelation for ScreenBase stores the guide-level duplicat
   screen <- make_screen_for_dupCorrelation(guideGIs)
 
   mocked <- with_mocked_duplicateCorrelation(
-    compute_dupCorrelation(screen),
+    compute_dup_correlation(screen),
     correlations = list(0.5, 0.6)
   )
 
@@ -216,7 +216,7 @@ test_that("global_preaverage computes one duplicate correlation over all pairs",
   expected_blocks <- screen@guideGIs@blocks
 
   mocked <- with_mocked_duplicateCorrelation(
-    compute_dupCorrelation(screen),
+    compute_dup_correlation(screen),
     correlations = list(0.321)
   )
 

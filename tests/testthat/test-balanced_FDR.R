@@ -10,7 +10,7 @@ local_balanced_fdr <- function(pair, pval_array, method) {
   stats::p.adjust(local_pvals, method = method)[local_pairs == pair]
 }
 
-test_that("balanced_FDR returns the local adjusted p-value for one pair", {
+test_that("balanced_fdr returns the local adjusted p-value for one pair", {
   pval_array <- matrix(
     c(
       0.90,
@@ -28,7 +28,7 @@ test_that("balanced_FDR returns the local adjusted p-value for one pair", {
     dimnames = list(c("A", "B", "C"), c("A", "B", "C"))
   )
 
-  result <- balanced_FDR("A;B", pval_array, fdr_method = "BH")
+  result <- balanced_fdr("A;B", pval_array, fdr_method = "BH")
   expected <- local_balanced_fdr("A;B", pval_array, method = "BH")
 
   expect_type(result, "double")
@@ -36,7 +36,7 @@ test_that("balanced_FDR returns the local adjusted p-value for one pair", {
   expect_equal(result, expected)
 })
 
-test_that("balanced_FDR returns one value per input pair", {
+test_that("balanced_fdr returns one value per input pair", {
   pval_array <- matrix(
     c(
       0.90,
@@ -55,7 +55,7 @@ test_that("balanced_FDR returns one value per input pair", {
   )
   pairs <- c("A;B", "B;C", "C;A")
 
-  result <- balanced_FDR(pairs, pval_array, fdr_method = "BH")
+  result <- balanced_fdr(pairs, pval_array, fdr_method = "BH")
   expected <- purrr::map_dbl(
     pairs,
     ~ local_balanced_fdr(.x, pval_array, method = "BH")
@@ -65,7 +65,7 @@ test_that("balanced_FDR returns one value per input pair", {
   expect_equal(result, expected)
 })
 
-test_that("balanced_FDR respects the requested p.adjust method", {
+test_that("balanced_fdr respects the requested p.adjust method", {
   pval_array <- matrix(
     c(
       0.90,
@@ -83,13 +83,13 @@ test_that("balanced_FDR respects the requested p.adjust method", {
     dimnames = list(c("A", "B", "C"), c("A", "B", "C"))
   )
 
-  result <- balanced_FDR("A;B", pval_array, fdr_method = "bonferroni")
+  result <- balanced_fdr("A;B", pval_array, fdr_method = "bonferroni")
   expected <- local_balanced_fdr("A;B", pval_array, method = "bonferroni")
 
   expect_equal(result, expected)
 })
 
-test_that("balanced_FDR treats pair direction as part of the requested result", {
+test_that("balanced_fdr treats pair direction as part of the requested result", {
   pval_array <- matrix(
     c(
       0.90,
@@ -107,15 +107,15 @@ test_that("balanced_FDR treats pair direction as part of the requested result", 
     dimnames = list(c("A", "B", "C"), c("A", "B", "C"))
   )
 
-  forward <- balanced_FDR("A;B", pval_array, fdr_method = "BH")
-  reverse <- balanced_FDR("B;A", pval_array, fdr_method = "BH")
+  forward <- balanced_fdr("A;B", pval_array, fdr_method = "BH")
+  reverse <- balanced_fdr("B;A", pval_array, fdr_method = "BH")
 
   expect_equal(forward, local_balanced_fdr("A;B", pval_array, method = "BH"))
   expect_equal(reverse, local_balanced_fdr("B;A", pval_array, method = "BH"))
   expect_false(isTRUE(all.equal(forward, reverse)))
 })
 
-test_that("balanced_FDR propagates NA p-values through p.adjust", {
+test_that("balanced_fdr propagates NA p-values through p.adjust", {
   pval_array <- matrix(
     c(
       0.90,
@@ -133,12 +133,12 @@ test_that("balanced_FDR propagates NA p-values through p.adjust", {
     dimnames = list(c("A", "B", "C"), c("A", "B", "C"))
   )
 
-  result <- balanced_FDR("B;B", pval_array, fdr_method = "BH")
+  result <- balanced_fdr("B;B", pval_array, fdr_method = "BH")
 
   expect_true(is.na(result))
 })
 
-test_that("balanced_FDR errors for unknown genes", {
+test_that("balanced_fdr errors for unknown genes", {
   pval_array <- matrix(
     c(0.90, 0.01, 0.04, 0.80),
     nrow = 2,
@@ -147,16 +147,16 @@ test_that("balanced_FDR errors for unknown genes", {
   )
 
   expect_error(
-    suppressWarnings(balanced_FDR("X;B", pval_array, fdr_method = "BH")),
+    suppressWarnings(balanced_fdr("X;B", pval_array, fdr_method = "BH")),
     "subscript out of bounds"
   )
   expect_error(
-    balanced_FDR("A;X", pval_array, fdr_method = "BH"),
+    balanced_fdr("A;X", pval_array, fdr_method = "BH"),
     "subscript out of bounds"
   )
 })
 
-test_that("balanced_FDR errors for invalid p.adjust methods", {
+test_that("balanced_fdr errors for invalid p.adjust methods", {
   pval_array <- matrix(
     c(0.90, 0.01, 0.04, 0.80),
     nrow = 2,
@@ -165,7 +165,7 @@ test_that("balanced_FDR errors for invalid p.adjust methods", {
   )
 
   expect_error(
-    balanced_FDR("A;B", pval_array, fdr_method = "invalid-method"),
+    balanced_fdr("A;B", pval_array, fdr_method = "invalid-method"),
     "match.arg"
   )
 })

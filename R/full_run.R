@@ -122,7 +122,7 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
 
       .stage <- "construct_configurations"
       .data <- collect_all_layer_configurations(
-        .data,
+        gi_data = .data,
         screen_type = instr$screen_type,
         pos_agnostic = instr$pos_agnostic,
         symmetric_analysis_method = instr$symmetric_analysis_method,
@@ -130,7 +130,7 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
       )
 
       .stage <- "duplicate_correlation"
-      .data <- map(.data, compute_dupCorrelation)
+      .data <- map(.data, compute_dup_correlation)
 
       if (isTRUE(instr$overwrite_output)) {
         saveRDS(.data, file.path(instr$output_directory, "all_GI_objects.rds"))
@@ -156,13 +156,13 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
       .stage <- "fit_models"
       .data <- map(.data, compute_models)
 
-      .stage <- "collect_GIs"
-      .data <- map(.data, collect_GIs, FDR_method = instr$FDR)
+      .stage <- "collect_gis"
+      .data <- map(.data, collect_gis, fdr_method = instr$FDR)
 
       if (isTRUE(instr$verbose)) {
         purrr::iwalk(.data, function(.x, .y) {
           cat("\nConfiguration: ", .y, "\n", sep = "")
-          screenReport(.x, interactive = FALSE, print = TRUE)
+          screen_report(.x, interactive = FALSE, print = TRUE)
         })
       }
 
@@ -173,7 +173,7 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
         .output$duplicate_correlation <- .data[[1]]@metadata$dupcor_data
 
         for (.n in names(.data)) {
-          .output[[paste0("GI_scores_", .n)]] <- GI_df(.data[[.n]])
+          .output[[paste0("GI_scores_", .n)]] <- gi_df(.data[[.n]])
         }
 
         .output |>

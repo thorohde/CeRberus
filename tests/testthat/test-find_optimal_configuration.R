@@ -115,19 +115,19 @@ test_that("find_optimal_configuration validates input list and keep_all", {
 
   expect_error(
     CeRberus:::find_optimal_configuration(list()),
-    "GI_list must contain at least one screen object"
+    "gi_list must contain at least one screen object"
   )
   expect_error(
     CeRberus:::find_optimal_configuration(list(valid_screen)),
-    "GI_list must be named"
+    "gi_list must be named"
   )
   expect_error(
     CeRberus:::find_optimal_configuration(setNames(list(valid_screen), "")),
-    "GI_list must be named"
+    "gi_list must be named"
   )
   expect_error(
     CeRberus:::find_optimal_configuration(list(a = valid_screen, a = valid_screen)),
-    "GI_list must have unique names"
+    "gi_list must have unique names"
   )
   expect_error(
     CeRberus:::find_optimal_configuration(list(a = valid_screen), keep_all = NA),

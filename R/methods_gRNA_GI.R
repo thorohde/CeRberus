@@ -54,7 +54,7 @@ setMethod(
 #####
 
 setMethod(
-  "flatten_guideGIs",
+  "flatten_guide_gis",
   signature = signature(.x = "gRNA_GI"),
   function(.x) {
     .x@use_blocks <- .x@block_layer != "" &
@@ -92,7 +92,7 @@ setMethod(
 #####
 
 setMethod(
-  "compute_dupCorrelation",
+  "compute_dup_correlation",
   signature = signature(.x = "gRNA_GI"),
   function(.x) {
     if (length(.x@space) == 1) {

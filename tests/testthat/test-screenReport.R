@@ -1,4 +1,4 @@
-make_multiplex_like_scores_for_screenReport <- function() {
+make_multiplex_like_scores_for_screen_report <- function() {
   genes <- paste0("G", seq_len(20L))
   input <- expand.grid(
     query_gene = genes,
@@ -11,7 +11,7 @@ make_multiplex_like_scores_for_screenReport <- function() {
   input
 }
 
-make_screen_for_screenReport <- function(
+make_screen_for_screen_report <- function(
   class = c("MultiplexScreen", "FixedPairScreen", "PosAgnMultiplexScreen"),
   checks = list(
     gene_sets_equal = TRUE,
@@ -39,7 +39,7 @@ make_screen_for_screenReport <- function(
   }
 
   base_screen <- GIScores(
-    make_multiplex_like_scores_for_screenReport(),
+    make_multiplex_like_scores_for_screen_report(),
     block_layer = construction_block_layer
   )
 
@@ -83,14 +83,14 @@ make_screen_for_screenReport <- function(
   screen
 }
 
-test_that("screenReport returns structured report content in interactive mode", {
-  screen <- make_screen_for_screenReport(
+test_that("screen_report returns structured report content in interactive mode", {
+  screen <- make_screen_for_screen_report(
     class = "MultiplexScreen",
     gene_gis_length = 3L,
     gi_errors = list(G1 = NULL, G2 = simpleError("boom"))
   )
 
-  result <- screenReport(screen, interactive = TRUE, print = FALSE)
+  result <- screen_report(screen, interactive = TRUE, print = FALSE)
 
   expect_type(result, "list")
   expect_named(result, c("overview", "decisions", "checks", "problems"))
@@ -141,11 +141,11 @@ test_that("screenReport returns structured report content in interactive mode", 
   )))
 })
 
-test_that("screenReport prints section headings and key summary lines", {
-  screen <- make_screen_for_screenReport(class = "FixedPairScreen")
+test_that("screen_report prints section headings and key summary lines", {
+  screen <- make_screen_for_screen_report(class = "FixedPairScreen")
 
   output <- paste(
-    capture.output(screenReport(screen, print = TRUE)),
+    capture.output(screen_report(screen, print = TRUE)),
     collapse = "\n"
   )
 
@@ -158,8 +158,8 @@ test_that("screenReport prints section headings and key summary lines", {
   expect_match(output, "Selected model strategy: fixed-pair")
 })
 
-test_that("screenReport uses fallback text when checks and metadata fields are missing", {
-  screen <- make_screen_for_screenReport(
+test_that("screen_report uses fallback text when checks and metadata fields are missing", {
+  screen <- make_screen_for_screen_report(
     class = "MultiplexScreen",
     checks = list(),
     failed_queries = NULL,
@@ -177,7 +177,7 @@ test_that("screenReport uses fallback text when checks and metadata fields are m
   screen@screen_attr$all_pairs <- character()
   screen@screen_attr$unique_pairs <- character()
 
-  result <- screenReport(screen, interactive = TRUE, print = FALSE)
+  result <- screen_report(screen, interactive = TRUE, print = FALSE)
 
   expect_equal(result$checks, "No screen checks stored.")
   expect_true(any(grepl(
@@ -207,9 +207,9 @@ test_that("screenReport uses fallback text when checks and metadata fields are m
   )))
 })
 
-test_that("screenReport summarizes failed queries and truncates long affected-query lists", {
+test_that("screen_report summarizes failed queries and truncates long affected-query lists", {
   failed_queries <- paste0("Q", seq_len(10L))
-  screen <- make_screen_for_screenReport(
+  screen <- make_screen_for_screen_report(
     class = "PosAgnMultiplexScreen",
     failed_queries = failed_queries,
     gi_errors = purrr::set_names(
@@ -222,7 +222,7 @@ test_that("screenReport summarizes failed queries and truncates long affected-qu
     )
   )
 
-  result <- screenReport(screen, interactive = TRUE, print = FALSE)
+  result <- screen_report(screen, interactive = TRUE, print = FALSE)
 
   expect_true(any(grepl(
     "Position-agnostic output: TRUE",
@@ -248,15 +248,15 @@ test_that("screenReport summarizes failed queries and truncates long affected-qu
 })
 
 
-test_that("screenReport identifies one global position-agnostic model", {
+test_that("screen_report identifies one global position-agnostic model", {
   fit <- limma::lmFit(matrix(c(1, 2, 3, 4), nrow = 2L))
-  screen <- make_screen_for_screenReport(
+  screen <- make_screen_for_screen_report(
     class = "PosAgnMultiplexScreen",
     metadata = list(symmetric_analysis_method = "global_preaverage"),
     limma_models = fit
   )
 
-  result <- screenReport(screen, interactive = TRUE, print = FALSE)
+  result <- screen_report(screen, interactive = TRUE, print = FALSE)
 
   expect_true(any(grepl(
     "Symmetric analysis method: global_preaverage",

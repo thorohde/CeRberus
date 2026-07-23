@@ -113,7 +113,7 @@ read_instructions <- function(yaml_fpath) {
 #####
 
 collect_all_layer_configurations <- function(
-  GI_data,
+  gi_data,
   .to_use = c("tech_rep", "bio_rep", "guide_pair"),
   screen_type = c("auto", "fixed_pair", "multiplex"),
   pos_agnostic = FALSE,
@@ -124,15 +124,15 @@ collect_all_layer_configurations <- function(
 
   .collapsable_layers <- intersect(
     c("tech_rep", "bio_rep", "guide_pair"),
-    colnames(GI_data)
+    colnames(gi_data)
   )
-  .to_use <- intersect(.to_use, colnames(GI_data))
+  .to_use <- intersect(.to_use, colnames(gi_data))
 
   output <- list()
 
   for (.use in .to_use) {
     output[[str_c("default_", .use, "_used")]] <- GIScores(
-      GI_data,
+      gi_data,
       block_layer = .use,
       screen_type = screen_type,
       pos_agnostic = pos_agnostic,
@@ -155,7 +155,7 @@ collect_all_layer_configurations <- function(
             message(.n)
           }
           output[[.n]] <- GIScores(
-            GI_data,
+            gi_data,
             collapse_layers = .to_collapse,
             block_layer = .use,
             screen_type = screen_type,
@@ -172,20 +172,20 @@ collect_all_layer_configurations <- function(
 
 #####
 
-find_optimal_configuration <- function(GI_list, keep_all = FALSE) {
+find_optimal_configuration <- function(gi_list, keep_all = FALSE) {
   stopifnot(
-    "GI_list must contain at least one screen object." = length(GI_list) > 0,
-    "GI_list must be named." = !is.null(names(GI_list)) &&
-      all(!is.na(names(GI_list))) &&
-      all(nzchar(names(GI_list))),
-    "GI_list must have unique names." = !anyDuplicated(names(GI_list)),
+    "gi_list must contain at least one screen object." = length(gi_list) > 0,
+    "gi_list must be named." = !is.null(names(gi_list)) &&
+      all(!is.na(names(gi_list))) &&
+      all(nzchar(names(gi_list))),
+    "gi_list must have unique names." = !anyDuplicated(names(gi_list)),
     "keep_all must be TRUE or FALSE." = is.logical(keep_all) &&
       length(keep_all) == 1 &&
       !is.na(keep_all)
   )
 
   dupcor <- map_dbl(
-    GI_list,
+    gi_list,
     ~ {
       mean(.x@dupCorrelation, na.rm = TRUE)
     }
@@ -194,7 +194,7 @@ find_optimal_configuration <- function(GI_list, keep_all = FALSE) {
   dupcor[is.nan(dupcor)] <- NA_real_
 
   dupcor_data <- data.table(
-    config = names(GI_list),
+    config = names(gi_list),
     dcor = round(dupcor, 3)
   )
 
@@ -233,15 +233,15 @@ find_optimal_configuration <- function(GI_list, keep_all = FALSE) {
     )
   ]
 
-  for (.n in names(GI_list)) {
-    GI_list[[.n]]@metadata$dupcor_data <- dupcor_data
+  for (.n in names(gi_list)) {
+    gi_list[[.n]]@metadata$dupcor_data <- dupcor_data
   }
 
   if (isTRUE(keep_all)) {
-    return(GI_list)
+    return(gi_list)
   } else {
     return(
-      GI_list[selected_name]
+      gi_list[selected_name]
     )
   }
 }

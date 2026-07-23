@@ -76,8 +76,8 @@ flatten_symmetric_pairs <- function(.arr, pairs, sep = ";") {
 
 #####
 
-get_symmetric_analysis_method <- function(GI_obj) {
-  method <- GI_obj@metadata$symmetric_analysis_method
+get_symmetric_analysis_method <- function(gi_obj) {
+  method <- gi_obj@metadata$symmetric_analysis_method
 
   if (is.null(method) || length(method) == 0L) {
     return("preaverage")
@@ -88,7 +88,7 @@ get_symmetric_analysis_method <- function(GI_obj) {
 
 #####
 
-makeSymmetric <- function(.x) {
+make_symmetric <- function(.x) {
   output <- base::apply(
     abind::abind(.x, base::t(.x), along = 3),
     1:2,
@@ -126,7 +126,7 @@ gather_symmetric_scores <- function(pairs, .arr, sep = ";") {
 #' Compute balanced FDR values for position-agnostic gene pairs
 #'
 #' @description
-#' For each unordered gene pair, `balanced_FDR()` builds a local set of
+#' For each unordered gene pair, `balanced_fdr()` builds a local set of
 #' directional p-values involving the two genes and adjusts those p-values for
 #' multiple testing. The returned value for each pair is the adjusted p-value
 #' corresponding to the original pair orientation.
@@ -148,7 +148,7 @@ gather_symmetric_scores <- function(pairs, .arr, sep = ";") {
 
 #####
 
-balanced_FDR <- function(pairs, pval_array, fdr_method) {
+balanced_fdr <- function(pairs, pval_array, fdr_method) {
   pair_template <- \(pair) {
     .g1 <- str_split_i(pair, ";", 1)
     .g2 <- str_split_i(pair, ";", 2)

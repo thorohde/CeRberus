@@ -105,7 +105,7 @@ GIScores <- function(
     )
   }
 
-  GI_obj <- new(
+  gi_obj <- new(
     "ScreenBase",
     metadata = list(
       input = input,
@@ -120,28 +120,28 @@ GIScores <- function(
     )
   )
 
-  GI_obj@guideGIs@collapse <- as.character(collapse_layers)
-  GI_obj@guideGIs@block_layer <- as.character(block_layer)
+  gi_obj@guideGIs@collapse <- as.character(collapse_layers)
+  gi_obj@guideGIs@block_layer <- as.character(block_layer)
 
-  GI_obj <- import_scores(GI_obj)
-  GI_obj <- get_screen_attributes(GI_obj)
-  GI_obj <- run_checks(GI_obj)
-  GI_obj <- set_screenType(GI_obj)
+  gi_obj <- import_scores(gi_obj)
+  gi_obj <- get_screen_attributes(gi_obj)
+  gi_obj <- run_checks(gi_obj)
+  gi_obj <- set_screen_type(gi_obj)
 
-  if (pos_agnostic && !methods::is(GI_obj, "MultiplexScreen")) {
+  if (pos_agnostic && !methods::is(gi_obj, "MultiplexScreen")) {
     stop(
       "Position-agnostic analysis is only available for inferred multiplex screens.",
       call. = FALSE
     )
   }
 
-  GI_obj@guideGIs <- GI_obj@guideGIs |> fill_gRNA_GIs(GI_obj@metadata$input)
-  GI_obj@guideGIs <- GI_obj@guideGIs |> collapse_replicates()
-  GI_obj@guideGIs <- GI_obj@guideGIs |> flatten_guideGIs()
+  gi_obj@guideGIs <- gi_obj@guideGIs |> fill_gRNA_GIs(gi_obj@metadata$input)
+  gi_obj@guideGIs <- gi_obj@guideGIs |> collapse_replicates()
+  gi_obj@guideGIs <- gi_obj@guideGIs |> flatten_guide_gis()
 
-  if (methods::is(GI_obj, "MultiplexScreen") && pos_agnostic) {
-    query_genes <- rownames(GI_obj@guideGIs@data)
-    library_genes <- colnames(GI_obj@guideGIs@data)
+  if (methods::is(gi_obj, "MultiplexScreen") && pos_agnostic) {
+    query_genes <- rownames(gi_obj@guideGIs@data)
+    library_genes <- colnames(gi_obj@guideGIs@data)
 
     if (!setequal(query_genes, library_genes)) {
       stop(
@@ -150,42 +150,37 @@ GIScores <- function(
       )
     }
 
-    GI_obj@guideGIs@data <- GI_obj@guideGIs@data[
+    gi_obj@guideGIs@data <- gi_obj@guideGIs@data[
       query_genes,
       query_genes,
       ,
       drop = FALSE
     ]
 
-    for (.r in GI_obj@guideGIs@block_description) {
-      GI_obj@guideGIs@data[,, .r] <- makeSymmetric(
-        GI_obj@guideGIs@data[,, .r]
+    for (.r in gi_obj@guideGIs@block_description) {
+      gi_obj@guideGIs@data[,, .r] <- make_symmetric(
+        gi_obj@guideGIs@data[,, .r]
       )
     }
 
     if (identical(symmetric_analysis_method, "global_preaverage")) {
-      GI_obj@guideGIs@data <- flatten_symmetric_pairs(
-        .arr = GI_obj@guideGIs@data,
-        pairs = GI_obj@screen_attr$unique_pairs
+      gi_obj@guideGIs@data <- flatten_symmetric_pairs(
+        .arr = gi_obj@guideGIs@data,
+        pairs = gi_obj@screen_attr$unique_pairs
       )
 
-      GI_obj@guideGIs@space <- "gene_pair"
+      gi_obj@guideGIs@space <- "gene_pair"
     }
 
-    GI_obj <- methods::as(
-      object = GI_obj,
+    gi_obj <- methods::as(
+      object = gi_obj,
       Class = "PosAgnMultiplexScreen"
     )
   }
 
   if (isTRUE(verbose)) {
-    screenReport(GI_obj)
+    screen_report(gi_obj)
   }
 
-  ##### rework?
-  #GI_obj <- compute_dupCorrelation(GI_obj)
-
-  #GI_obj@metadata$used_block <- block_layer
-
-  return(GI_obj)
+  return(gi_obj)
 }

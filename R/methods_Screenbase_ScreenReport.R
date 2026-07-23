@@ -1,9 +1,9 @@
 #####
 
 setMethod(
-  "screenReport",
-  signature = signature(GI_obj = "ScreenBase"),
-  function(GI_obj, interactive = FALSE, print = TRUE, width = 80) {
+  "screen_report",
+  signature = signature(gi_obj = "ScreenBase"),
+  function(gi_obj, interactive = FALSE, print = TRUE, width = 80) {
     .line <- function(char = "-") paste(rep(char, width), collapse = "")
 
     .value <- function(x, default = "not available") {
@@ -36,7 +36,7 @@ setMethod(
       paste0(paste(utils::head(x, n), collapse = ", "), suffix)
     }
 
-    .class <- class(GI_obj)[1]
+    .class <- class(gi_obj)[1]
     .type <- c(
       "FixedPairScreen" = "fixed-pair",
       "MultiplexScreen" = "multiplex",
@@ -44,10 +44,10 @@ setMethod(
     )
     .type <- .value(.type[.class], .class)
 
-    .a <- GI_obj@screen_attr
-    .checks <- GI_obj@checks
-    .md <- GI_obj@metadata
-    .err <- GI_obj@errors
+    .a <- gi_obj@screen_attr
+    .checks <- gi_obj@checks
+    .md <- gi_obj@metadata
+    .err <- gi_obj@errors
     .failed_queries <- .err$query_genes_not_usable
     if (is.null(.failed_queries)) {
       .failed_queries <- character()
@@ -63,24 +63,24 @@ setMethod(
       paste0("Observed unordered pairs: ", .value(length(.a$unique_pairs))),
       paste0(
         "Guide-level replicate layers: ",
-        .value(GI_obj@guideGIs@replicates)
+        .value(gi_obj@guideGIs@replicates)
       ),
       paste0(
         "Duplicate-correlation block layer: ",
-        .value(GI_obj@guideGIs@block_layer)
+        .value(gi_obj@guideGIs@block_layer)
       )
     )
 
-    .symmetric_method <- if (methods::is(GI_obj, "PosAgnMultiplexScreen")) {
-      get_symmetric_analysis_method(GI_obj)
+    .symmetric_method <- if (methods::is(gi_obj, "PosAgnMultiplexScreen")) {
+      get_symmetric_analysis_method(gi_obj)
     } else {
       "not applicable"
     }
 
-    .model_count <- if (inherits(GI_obj@limma_models, "MArrayLM")) {
+    .model_count <- if (inherits(gi_obj@limma_models, "MArrayLM")) {
       1L
     } else {
-      length(GI_obj@limma_models)
+      length(gi_obj@limma_models)
     }
 
     .decisions <- c(
@@ -108,11 +108,11 @@ setMethod(
       ),
       paste0(
         "Position-agnostic output: ",
-        methods::is(GI_obj, "PosAgnMultiplexScreen")
+        methods::is(gi_obj, "PosAgnMultiplexScreen")
       ),
       paste0("Symmetric analysis method: ", .symmetric_method),
       paste0("Model objects available: ", .model_count),
-      paste0("Gene-level GI array available: ", length(GI_obj@geneGIs) > 0)
+      paste0("Gene-level GI array available: ", length(gi_obj@geneGIs) > 0)
     )
 
     .check_lines <- if (length(.checks) == 0) {

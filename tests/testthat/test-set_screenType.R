@@ -1,4 +1,4 @@
-make_multiplex_like_scores_for_set_screenType <- function() {
+make_multiplex_like_scores_for_set_screen_type <- function() {
   genes <- paste0("G", seq_len(20L))
   input <- expand.grid(
     query_gene = genes,
@@ -11,7 +11,7 @@ make_multiplex_like_scores_for_set_screenType <- function() {
   input
 }
 
-make_fixed_pair_like_scores_for_set_screenType <- function() {
+make_fixed_pair_like_scores_for_set_screen_type <- function() {
   data.frame(
     query_gene = rep(c("A", "B"), each = 4),
     library_gene = rep(c("C", "D"), each = 4),
@@ -22,9 +22,9 @@ make_fixed_pair_like_scores_for_set_screenType <- function() {
   )
 }
 
-test_that("set_screenType keeps multiplex-compatible screens as multiplex", {
+test_that("set_screen_type keeps multiplex-compatible screens as multiplex", {
   screen <- GIScores(
-    make_multiplex_like_scores_for_set_screenType(),
+    make_multiplex_like_scores_for_set_screen_type(),
     block_layer = "guide_pair"
   )
 
@@ -36,7 +36,7 @@ test_that("set_screenType keeps multiplex-compatible screens as multiplex", {
     sufficient_tests_per_query = TRUE
   )
 
-  result <- set_screenType(as(screen, "ScreenBase"))
+  result <- set_screen_type(as(screen, "ScreenBase"))
 
   expect_s4_class(result, "MultiplexScreen")
   expect_equal(result@guideGIs@space, c("query_gene", "library_gene"))
@@ -44,9 +44,9 @@ test_that("set_screenType keeps multiplex-compatible screens as multiplex", {
   expect_equal(result@metadata$input, screen@metadata$input)
 })
 
-test_that("set_screenType switches to fixed-pair when library checks fail", {
+test_that("set_screen_type switches to fixed-pair when library checks fail", {
   screen <- GIScores(
-    make_multiplex_like_scores_for_set_screenType(),
+    make_multiplex_like_scores_for_set_screen_type(),
     block_layer = "guide_pair"
   )
 
@@ -58,16 +58,16 @@ test_that("set_screenType switches to fixed-pair when library checks fail", {
     sufficient_tests_per_query = FALSE
   )
 
-  result <- set_screenType(as(screen, "ScreenBase"))
+  result <- set_screen_type(as(screen, "ScreenBase"))
 
   expect_s4_class(result, "FixedPairScreen")
   expect_equal(result@guideGIs@space, "gene_pair")
   expect_equal(result@guideGIs@replicates, "guide_pair")
 })
 
-test_that("set_screenType keeps fixed-pair fallback when multiplex criteria are not met", {
+test_that("set_screen_type keeps fixed-pair fallback when multiplex criteria are not met", {
   screen <- GIScores(
-    make_multiplex_like_scores_for_set_screenType(),
+    make_multiplex_like_scores_for_set_screen_type(),
     block_layer = "guide_pair"
   )
 
@@ -79,15 +79,15 @@ test_that("set_screenType keeps fixed-pair fallback when multiplex criteria are 
     sufficient_tests_per_query = TRUE
   )
 
-  result <- set_screenType(as(screen, "ScreenBase"))
+  result <- set_screen_type(as(screen, "ScreenBase"))
 
   expect_s4_class(result, "FixedPairScreen")
   expect_equal(result@guideGIs@space, "gene_pair")
 })
 
-test_that("set_screenType honors requested fixed-pair type when checks allow multiplex", {
+test_that("set_screen_type honors requested fixed-pair type when checks allow multiplex", {
   screen <- GIScores(
-    make_multiplex_like_scores_for_set_screenType(),
+    make_multiplex_like_scores_for_set_screen_type(),
     block_layer = "guide_pair"
   )
 
@@ -101,7 +101,7 @@ test_that("set_screenType honors requested fixed-pair type when checks allow mul
   screen@metadata$requested_screen_type <- "fixed_pair"
 
   expect_warning(
-    result <- set_screenType(as(screen, "ScreenBase")),
+    result <- set_screen_type(as(screen, "ScreenBase")),
     "overrides inferred screen type 'multiplex'"
   )
 
@@ -112,9 +112,9 @@ test_that("set_screenType honors requested fixed-pair type when checks allow mul
   expect_identical(result@metadata$selected_screen_type, "fixed_pair")
 })
 
-test_that("set_screenType honors requested multiplex type when checks favor fixed-pair", {
+test_that("set_screen_type honors requested multiplex type when checks favor fixed-pair", {
   screen <- GIScores(
-    make_fixed_pair_like_scores_for_set_screenType(),
+    make_fixed_pair_like_scores_for_set_screen_type(),
     block_layer = "guide_pair"
   )
 
@@ -128,7 +128,7 @@ test_that("set_screenType honors requested multiplex type when checks favor fixe
   screen@metadata$requested_screen_type <- "multiplex"
 
   expect_warning(
-    result <- set_screenType(as(screen, "ScreenBase")),
+    result <- set_screen_type(as(screen, "ScreenBase")),
     "overrides inferred screen type 'fixed_pair'"
   )
 
@@ -138,9 +138,9 @@ test_that("set_screenType honors requested multiplex type when checks favor fixe
   expect_identical(result@metadata$selected_screen_type, "multiplex")
 })
 
-test_that("set_screenType restores full replicate metadata from fixed-pair style input", {
+test_that("set_screen_type restores full replicate metadata from fixed-pair style input", {
   screen <- GIScores(
-    make_fixed_pair_like_scores_for_set_screenType(),
+    make_fixed_pair_like_scores_for_set_screen_type(),
     block_layer = "guide_pair"
   )
 
@@ -152,7 +152,7 @@ test_that("set_screenType restores full replicate metadata from fixed-pair style
     sufficient_tests_per_query = FALSE
   )
 
-  result <- set_screenType(as(screen, "ScreenBase"))
+  result <- set_screen_type(as(screen, "ScreenBase"))
 
   expect_s4_class(result, "FixedPairScreen")
   expect_equal(result@guideGIs@space, "gene_pair")

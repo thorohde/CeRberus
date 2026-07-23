@@ -4,7 +4,7 @@
 \alias{flatten_array}
 \title{Flatten an array to long format}
 \usage{
-flatten_array(x, dnames, value.name = "value")
+flatten_array(x, dnames, value_name = "value")
 }
 \arguments{
 \item{x}{An array or array-like object with a non-\code{NULL} \code{dim} attribute.}
@@ -13,12 +13,12 @@ flatten_array(x, dnames, value.name = "value")
 dimension columns. Its length should match the number of dimensions in
 \code{x}.}
 
-\item{value.name}{Character scalar naming the output column that stores array
+\item{value_name}{Character scalar naming the output column that stores array
 values. Defaults to \code{"value"}.}
 }
 \value{
 A \code{data.table} in long format containing one column per array
-dimension and one value column named by \code{value.name}.
+dimension and one value column named by \code{value_name}.
 }
 \description{
 Converts an array into a long-format \code{data.table} with one row per array

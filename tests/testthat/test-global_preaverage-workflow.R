@@ -32,10 +32,10 @@ test_that("global_preaverage runs end to end with one ordered pair output", {
     block_layer = "guide_pair"
   )
 
-  result <- compute_dupCorrelation(result)
+  result <- compute_dup_correlation(result)
   result <- compute_models(result)
-  result <- collect_GIs(result, FDR_method = "BH")
-  output <- GI_df(result)
+  result <- collect_gis(result, fdr_method = "BH")
+  output <- gi_df(result)
 
   expected_pairs <- result@screen_attr$unique_pairs
   model_pvalues <- as.numeric(result@limma_models$p.value[, 1L])

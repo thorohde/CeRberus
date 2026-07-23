@@ -1,12 +1,5 @@
 # gGRNA_GIs methods
 
-#purrr::walk(c("guideGIs"), ~ {
-#  .x2 <- paste0(.x, "<-")
-#  setMethod(.x, "guideGIs", .f1))
-#  setMethod(.x2, "guideGIs", .f2)
-#}
-#)
-
 # ScreenBase methods
 
 setMethod("checks", "ScreenBase", function(x) {
@@ -74,6 +67,19 @@ setMethod("guideGIs<-", "ScreenBase", function(x, value) {
 
 #####
 
+setMethod("guideLFCs", "ScreenBase", function(x) {
+  return(slot(x, "guideLFCs"))
+})
+
+#####
+
+setMethod("guideLFCs<-", "ScreenBase", function(x, value) {
+  slot(x, "guideLFCs") <- value
+  return(x)
+})
+
+#####
+
 setMethod("limma_models", "ScreenBase", function(x) {
   return(slot(x, "limma_models"))
 })
@@ -134,9 +140,9 @@ setMethod("symmGeneGIs<-", "PosAgnMultiplexScreen", function(x, value) {
 
 setMethod(
   "import_scores",
-  signature = signature(GI_obj = "ScreenBase"),
-  function(GI_obj) {
-    .md <- GI_obj@metadata
+  signature = signature(gi_obj = "ScreenBase"),
+  function(gi_obj) {
+    .md <- gi_obj@metadata
 
     .md$input <- copy(.md$input)
 
@@ -177,12 +183,9 @@ setMethod(
       gene_pair := paste0(get("query_gene"), ";", get("library_gene"))
     ]
 
-    #            .md$input[, replicate := do.call(paste, c(.SD, sep = "_")),
-    #                      .SDcols = intersect(c("bio_rep", "tech_rep", "guide_pair"), colnames(.md$input))]
+    gi_obj@metadata <- .md
 
-    GI_obj@metadata <- .md
-
-    return(GI_obj)
+    return(gi_obj)
   }
 )
 
@@ -190,9 +193,9 @@ setMethod(
 
 setMethod(
   "get_screen_attributes",
-  signature = signature(GI_obj = "ScreenBase"),
-  function(GI_obj) {
-    .i <- GI_obj@metadata$input
+  signature = signature(gi_obj = "ScreenBase"),
+  function(gi_obj) {
+    .i <- gi_obj@metadata$input
     .a <- list(contrasts = NULL)
     .a$query_genes <- .i[, unique(get("query_gene"))]
     .a$library_genes <- .i[, unique(get("library_gene"))]
@@ -217,8 +220,8 @@ setMethod(
       get("library_gene")
     ))]
 
-    GI_obj@screen_attr <- .a
-    return(GI_obj)
+    gi_obj@screen_attr <- .a
+    return(gi_obj)
   }
 )
 
@@ -226,14 +229,17 @@ setMethod(
 
 setMethod(
   "run_checks",
-  signature = signature(GI_obj = "ScreenBase"),
-  function(GI_obj, min_query_size = 20, min_library_size = 20) {
-    .a <- GI_obj@screen_attr
+  signature = signature(gi_obj = "ScreenBase"),
+  function(gi_obj, min_query_size = 20, min_library_size = 20) {
+    .a <- gi_obj@screen_attr
 
-    GI_obj@checks <- list(
-      gene_sets_equal = (length(.a$query_genes_not_in_lib) <=
-        0.02 * .a$n_query_genes) &
-        (length(.a$library_genes_not_in_query) <= 0.02 * .a$n_lib_genes),
+    query_overlap_sufficient <- length(.a$query_genes_not_in_lib) <=
+      0.02 * .a$n_query_genes
+    library_overlap_sufficient <- length(.a$library_genes_not_in_query) <=
+      0.02 * .a$n_lib_genes
+
+    gi_obj@checks <- list(
+      gene_sets_equal = query_overlap_sufficient & library_overlap_sufficient,
       query_sufficient = .a$n_query_genes >= min_query_size,
       library_sufficient = .a$n_lib_genes >= min_library_size,
       stable_library_size = sum(
@@ -247,18 +253,18 @@ setMethod(
         0.95 * length(.a$observations_per_query),
       avg_tests_per_query = median(.a$observations_per_query, na.rm = TRUE)
     )
-    return(GI_obj)
+    return(gi_obj)
   }
 )
 
 #####
 
 setMethod(
-  "set_screenType",
-  signature = signature(GI_obj = "ScreenBase"),
-  function(GI_obj) {
-    .md <- GI_obj@metadata
-    .c <- GI_obj@checks
+  "set_screen_type",
+  signature = signature(gi_obj = "ScreenBase"),
+  function(gi_obj) {
+    .md <- gi_obj@metadata
+    .c <- gi_obj@checks
 
     .is_multiplex_candidate <- isTRUE(.c$query_sufficient) &&
       isTRUE(.c$library_sufficient) &&
@@ -313,31 +319,31 @@ setMethod(
     .md$inferred_screen_type <- .inferred_screen_type
     .md$selected_screen_type <- .selected_screen_type
 
-    GI_obj <- as(object = GI_obj, Class = .type)
+    gi_obj <- as(object = gi_obj, Class = .type)
 
-    if (is(GI_obj, "MultiplexScreen")) {
-      GI_obj@guideGIs@space <- c("query_gene", "library_gene")
-    } else if (is(GI_obj, "FixedPairScreen")) {
-      GI_obj@guideGIs@space <- "gene_pair"
+    if (is(gi_obj, "MultiplexScreen")) {
+      gi_obj@guideGIs@space <- c("query_gene", "library_gene")
+    } else if (is(gi_obj, "FixedPairScreen")) {
+      gi_obj@guideGIs@space <- "gene_pair"
     }
 
-    GI_obj@guideGIs@replicates <- intersect(
+    gi_obj@guideGIs@replicates <- intersect(
       c("guide_pair", "tech_rep", "bio_rep"),
       colnames(.md$input)
     )
 
-    GI_obj@metadata <- .md
-    return(GI_obj)
+    gi_obj@metadata <- .md
+    return(gi_obj)
   }
 )
 
 #####
 
 setMethod(
-  "compute_dupCorrelation",
+  "compute_dup_correlation",
   signature = signature(.x = "ScreenBase"),
   function(.x) {
-    .x@dupCorrelation <- compute_dupCorrelation(.x@guideGIs)
+    .x@dupCorrelation <- compute_dup_correlation(.x@guideGIs)
     return(.x)
   }
 )
@@ -346,15 +352,15 @@ setMethod(
 
 setMethod(
   "compute_models",
-  signature = signature(GI_obj = "FixedPairScreen"),
-  function(GI_obj) {
-    GI_obj@limma_models <- limma::lmFit(
-      object = GI_obj@guideGIs@data,
-      block = GI_obj@guideGIs@blocks,
-      correlation = GI_obj@dupCorrelation
+  signature = signature(gi_obj = "FixedPairScreen"),
+  function(gi_obj) {
+    gi_obj@limma_models <- limma::lmFit(
+      object = gi_obj@guideGIs@data,
+      block = gi_obj@guideGIs@blocks,
+      correlation = gi_obj@dupCorrelation
     ) |>
       limma::eBayes()
-    return(GI_obj)
+    return(gi_obj)
   }
 )
 
@@ -362,40 +368,36 @@ setMethod(
 
 setMethod(
   "compute_models",
-  signature = signature(GI_obj = "MultiplexScreen"),
-  function(GI_obj) {
-    output <- GI_obj@screen_attr$query_genes |>
+  signature = signature(gi_obj = "MultiplexScreen"),
+  function(gi_obj) {
+    output <- gi_obj@screen_attr$query_genes |>
       set_names()
     output <- output |>
       map(safely(\(.g) {
         .fit <- limma::lmFit(
-          object = GI_obj@guideGIs@data[.g, GI_obj@screen_attr$library_genes, ],
-          block = GI_obj@guideGIs@blocks,
-          correlation = GI_obj@dupCorrelation[[.g]]
+          object = gi_obj@guideGIs@data[.g, gi_obj@screen_attr$library_genes, ],
+          block = gi_obj@guideGIs@blocks,
+          correlation = gi_obj@dupCorrelation[[.g]]
         ) |>
           limma::eBayes()
 
         return(.fit)
       }))
 
-    GI_obj@limma_models <- map(output, "result")
-    GI_obj@errors$query_genes_not_usable <- map(output, "result") |>
+    gi_obj@limma_models <- map(output, "result")
+    gi_obj@errors$query_genes_not_usable <- map(output, "result") |>
       keep(is.null) |>
       names()
-    GI_obj@errors$GI_computation_errors <- map(output, "error")
+    gi_obj@errors$GI_computation_errors <- map(output, "error")
 
-    #  map("error") |>
-    #  compact() |>
-    #  map_chr(~ .x$message)
-
-    if (length(GI_obj@errors$query_genes_not_usable) > 0) {
+    if (length(gi_obj@errors$query_genes_not_usable) > 0) {
       warning(str_c(
         "Failed computing GIs for ",
-        length(GI_obj@errors$query_genes_not_usable),
+        length(gi_obj@errors$query_genes_not_usable),
         " genes."
       ))
     }
-    return(GI_obj)
+    return(gi_obj)
   }
 )
 
@@ -403,12 +405,12 @@ setMethod(
 
 setMethod(
   "compute_models",
-  signature = signature(GI_obj = "PosAgnMultiplexScreen"),
-  function(GI_obj) {
-    symmetric_analysis_method <- get_symmetric_analysis_method(GI_obj)
+  signature = signature(gi_obj = "PosAgnMultiplexScreen"),
+  function(gi_obj) {
+    symmetric_analysis_method <- get_symmetric_analysis_method(gi_obj)
 
     if (identical(symmetric_analysis_method, "preaverage")) {
-      return(methods::callNextMethod(GI_obj))
+      return(methods::callNextMethod(gi_obj))
     }
 
     if (!identical(symmetric_analysis_method, "global_preaverage")) {
@@ -419,7 +421,7 @@ setMethod(
       )
     }
 
-    if (length(dim(GI_obj@guideGIs@data)) != 2L) {
+    if (length(dim(gi_obj@guideGIs@data)) != 2L) {
       stop(
         "global_preaverage requires a pair-by-observation guide-level matrix.",
         call. = FALSE
@@ -428,8 +430,8 @@ setMethod(
 
     if (
       !identical(
-        rownames(GI_obj@guideGIs@data),
-        GI_obj@screen_attr$unique_pairs
+        rownames(gi_obj@guideGIs@data),
+        gi_obj@screen_attr$unique_pairs
       )
     ) {
       stop(
@@ -438,7 +440,7 @@ setMethod(
       )
     }
 
-    if (length(GI_obj@dupCorrelation) != 1L) {
+    if (length(gi_obj@dupCorrelation) != 1L) {
       stop(
         "global_preaverage requires one global duplicate-correlation estimate.",
         call. = FALSE
@@ -446,8 +448,8 @@ setMethod(
     }
 
     if (
-      isTRUE(GI_obj@guideGIs@use_blocks) &&
-        length(GI_obj@guideGIs@blocks) != ncol(GI_obj@guideGIs@data)
+      isTRUE(gi_obj@guideGIs@use_blocks) &&
+        length(gi_obj@guideGIs@blocks) != ncol(gi_obj@guideGIs@data)
     ) {
       stop(
         "The number of block assignments does not match the global model columns.",
@@ -455,26 +457,26 @@ setMethod(
       )
     }
 
-    GI_obj@limma_models <- limma::lmFit(
-      object = GI_obj@guideGIs@data,
-      block = GI_obj@guideGIs@blocks,
-      correlation = GI_obj@dupCorrelation
+    gi_obj@limma_models <- limma::lmFit(
+      object = gi_obj@guideGIs@data,
+      block = gi_obj@guideGIs@blocks,
+      correlation = gi_obj@dupCorrelation
     ) |>
       limma::eBayes()
 
-    return(GI_obj)
+    return(gi_obj)
   }
 )
 
 #####
 
 setMethod(
-  "collect_GIs",
-  signature = signature(GI_obj = "FixedPairScreen"),
-  function(GI_obj, FDR_method = "BH") {
-    stopifnot("Unknown FDR method provided." = FDR_method %in% p.adjust.methods)
+  "collect_gis",
+  signature = signature(gi_obj = "FixedPairScreen"),
+  function(gi_obj, fdr_method = "BH") {
+    stopifnot("Unknown FDR method provided." = fdr_method %in% p.adjust.methods)
 
-    output <- list(rownames(GI_obj@guideGIs@data), c("GI", "pval", "FDR"))
+    output <- list(rownames(gi_obj@guideGIs@data), c("GI", "pval", "FDR"))
 
     output <- array(
       data = NA,
@@ -482,31 +484,31 @@ setMethod(
       dimnames = output
     )
 
-    output[, "GI"] <- GI_obj@limma_models$coefficients[, 1]
-    output[, "pval"] <- GI_obj@limma_models$p.value[, 1]
+    output[, "GI"] <- gi_obj@limma_models$coefficients[, 1]
+    output[, "pval"] <- gi_obj@limma_models$p.value[, 1]
     output[, "FDR"] <- stats::p.adjust(
-      GI_obj@limma_models$p.value[, 1],
-      method = FDR_method
+      gi_obj@limma_models$p.value[, 1],
+      method = fdr_method
     )
 
-    GI_obj@geneGIs <- output
+    gi_obj@geneGIs <- output
 
-    return(GI_obj)
+    return(gi_obj)
   }
 )
 
 #####
 
 setMethod(
-  "collect_GIs",
-  signature = signature(GI_obj = "MultiplexScreen"),
-  function(GI_obj, FDR_method = "BH") {
-    stopifnot("Unknown FDR method provided." = FDR_method %in% p.adjust.methods)
+  "collect_gis",
+  signature = signature(gi_obj = "MultiplexScreen"),
+  function(gi_obj, fdr_method = "BH") {
+    stopifnot("Unknown FDR method provided." = fdr_method %in% p.adjust.methods)
 
-    output <- GI_obj@limma_models |>
+    output <- gi_obj@limma_models |>
       imap(\(.m, .y) {
         .x <- data.frame(
-          library_gene = GI_obj@screen_attr$library_genes,
+          library_gene = gi_obj@screen_attr$library_genes,
           query_gene = .y
         )
         if (is.null(.m)) {
@@ -516,7 +518,7 @@ setMethod(
         } else {
           .x$GI <- .m$coefficients[, 1]
           .x$pval <- .m$p.value[, 1]
-          .x$FDR <- stats::p.adjust(.m$p.value[, 1], method = FDR_method)
+          .x$FDR <- stats::p.adjust(.m$p.value[, 1], method = fdr_method)
         }
         return(.x)
       })
@@ -530,69 +532,69 @@ setMethod(
         drop = FALSE
       )
 
-    GI_obj@geneGIs <- output
+    gi_obj@geneGIs <- output
 
     if (
       length(setdiff(
-        rownames(GI_obj@guideGIs@data),
-        rownames(GI_obj@geneGIs)
+        rownames(gi_obj@guideGIs@data),
+        rownames(gi_obj@geneGIs)
       )) !=
-        0 |
+        0 ||
         length(setdiff(
-          colnames(GI_obj@guideGIs@data),
-          colnames(GI_obj@geneGIs)
+          colnames(gi_obj@guideGIs@data),
+          colnames(gi_obj@geneGIs)
         )) !=
           0
     ) {
       warning("Some genes were lost!")
     }
-    return(GI_obj)
+    return(gi_obj)
   }
 )
 
 #####
 
 setMethod(
-  "collect_GIs",
-  signature = signature(GI_obj = "PosAgnMultiplexScreen"),
-  function(GI_obj, FDR_method = "BH") {
+  "collect_gis",
+  signature = signature(gi_obj = "PosAgnMultiplexScreen"),
+  function(gi_obj, fdr_method = "BH") {
     stopifnot(
-      "Unknown FDR method provided." = FDR_method %in% p.adjust.methods
+      "Unknown FDR method provided." = fdr_method %in% p.adjust.methods
     )
 
-    symmetric_analysis_method <- get_symmetric_analysis_method(GI_obj)
+    symmetric_analysis_method <- get_symmetric_analysis_method(gi_obj)
 
     if (identical(symmetric_analysis_method, "preaverage")) {
-      GI_obj <- methods::callNextMethod(GI_obj)
+      gi_obj <- methods::callNextMethod(gi_obj)
 
-      .x <- data.table(gene_pair = GI_obj@screen_attr$unique_pairs)
+      .x <- data.table(gene_pair = gi_obj@screen_attr$unique_pairs)
 
       .x[, query_gene := str_split_i(gene_pair, ";", 1)]
       .x[, library_gene := str_split_i(gene_pair, ";", 2)]
       .x[,
         GI := gather_symmetric_scores(
           pairs = gene_pair,
-          .arr = GI_obj@geneGIs[,, "GI"]
+          .arr = gi_obj@geneGIs[,, "GI"]
         )
       ]
       .x[, GI_z := z_transform(GI)]
       .x[,
         pval := gather_symmetric_scores(
           pairs = gene_pair,
-          .arr = GI_obj@geneGIs[,, "pval"]
+          .arr = gi_obj@geneGIs[,, "pval"]
         )
       ]
       .x[,
-        FDR := balanced_FDR(
+        FDR := balanced_fdr(
           pairs = gene_pair,
-          pval_array = GI_obj@geneGIs[,, "pval"],
-          fdr_method = FDR_method
+          pval_array = gi_obj@geneGIs[,, "pval"],
+          fdr_method = fdr_method
         )
       ]
 
-      GI_obj@symmGeneGIs <- .x
+      gi_obj@symmGeneGIs <- .x
 
-      return(GI_obj)
+      return(gi_obj)
     }
 
     if (!identical(symmetric_analysis_method, "global_preaverage")) {
@@ -603,8 +605,8 @@ setMethod(
       )
     }
 
-    model_pairs <- rownames(GI_obj@limma_models$coefficients)
-    expected_pairs <- GI_obj@screen_attr$unique_pairs
+    model_pairs <- rownames(gi_obj@limma_models$coefficients)
+    expected_pairs <- gi_obj@screen_attr$unique_pairs
 
     if (!identical(model_pairs, expected_pairs)) {
       stop(
@@ -613,39 +615,39 @@ setMethod(
       )
     }
 
-    GI <- GI_obj@limma_models$coefficients[, 1L]
-    pval <- GI_obj@limma_models$p.value[, 1L]
-    FDR <- stats::p.adjust(pval, method = FDR_method)
+    gi <- gi_obj@limma_models$coefficients[, 1L]
+    pval <- gi_obj@limma_models$p.value[, 1L]
+    fdr <- stats::p.adjust(pval, method = fdr_method)
 
-    GI_obj@geneGIs <- cbind(
-      GI = as.numeric(GI),
+    gi_obj@geneGIs <- cbind(
+      GI = as.numeric(gi),
       pval = as.numeric(pval),
-      FDR = as.numeric(FDR)
+      FDR = as.numeric(fdr)
     )
 
-    rownames(GI_obj@geneGIs) <- model_pairs
+    rownames(gi_obj@geneGIs) <- model_pairs
 
-    GI_obj@symmGeneGIs <- data.table::data.table(
+    gi_obj@symmGeneGIs <- data.table::data.table(
       gene_pair = model_pairs,
       query_gene = stringr::str_split_i(model_pairs, ";", 1),
       library_gene = stringr::str_split_i(model_pairs, ";", 2),
-      GI = as.numeric(GI),
-      GI_z = z_transform(as.numeric(GI)),
+      GI = as.numeric(gi),
+      GI_z = z_transform(as.numeric(gi)),
       pval = as.numeric(pval),
-      FDR = as.numeric(FDR)
+      FDR = as.numeric(fdr)
     )
 
-    return(GI_obj)
+    return(gi_obj)
   }
 )
 
 #####
 
 setMethod(
-  "GI_df",
-  signature = signature(GI_obj = "FixedPairScreen"),
-  function(GI_obj) {
-    output <- GI_obj@geneGIs
+  "gi_df",
+  signature = signature(gi_obj = "FixedPairScreen"),
+  function(gi_obj) {
+    output <- gi_obj@geneGIs
 
     output <- data.table::data.table(
       gene_pair = rownames(output),
@@ -660,15 +662,15 @@ setMethod(
 #####
 
 setMethod(
-  "GI_df",
-  signature = signature(GI_obj = "MultiplexScreen"),
-  function(GI_obj) {
-    output <- GI_obj@geneGIs
+  "gi_df",
+  signature = signature(gi_obj = "MultiplexScreen"),
+  function(gi_obj) {
+    output <- gi_obj@geneGIs
 
     output <- output |>
       flatten_array(
         dnames = c("query_gene", "library_gene", "variable"),
-        value.name = "value"
+        value_name = "value"
       ) |>
       data.table::dcast(
         formula = query_gene + library_gene ~ variable,
@@ -694,20 +696,20 @@ setMethod(
 #####
 
 setMethod(
-  "GI_df",
-  signature = signature(GI_obj = "PosAgnMultiplexScreen"),
-  function(GI_obj) {
-    GI_obj@symmGeneGIs
+  "gi_df",
+  signature = signature(gi_obj = "PosAgnMultiplexScreen"),
+  function(gi_obj) {
+    gi_obj@symmGeneGIs
   }
 )
 
 #####
 
 setMethod(
-  "dupCorrelation_df",
-  signature = signature(GI_obj = "ScreenBase"),
-  function(GI_obj) {
-    output <- data.table(data.frame(dupcor = GI_obj@dupCorrelation))
+  "dup_correlation_df",
+  signature = signature(gi_obj = "ScreenBase"),
+  function(gi_obj) {
+    output <- data.table(data.frame(dupcor = gi_obj@dupCorrelation))
     return(output)
   }
 )
@@ -716,9 +718,9 @@ setMethod(
 
 setMethod(
   "create_log",
-  signature = signature(GI_obj = "ScreenBase"),
+  signature = signature(gi_obj = "ScreenBase"),
   function(
-    GI_obj,
+    gi_obj,
     status = "available",
     stage = "not specified",
     condition = NULL,
@@ -817,13 +819,13 @@ setMethod(
       error = function(e) "development version"
     )
 
-    .a <- GI_obj@screen_attr
-    .checks <- GI_obj@checks
-    .md <- GI_obj@metadata
-    .errors <- GI_obj@errors
-    .guide <- GI_obj@guideGIs
+    .a <- gi_obj@screen_attr
+    .checks <- gi_obj@checks
+    .md <- gi_obj@metadata
+    .errors <- gi_obj@errors
+    .guide <- gi_obj@guideGIs
 
-    dupcor <- GI_obj@dupCorrelation
+    dupcor <- gi_obj@dupCorrelation
     finite_dupcor <- dupcor[is.finite(dupcor)]
     dupcor_summary <- if (length(dupcor) == 0L) {
       "not available"
@@ -850,10 +852,10 @@ setMethod(
       )
     }
 
-    model_count <- if (inherits(GI_obj@limma_models, "MArrayLM")) {
+    model_count <- if (inherits(gi_obj@limma_models, "MArrayLM")) {
       1L
     } else {
-      sum(!purrr::map_lgl(GI_obj@limma_models, is.null))
+      sum(!purrr::map_lgl(gi_obj@limma_models, is.null))
     }
 
     check_lines <- if (length(.checks) == 0L) {
@@ -889,14 +891,14 @@ setMethod(
       "Screen",
       "------",
       paste0("Configuration: ", value_or(.md$config)),
-      paste0("Class: ", class(GI_obj)[1L]),
+      paste0("Class: ", class(gi_obj)[1L]),
       paste0("Query genes: ", value_or(.a$n_query_genes)),
       paste0("Library genes: ", value_or(.a$n_lib_genes)),
       paste0("All genes: ", value_or(.a$n_all_genes)),
       paste0("Directional pairs: ", value_or(length(.a$all_pairs))),
       paste0("Unordered pairs: ", value_or(length(.a$unique_pairs))),
       paste0("Guide GI data: ", array_summary(.guide@data)),
-      paste0("Gene GI data: ", array_summary(GI_obj@geneGIs)),
+      paste0("Gene GI data: ", array_summary(gi_obj@geneGIs)),
       "",
       "Replicates and modelling",
       "------------------------",
@@ -926,7 +928,7 @@ setMethod(
         "): ",
         show_items(stored_errors)
       ),
-      paste0("Gene-level results available: ", length(GI_obj@geneGIs) > 0L)
+      paste0("Gene-level results available: ", length(gi_obj@geneGIs) > 0L)
     )
 
     paste(lines, collapse = "\n")
@@ -937,10 +939,10 @@ setMethod(
 
 setMethod(
   "symmetry_test",
-  signature = signature(GI_obj = "MultiplexScreen"),
-  function(GI_obj, cutoff = 0.99) {
-    .test <- map_lgl(set_names(GI_obj@guideGIs@replicates), \(.r) {
-      .x <- GI_obj@guideGIs@data[,, .r]
+  signature = signature(gi_obj = "MultiplexScreen"),
+  function(gi_obj, cutoff = 0.99) {
+    .test <- map_lgl(set_names(gi_obj@guideGIs@replicates), \(.r) {
+      .x <- gi_obj@guideGIs@data[,, .r]
       if (all(.x == t(.x)) || all(dplyr::near(.x, t(.x)))) {
         return(TRUE)
       } else {

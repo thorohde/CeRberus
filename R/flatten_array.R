@@ -12,11 +12,11 @@
 #' @param dnames Optional character vector used to rename the generated
 #'   dimension columns. Its length should match the number of dimensions in
 #'   `x`.
-#' @param value.name Character scalar naming the output column that stores array
+#' @param value_name Character scalar naming the output column that stores array
 #'   values. Defaults to `"value"`.
 #'
 #' @return A `data.table` in long format containing one column per array
-#'   dimension and one value column named by `value.name`.
+#'   dimension and one value column named by `value_name`.
 #'
 #' @examples
 #' x <- array(
@@ -30,7 +30,7 @@
 
 #####
 
-flatten_array <- \(x, dnames, value.name = "value") {
+flatten_array <- \(x, dnames, value_name = "value") {
   stopifnot("Please provide an array!" = !is.null(dim(x)))
 
   if (is.null(dimnames(x))) {
@@ -43,11 +43,11 @@ flatten_array <- \(x, dnames, value.name = "value") {
     # Force 2D matrix to melt cleanly into a long data.table
     output <- data.table::as.data.table(as.data.frame.table(
       x,
-      responseName = value.name
+      responseName = value_name
     ))
   } else {
     # 3D+ arrays use the native data.table array melting
-    output <- data.table::as.data.table(x, value.name = value.name)
+    output <- data.table::as.data.table(x, value.name = value_name)
   }
 
   if (!missing(dnames)) {

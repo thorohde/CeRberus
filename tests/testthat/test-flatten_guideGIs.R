@@ -44,11 +44,11 @@ make_multiplex_flatten_array <- function() {
   )
 }
 
-test_that("flatten_guideGIs flattens fixed-pair replicate dimensions into columns", {
+test_that("flatten_guide_gis flattens fixed-pair replicate dimensions into columns", {
   data <- make_fixed_pair_flatten_array()
   object <- make_gRNA_GI_for_flatten(data)
 
-  result <- flatten_guideGIs(object)
+  result <- flatten_guide_gis(object)
 
   expect_s4_class(result, "gRNA_GI")
   expect_equal(dim(result@data), c(2L, 8L))
@@ -70,7 +70,7 @@ test_that("flatten_guideGIs flattens fixed-pair replicate dimensions into column
   expect_equal(result@data["B;D", "g2_b2_t2"], data["B;D", "g2", "b2", "t2"])
 })
 
-test_that("flatten_guideGIs flattens multiplex replicate dimensions while preserving two space axes", {
+test_that("flatten_guide_gis flattens multiplex replicate dimensions while preserving two space axes", {
   data <- make_multiplex_flatten_array()
   object <- make_gRNA_GI_for_flatten(
     data,
@@ -78,7 +78,7 @@ test_that("flatten_guideGIs flattens multiplex replicate dimensions while preser
     replicates = c("guide_pair", "bio_rep")
   )
 
-  result <- flatten_guideGIs(object)
+  result <- flatten_guide_gis(object)
 
   expect_equal(dim(result@data), c(2L, 3L, 4L))
   expect_equal(dimnames(result@data)[[1L]], c("Q1", "Q2"))
@@ -88,21 +88,21 @@ test_that("flatten_guideGIs flattens multiplex replicate dimensions while preser
   expect_equal(result@data["Q2", "L3", "g2_b2"], data["Q2", "L3", "g2", "b2"])
 })
 
-test_that("flatten_guideGIs extracts block labels from guide-pair replicate descriptions", {
+test_that("flatten_guide_gis extracts block labels from guide-pair replicate descriptions", {
   object <- make_gRNA_GI_for_flatten(
     make_fixed_pair_flatten_array(),
     blocks = character(),
     block_layer = "guide_pair"
   )
 
-  result <- flatten_guideGIs(object)
+  result <- flatten_guide_gis(object)
 
   expect_true(result@use_blocks)
   expect_equal(result@block_description, colnames(result@data))
   expect_equal(result@blocks, c("g1", "g1", "g1", "g1", "g2", "g2", "g2", "g2"))
 })
 
-test_that("flatten_guideGIs extracts block labels from bio-rep and tech-rep descriptions", {
+test_that("flatten_guide_gis extracts block labels from bio-rep and tech-rep descriptions", {
   bio_object <- make_gRNA_GI_for_flatten(
     make_fixed_pair_flatten_array(),
     blocks = character(),
@@ -114,14 +114,14 @@ test_that("flatten_guideGIs extracts block labels from bio-rep and tech-rep desc
     block_layer = "tech_rep"
   )
 
-  bio_result <- flatten_guideGIs(bio_object)
-  tech_result <- flatten_guideGIs(tech_object)
+  bio_result <- flatten_guide_gis(bio_object)
+  tech_result <- flatten_guide_gis(tech_object)
 
   expect_equal(bio_result@blocks, c("b1", "b1", "b2", "b2", "b1", "b1", "b2", "b2"))
   expect_equal(tech_result@blocks, c("t1", "t2", "t1", "t2", "t1", "t2", "t1", "t2"))
 })
 
-test_that("flatten_guideGIs does not use blocks when block layer is missing or sole replicate", {
+test_that("flatten_guide_gis does not use blocks when block layer is missing or sole replicate", {
   no_block_layer <- make_gRNA_GI_for_flatten(
     make_fixed_pair_flatten_array(),
     block_layer = character()
@@ -136,21 +136,21 @@ test_that("flatten_guideGIs does not use blocks when block layer is missing or s
     block_layer = "guide_pair"
   )
 
-  no_block_result <- flatten_guideGIs(no_block_layer)
-  single_replicate_result <- flatten_guideGIs(single_replicate)
+  no_block_result <- flatten_guide_gis(no_block_layer)
+  single_replicate_result <- flatten_guide_gis(single_replicate)
 
   expect_false(isTRUE(no_block_result@use_blocks))
   expect_false(single_replicate_result@use_blocks)
 })
 
-test_that("flatten_guideGIs preserves explicit single-value blocks such as none", {
+test_that("flatten_guide_gis preserves explicit single-value blocks such as none", {
   object <- make_gRNA_GI_for_flatten(
     make_fixed_pair_flatten_array(),
     block_layer = "guide_pair",
     blocks = "none"
   )
 
-  result <- flatten_guideGIs(object)
+  result <- flatten_guide_gis(object)
 
   expect_true(result@use_blocks)
   expect_equal(result@blocks, "none")

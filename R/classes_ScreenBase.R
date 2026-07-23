@@ -27,8 +27,6 @@ setClass(
     "limma_models" = "list",
     "geneGIs" = "array",
     "screen_attr" = "list",
-    #"blocks" = "character",
-    #"block_description" = "list",
     "dupCorrelation" = "numeric",
     "metadata" = "list",
     "checks" = "list",
@@ -74,7 +72,8 @@ setClass("MultiplexScreen", contains = "ScreenBase")
 setClass(
   "PosAgnMultiplexScreen",
   contains = "MultiplexScreen",
-  slots = list("symmGeneGIs" = "data.table")
+  slots = list("symmGeneGIs" = "data.table"),
+  prototype = list(symmGeneGIs = data.table::data.table())
 )
 
 
@@ -85,7 +84,6 @@ setAs(from = "ScreenBase", to = "FixedPairScreen", function(from) {
   for (s in slotNames("ScreenBase")) {
     slot(obj, s) <- slot(from, s)
   }
-  class(obj) <- "FixedPairScreen"
   return(obj)
 })
 
@@ -94,7 +92,6 @@ setAs(from = "ScreenBase", to = "MultiplexScreen", function(from) {
   for (s in slotNames("ScreenBase")) {
     slot(obj, s) <- slot(from, s)
   }
-  class(obj) <- "MultiplexScreen"
   return(obj)
 })
 
@@ -103,6 +100,5 @@ setAs(from = "ScreenBase", to = "PosAgnMultiplexScreen", function(from) {
   for (s in slotNames("ScreenBase")) {
     slot(obj, s) <- slot(from, s)
   }
-  class(obj) <- "PosAgnMultiplexScreen"
   return(obj)
 })

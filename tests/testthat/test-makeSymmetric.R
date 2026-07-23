@@ -1,4 +1,4 @@
-test_that("makeSymmetric averages each matrix cell with its transpose counterpart", {
+test_that("make_symmetric averages each cell with its transpose counterpart", {
   x <- matrix(
     c(
       1,
@@ -16,28 +16,28 @@ test_that("makeSymmetric averages each matrix cell with its transpose counterpar
     dimnames = list(c("A", "B", "C"), c("A", "B", "C"))
   )
 
-  result <- makeSymmetric(x)
+  result <- make_symmetric(x)
   expected <- (x + t(x)) / 2
 
   expect_equal(result, expected)
   expect_true(isSymmetric(result))
 })
 
-test_that("makeSymmetric preserves dimensions and dimnames", {
+test_that("make_symmetric preserves dimensions and dimnames", {
   x <- matrix(
     c(1, 4, 2, 5),
     nrow = 2,
     dimnames = list(c("A", "B"), c("A", "B"))
   )
 
-  result <- makeSymmetric(x)
+  result <- make_symmetric(x)
 
   expect_equal(dim(result), dim(x))
   expect_equal(rownames(result), rownames(x))
   expect_equal(colnames(result), colnames(x))
 })
 
-test_that("makeSymmetric leaves diagonal values unchanged", {
+test_that("make_symmetric leaves diagonal values unchanged", {
   x <- matrix(
     c(
       1,
@@ -49,12 +49,12 @@ test_that("makeSymmetric leaves diagonal values unchanged", {
     byrow = TRUE
   )
 
-  result <- makeSymmetric(x)
+  result <- make_symmetric(x)
 
   expect_equal(diag(result), diag(x))
 })
 
-test_that("makeSymmetric ignores one-sided missing values", {
+test_that("make_symmetric ignores one-sided missing values", {
   x <- matrix(
     c(
       1,
@@ -72,7 +72,7 @@ test_that("makeSymmetric ignores one-sided missing values", {
     dimnames = list(c("A", "B", "C"), c("A", "B", "C"))
   )
 
-  result <- makeSymmetric(x)
+  result <- make_symmetric(x)
 
   expect_equal(result["A", "B"], 4)
   expect_equal(result["B", "A"], 4)
@@ -82,7 +82,7 @@ test_that("makeSymmetric ignores one-sided missing values", {
   expect_equal(result["C", "B"], 8)
 })
 
-test_that("makeSymmetric returns NA when both directional values are missing", {
+test_that("make_symmetric returns NA when both directional values are missing", {
   x <- matrix(
     c(
       1,
@@ -95,7 +95,7 @@ test_that("makeSymmetric returns NA when both directional values are missing", {
     dimnames = list(c("A", "B"), c("A", "B"))
   )
 
-  result <- makeSymmetric(x)
+  result <- make_symmetric(x)
 
   expect_true(is.na(result["A", "B"]))
   expect_true(is.na(result["B", "A"]))
@@ -103,7 +103,7 @@ test_that("makeSymmetric returns NA when both directional values are missing", {
   expect_false(is.nan(result["B", "A"]))
 })
 
-test_that("makeSymmetric keeps already symmetric matrices unchanged", {
+test_that("make_symmetric keeps already symmetric matrices unchanged", {
   x <- matrix(
     c(
       1,
@@ -121,7 +121,7 @@ test_that("makeSymmetric keeps already symmetric matrices unchanged", {
     dimnames = list(c("A", "B", "C"), c("A", "B", "C"))
   )
 
-  result <- makeSymmetric(x)
+  result <- make_symmetric(x)
 
   expect_equal(result, x)
 })

@@ -84,13 +84,13 @@ with_mocked_full_run_pipeline <- function(
 
   testthat::local_mocked_bindings(
     collect_all_layer_configurations = function(
-      GI_data,
+      gi_data,
       screen_type = "auto",
       pos_agnostic,
       symmetric_analysis_method = "preaverage",
       verbose = FALSE
     ) {
-      calls$collected_input <- as.data.frame(GI_data)
+      calls$collected_input <- as.data.frame(gi_data)
       calls$screen_type <- screen_type
       calls$pos_agnostic <- pos_agnostic
       calls$symmetric_analysis_method <- symmetric_analysis_method
@@ -106,16 +106,16 @@ with_mocked_full_run_pipeline <- function(
         )
       )
     },
-    compute_dupCorrelation = function(.x, ...) {
-      .x@metadata$compute_dupCorrelation_called <- TRUE
+    compute_dup_correlation = function(.x, ...) {
+      .x@metadata$compute_dup_correlation_called <- TRUE
       .x
     },
-    find_optimal_configuration = function(GI_list, keep_all = FALSE) {
+    find_optimal_configuration = function(gi_list, keep_all = FALSE) {
       calls$keep_all <- keep_all
       if (isTRUE(keep_all)) {
-        return(GI_list)
+        return(gi_list)
       }
-      GI_list["default_guide_pair_used"]
+      gi_list["default_guide_pair_used"]
     },
     compute_dupcor_plot = function(.data, .fpath, verbose = FALSE) {
       calls$plot_path <- .fpath
@@ -124,22 +124,22 @@ with_mocked_full_run_pipeline <- function(
       file.create(.fpath)
       .data
     },
-    compute_models = function(GI_obj, ...) {
-      GI_obj@metadata$compute_models_called <- TRUE
-      GI_obj
+    compute_models = function(gi_obj, ...) {
+      gi_obj@metadata$compute_models_called <- TRUE
+      gi_obj
     },
-    collect_GIs = function(GI_obj, FDR_method, ...) {
-      calls$fdr_method <- FDR_method
-      GI_obj@metadata$collect_GIs_called <- TRUE
-      GI_obj
+    collect_gis = function(gi_obj, fdr_method, ...) {
+      calls$fdr_method <- fdr_method
+      gi_obj@metadata$collect_gis_called <- TRUE
+      gi_obj
     },
-    GI_df = function(GI_obj, ...) {
+    gi_df = function(gi_obj, ...) {
       data.table::data.table(
-        gene_pair = GI_obj@metadata$config,
-        GI = GI_obj@dupCorrelation
+        gene_pair = gi_obj@metadata$config,
+        GI = gi_obj@dupCorrelation
       )
     },
-    screenReport = function(GI_obj, interactive = FALSE, print = TRUE, ...) {
+    screen_report = function(gi_obj, interactive = FALSE, print = TRUE, ...) {
       calls$screen_report_called <- TRUE
       invisible(list())
     },
@@ -246,7 +246,7 @@ test_that("full_run writes intermediate and final outputs when overwrite_output 
     calls = calls
   )
 
-  expect_true(file.exists(file.path(output_directory, "all_GI_objects.rds")))
+  expect_true(file.exists(file.path(output_directory, "all_gi_objects.rds")))
   expect_true(file.exists(file.path(
     output_directory,
     "duplicateCorrelationPlot.png"
@@ -279,7 +279,7 @@ test_that("full_run writes intermediate and final outputs when overwrite_output 
     )
   )
 
-  intermediate <- readRDS(file.path(output_directory, "all_GI_objects.rds"))
+  intermediate <- readRDS(file.path(output_directory, "all_gi_objects.rds"))
   expect_named(
     intermediate,
     c("default_guide_pair_used", "default_tech_rep_used")
@@ -303,7 +303,7 @@ test_that("full_run does not write CSV/RDS outputs when overwrite_output is FALS
     full_run(yaml_fpath)
   )
 
-  expect_false(file.exists(file.path(output_directory, "all_GI_objects.rds")))
+  expect_false(file.exists(file.path(output_directory, "all_gi_objects.rds")))
   expect_false(file.exists(file.path(
     output_directory,
     "duplicate_correlation.csv"
@@ -340,9 +340,9 @@ test_that("full_run writes a failure log and preserves the original error", {
         )
       )
     },
-    compute_dupCorrelation = function(.x, ...) .x,
-    find_optimal_configuration = function(GI_list, ...) GI_list,
-    compute_models = function(GI_obj, ...) {
+    compute_dup_correlation = function(.x, ...) .x,
+    find_optimal_configuration = function(gi_list, ...) gi_list,
+    compute_models = function(gi_obj, ...) {
       stop("deliberate model failure", call. = FALSE)
     },
     .package = "CeRberus"

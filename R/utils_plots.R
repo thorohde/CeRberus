@@ -1,16 +1,16 @@
 #####
 
-compute_dupcor_plot <- function(GI_list, .fpath = NULL, verbose = FALSE) {
+compute_dupcor_plot <- function(gi_list, .fpath = NULL, verbose = FALSE) {
   stopifnot(
-    "GI_list must contain at least one screen object." = length(GI_list) > 0,
+    "gi_list must contain at least one screen object." = length(gi_list) > 0,
     "verbose must be TRUE or FALSE." = is.logical(verbose) &&
       length(verbose) == 1 &&
       !is.na(verbose)
   )
 
-  for (.n in names(GI_list)) {
-    GI_list[[.n]]@metadata$dupcor_plot <- ggplot(
-      data = GI_list[[.n]]@metadata$dupcor_data,
+  for (.n in names(gi_list)) {
+    gi_list[[.n]]@metadata$dupcor_plot <- ggplot(
+      data = gi_list[[.n]]@metadata$dupcor_data,
       mapping = aes(dcor, config)
     ) +
       theme_light() +
@@ -26,7 +26,7 @@ compute_dupcor_plot <- function(GI_list, .fpath = NULL, verbose = FALSE) {
       )
 
     if (isTRUE(verbose)) {
-      plot(GI_list[[.n]]@metadata$dupcor_plot)
+      plot(gi_list[[.n]]@metadata$dupcor_plot)
     }
 
     if (!is.null(.fpath)) {
@@ -34,14 +34,14 @@ compute_dupcor_plot <- function(GI_list, .fpath = NULL, verbose = FALSE) {
 
       ggplot2::ggsave(
         filename = .fpath,
-        plot = GI_list[[.n]]@metadata$dupcor_plot,
+        plot = gi_list[[.n]]@metadata$dupcor_plot,
         width = 8,
         height = 5,
         dpi = 300
       )
     }
   }
-  return(GI_list)
+  return(gi_list)
 }
 
 #####

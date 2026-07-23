@@ -103,7 +103,7 @@ test_that("compute_dupcor_plot validates input length and verbose", {
 
   expect_error(
     CeRberus:::compute_dupcor_plot(list()),
-    "GI_list must contain at least one screen object"
+    "gi_list must contain at least one screen object"
   )
   expect_error(
     CeRberus:::compute_dupcor_plot(list(screen = valid_screen), verbose = NA),

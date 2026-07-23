@@ -1,4 +1,4 @@
-make_screen_for_GI_df <- function(class, geneGIs, symmGeneGIs = NULL) {
+make_screen_for_gi_df <- function(class, geneGIs, symmGeneGIs = NULL) {
   args <- list(
     Class = class,
     guideLFCs = methods::new(
@@ -78,11 +78,11 @@ make_multiplex_geneGIs <- function() {
   )
 }
 
-test_that("GI_df converts fixed-pair gene GI matrices to data.table output", {
+test_that("gi_df converts fixed-pair gene GI matrices to data.table output", {
   geneGIs <- make_fixed_pair_geneGIs()
-  screen <- make_screen_for_GI_df("FixedPairScreen", geneGIs)
+  screen <- make_screen_for_gi_df("FixedPairScreen", geneGIs)
 
-  result <- GI_df(screen)
+  result <- gi_df(screen)
 
   expect_s3_class(result, "data.table")
   expect_named(
@@ -97,11 +97,11 @@ test_that("GI_df converts fixed-pair gene GI matrices to data.table output", {
   expect_equal(result$FDR, c(0.02, 0.04))
 })
 
-test_that("GI_df converts multiplex gene GI arrays to long-wide data.table output", {
+test_that("gi_df converts multiplex gene GI arrays to long-wide data.table output", {
   geneGIs <- make_multiplex_geneGIs()
-  screen <- make_screen_for_GI_df("MultiplexScreen", geneGIs)
+  screen <- make_screen_for_gi_df("MultiplexScreen", geneGIs)
 
-  result <- GI_df(screen)
+  result <- gi_df(screen)
 
   expect_s3_class(result, "data.table")
   expect_named(
@@ -144,7 +144,7 @@ test_that("GI_df converts multiplex gene GI arrays to long-wide data.table outpu
   expect_equal(as.data.frame(result), as.data.frame(expected))
 })
 
-test_that("GI_df returns symmetrized data for position-agnostic multiplex screens", {
+test_that("gi_df returns symmetrized data for position-agnostic multiplex screens", {
   symmGeneGIs <- data.table::data.table(
     gene_pair = c("A;B", "A;C"),
     query_gene = c("A", "A"),
@@ -154,36 +154,36 @@ test_that("GI_df returns symmetrized data for position-agnostic multiplex screen
     pval = c(0.01, 0.02),
     FDR = c(0.03, 0.04)
   )
-  screen <- make_screen_for_GI_df(
+  screen <- make_screen_for_gi_df(
     "PosAgnMultiplexScreen",
     make_multiplex_geneGIs(),
     symmGeneGIs = symmGeneGIs
   )
 
-  result <- GI_df(screen)
+  result <- gi_df(screen)
 
   expect_s3_class(result, "data.table")
   expect_equal(result, symmGeneGIs)
 })
 
-test_that("GI_df preserves row order from fixed-pair geneGIs row names", {
+test_that("gi_df preserves row order from fixed-pair geneGIs row names", {
   geneGIs <- make_fixed_pair_geneGIs()
   geneGIs <- geneGIs[c("B;D", "A;C"), ]
-  screen <- make_screen_for_GI_df("FixedPairScreen", geneGIs)
+  screen <- make_screen_for_gi_df("FixedPairScreen", geneGIs)
 
-  result <- GI_df(screen)
+  result <- gi_df(screen)
 
   expect_equal(result$gene_pair, c("B;D", "A;C"))
   expect_equal(result$query_gene, c("B", "A"))
   expect_equal(result$library_gene, c("D", "C"))
 })
 
-test_that("GI_df leaves missing fixed-pair library genes as NA when row names lack separators", {
+test_that("gi_df leaves missing fixed-pair library genes as NA when row names lack separators", {
   geneGIs <- make_fixed_pair_geneGIs()
   rownames(geneGIs) <- c("AC", "BD")
-  screen <- make_screen_for_GI_df("FixedPairScreen", geneGIs)
+  screen <- make_screen_for_gi_df("FixedPairScreen", geneGIs)
 
-  result <- GI_df(screen)
+  result <- gi_df(screen)
 
   expect_equal(result$query_gene, c("AC", "BD"))
   expect_true(all(is.na(result$library_gene)))

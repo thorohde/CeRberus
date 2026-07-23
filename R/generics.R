@@ -2,18 +2,13 @@
 
 #### Slot accessors
 
-#slotNames("gRNA_LFC")
-
 #### Generics for active methods
 
 # gRNA_GIs
 
 #### Slot accessors
-# slotNames(gRNA_GI")
 
 #### Generics for active methods
-
-#setGeneric("fill_guideGIs", function(.x, ...) standardGeneric("fill_guideGIs"))
 
 #' Collapse replicate dimensions in guide-level GI data
 #'
@@ -37,18 +32,17 @@
 setGeneric("collapse_replicates", function(.x, ...) {
   standardGeneric("collapse_replicates")
 })
-setGeneric("flatten_guideGIs", function(.x, ...) {
-  standardGeneric("flatten_guideGIs")
+setGeneric("flatten_guide_gis", function(.x, ...) {
+  standardGeneric("flatten_guide_gis")
 })
-setGeneric("compute_dupCorrelation", function(.x, ...) {
-  standardGeneric("compute_dupCorrelation")
+setGeneric("compute_dup_correlation", function(.x, ...) {
+  standardGeneric("compute_dup_correlation")
 })
 
 
 # ScreenBase
 
 ##### Slot accessors
-# slotNames("ScreenBase")
 
 setGeneric("checks", function(x) standardGeneric("checks"))
 setGeneric("checks<-", function(x, value) standardGeneric("checks<-"))
@@ -83,31 +77,28 @@ setGeneric("symmGeneGIs<-", function(x, value) standardGeneric("symmGeneGIs<-"))
 
 #### Generics for active methods
 
-#setGeneric("compute_dupCorrelation", function(GI_obj, ...) standardGeneric("compute_dupCorrelation"))
-setGeneric("compute_models", function(GI_obj, ...) {
+setGeneric("compute_models", function(gi_obj, ...) {
   standardGeneric("compute_models")
 })
-setGeneric("compute_GIs", function(GI_obj, ...) standardGeneric("compute_GIs"))
-setGeneric("collect_GIs", function(GI_obj, ...) standardGeneric("collect_GIs"))
-setGeneric("create_log", function(GI_obj, ...) standardGeneric("create_log"))
-setGeneric("dupCorrelation_df", function(GI_obj, ...) {
-  standardGeneric("dupCorrelation_df")
+setGeneric("collect_gis", function(gi_obj, ...) standardGeneric("collect_gis"))
+setGeneric("create_log", function(gi_obj, ...) standardGeneric("create_log"))
+setGeneric("dup_correlation_df", function(gi_obj, ...) {
+  standardGeneric("dup_correlation_df")
 })
-setGeneric("dupcor_df", function(GI_obj, ...) standardGeneric("dupcor_df"))
-setGeneric("get_screen_attributes", function(GI_obj, ...) {
+setGeneric("get_screen_attributes", function(gi_obj, ...) {
   standardGeneric("get_screen_attributes")
 })
-setGeneric("GI_df", function(GI_obj, ...) standardGeneric("GI_df"))
-setGeneric("import_scores", function(GI_obj, ...) {
+setGeneric("gi_df", function(gi_obj, ...) standardGeneric("gi_df"))
+setGeneric("import_scores", function(gi_obj, ...) {
   standardGeneric("import_scores")
 })
-setGeneric("run_checks", function(GI_obj, ...) standardGeneric("run_checks"))
-setGeneric("set_screenType", function(GI_obj, ...) {
-  standardGeneric("set_screenType")
+setGeneric("run_checks", function(gi_obj, ...) standardGeneric("run_checks"))
+setGeneric("set_screen_type", function(gi_obj, ...) {
+  standardGeneric("set_screen_type")
 })
-setGeneric("screenReport", function(GI_obj, ...) {
-  standardGeneric("screenReport")
+setGeneric("screen_report", function(gi_obj, ...) {
+  standardGeneric("screen_report")
 })
-setGeneric("symmetry_test", function(GI_obj, ...) {
+setGeneric("symmetry_test", function(gi_obj, ...) {
   standardGeneric("symmetry_test")
 })
