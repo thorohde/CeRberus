@@ -14,5 +14,8 @@ utils::globalVariables(c(
   "GI_z",
   "dcor",
   "config",
-  "kept"
+  "kept",
+  "ctrl",
+  "obs",
+  "exp"
 ))

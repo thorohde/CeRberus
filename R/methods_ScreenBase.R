@@ -705,6 +705,40 @@ setMethod(
 
 #####
 
+#' @rdname genomic_inflation
+#' @aliases genomic_inflation,ScreenBase-method
+setMethod(
+  "genomic_inflation",
+  signature = signature(gi_obj = "ScreenBase"),
+  function(gi_obj) {
+    results <- gi_df(gi_obj)
+
+    stopifnot(
+      "Gene-level results must contain a pval column." = "pval" %in%
+        colnames(results),
+      "The pval column must be numeric." = is.numeric(results$pval)
+    )
+
+    p_values <- results$pval[!is.na(results$pval)]
+
+    stopifnot(
+      "Gene-level results must contain at least one non-missing p-value." = length(
+        p_values
+      ) >
+        0L,
+      "P-values must be finite and between 0 and 1." = all(
+        is.finite(p_values) & p_values >= 0 & p_values <= 1
+      )
+    )
+
+    chi_squared <- stats::qchisq(1 - p_values, df = 1)
+
+    stats::median(chi_squared) / stats::qchisq(0.5, df = 1)
+  }
+)
+
+#####
+
 setMethod(
   "dup_correlation_df",
   signature = signature(gi_obj = "ScreenBase"),

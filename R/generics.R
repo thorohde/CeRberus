@@ -88,6 +88,25 @@ setGeneric("dup_correlation_df", function(gi_obj, ...) {
 setGeneric("get_screen_attributes", function(gi_obj, ...) {
   standardGeneric("get_screen_attributes")
 })
+
+#' Estimate genomic inflation from gene-level p-values
+#'
+#' @description
+#' `genomic_inflation()` calculates the genomic inflation factor, lambda, from
+#' the gene-level p-values stored in a CeRberus screen object. A value near 1
+#' indicates agreement with the theoretical null distribution, whereas values
+#' greater than 1 indicate inflation.
+#'
+#' @param gi_obj A CeRberus screen object containing gene-level p-values.
+#' @param ... Additional arguments passed to methods.
+#'
+#' @return A single numeric genomic inflation factor.
+#'
+#' @export
+setGeneric("genomic_inflation", function(gi_obj, ...) {
+  standardGeneric("genomic_inflation")
+})
+
 setGeneric("gi_df", function(gi_obj, ...) standardGeneric("gi_df"))
 setGeneric("import_scores", function(gi_obj, ...) {
   standardGeneric("import_scores")
