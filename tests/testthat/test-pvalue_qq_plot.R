@@ -42,8 +42,8 @@ make_pval_qq_data <- function() {
   )
 }
 
-test_that("pval_qq_plot adds a ggplot object with expected labels and groups", {
-  result <- CeRberus:::pval_qq_plot(make_pval_qq_screen())
+test_that("pvalue_qq_plot adds a ggplot object with expected labels and groups", {
+  result <- CeRberus::pvalue_qq_plot(make_pval_qq_screen())
 
   expect_s4_class(result, "PosAgnMultiplexScreen")
   expect_s3_class(result@metadata$qq_plot, "ggplot")
@@ -64,8 +64,8 @@ test_that("pval_qq_plot adds a ggplot object with expected labels and groups", {
   expect_match(result@metadata$qq_plot$labels$caption, "lambda=")
 })
 
-test_that("pval_qq_plot uses exact NTC matching rather than substring matching", {
-  result <- CeRberus:::pval_qq_plot(make_pval_qq_screen())
+test_that("pvalue_qq_plot uses exact NTC matching rather than substring matching", {
+  result <- CeRberus::pvalue_qq_plot(make_pval_qq_screen())
 
   ntc_like_group <- result@metadata$qq_plot_data[
     gene_pair == "NTC_like;GENE5",
@@ -75,12 +75,12 @@ test_that("pval_qq_plot uses exact NTC matching rather than substring matching",
   expect_identical(ntc_like_group, "target-target")
 })
 
-test_that("pval_qq_plot writes a file and creates parent directories", {
+test_that("pvalue_qq_plot writes a file and creates parent directories", {
   output_file <- file.path(
     tempdir(),
     "qq-plot-test",
     "nested",
-    "pval_qq_plot.pdf"
+    "pvalue_qq_plot.pdf"
   )
   if (file.exists(output_file)) {
     unlink(output_file)
@@ -89,7 +89,7 @@ test_that("pval_qq_plot writes a file and creates parent directories", {
     unlink(dirname(dirname(output_file)), recursive = TRUE)
   }
 
-  result <- CeRberus:::pval_qq_plot(
+  result <- CeRberus::pvalue_qq_plot(
     make_pval_qq_screen(),
     .fpath = output_file
   )
@@ -99,7 +99,7 @@ test_that("pval_qq_plot writes a file and creates parent directories", {
   expect_gt(file.info(output_file)$size, 0)
 })
 
-test_that("pval_qq_plot validates object type, verbose, and p-values", {
+test_that("pvalue_qq_plot validates object type, verbose, and p-values", {
   invalid_screen <- methods::new(
     "ScreenBase",
     guideLFCs = methods::new(
@@ -129,15 +129,15 @@ test_that("pval_qq_plot validates object type, verbose, and p-values", {
   )
 
   expect_error(
-    CeRberus:::pval_qq_plot(invalid_screen),
+    CeRberus::pvalue_qq_plot(invalid_screen),
     "gi_obj must be a PosAgnMultiplexScreen object"
   )
   expect_error(
-    CeRberus:::pval_qq_plot(make_pval_qq_screen(), verbose = NA),
+    CeRberus::pvalue_qq_plot(make_pval_qq_screen(), verbose = NA),
     "verbose must be TRUE or FALSE"
   )
   expect_error(
-    CeRberus:::pval_qq_plot(
+    CeRberus::pvalue_qq_plot(
       make_pval_qq_screen(data.table::data.table(
         gene_pair = "A;B",
         pval = NA_real_

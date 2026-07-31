@@ -46,7 +46,27 @@ compute_dupcor_plot <- function(gi_list, .fpath = NULL, verbose = FALSE) {
 
 #####
 
-pval_qq_plot <- function(
+#' Plot observed versus expected p-values
+#'
+#' Creates a Q-Q plot from gene-pair p-values and stores the plot, plotting
+#' data, and genomic inflation summary in the screen object's metadata.
+#'
+#' @param gi_obj A `PosAgnMultiplexScreen` object containing `gene_pair` and
+#'   `pval` columns in its `symmGeneGIs` slot.
+#' @param .fpath Optional output file path. Parent directories are created when
+#'   needed.
+#' @param verbose Logical; print the plot when `TRUE`.
+#' @param ntc Name used to identify non-targeting controls.
+#' @param ntc_string Label used for target-control pairs.
+#' @param target_string Label used for target-target pairs.
+#' @param ntc_color Color used for target-control pairs.
+#' @param target_color Color used for target-target pairs.
+#' @param title Plot title.
+#' @param caption Optional caption prepended to the genomic inflation summary.
+#'
+#' @return The modified `PosAgnMultiplexScreen` object.
+#' @export
+pvalue_qq_plot <- function(
   gi_obj,
   .fpath = NULL,
   verbose = FALSE,
