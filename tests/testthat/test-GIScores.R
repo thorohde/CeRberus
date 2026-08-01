@@ -38,6 +38,100 @@ test_that("GIScores constructs a fixed-pair screen from guide-level scores", {
   expect_equal(result@screen_attr$n_lib_genes, 2L)
 })
 
+test_that("GIScores stores its inferred design in a ScreenDesign object", {
+  result <- GIScores(make_fixed_pair_scores(), block_layer = "guide_pair")
+
+  expect_s4_class(result@screen_attr, "ScreenDesign")
+  expect_equal(result@screen_attr$query_genes, c("A", "B"))
+  expect_equal(result@screen_attr$library_genes, c("C", "D"))
+  expect_equal(result@screen_attr[["all_genes"]], c("A", "B", "C", "D"))
+  expect_equal(
+    result@screen_attr$observations_per_query,
+    c(A = 4L, B = 4L)
+  )
+  expect_setequal(result@screen_attr$unique_pairs, c("A;C", "B;D"))
+  expect_error(
+    screen_attr(result) <- list(query_genes = "A"),
+    "ScreenDesign"
+  )
+})
+
+test_that("GIScores leaves guide LFC storage empty when no LFC column is provided", {
+  result <- GIScores(make_fixed_pair_scores(), block_layer = "guide_pair")
+
+  expect_s4_class(result@guideLFCs, "gRNA_LFC")
+  expect_length(result@guideLFCs@data, 0L)
+})
+
+test_that("GIScores stores optional guide LFCs with the guide GI structure", {
+  input <- make_fixed_pair_scores()
+  input$LFC <- input$GI / 10
+
+  result <- GIScores(input, block_layer = "guide_pair")
+
+  expect_identical(dim(result@guideLFCs@data), dim(result@guideGIs@data))
+  expect_identical(
+    dimnames(result@guideLFCs@data),
+    dimnames(result@guideGIs@data)
+  )
+  expect_identical(result@guideLFCs@space, result@guideGIs@space)
+  expect_identical(result@guideLFCs@replicates, result@guideGIs@replicates)
+  expect_equal(
+    result@guideLFCs@data["A;C", "g1_t1_b1"],
+    input$LFC[
+      input$query_gene == "A" &
+        input$guide_pair == "g1" &
+        input$bio_rep == "b1" &
+        input$tech_rep == "t1"
+    ]
+  )
+})
+
+test_that("GIScores standardizes a custom guide LFC column", {
+  input <- make_fixed_pair_scores()
+  input$guide_log_fold_change <- input$GI / 10
+
+  result <- GIScores(
+    input,
+    block_layer = "guide_pair",
+    lfc_col = "guide_log_fold_change"
+  )
+
+  expect_true("LFC" %in% names(result@metadata$input))
+  expect_equal(result@metadata$input$LFC, input$guide_log_fold_change)
+  expect_identical(dim(result@guideLFCs@data), dim(result@guideGIs@data))
+})
+
+test_that("GIScores validates an explicitly requested guide LFC column", {
+  expect_error(
+    GIScores(make_fixed_pair_scores(), lfc_col = "missing_lfc"),
+    "guide LFC column"
+  )
+
+  input <- make_fixed_pair_scores()
+  input$LFC <- as.character(input$GI)
+
+  expect_error(GIScores(input), "guide LFC column must be numeric")
+})
+
+test_that("GIScores collapses guide LFCs in parallel with guide GIs", {
+  input <- make_fixed_pair_scores()
+  input$LFC <- input$GI / 10
+
+  result <- GIScores(
+    input,
+    collapse_layers = "tech_rep",
+    block_layer = "guide_pair"
+  )
+
+  expect_identical(dim(result@guideLFCs@data), dim(result@guideGIs@data))
+  expect_identical(
+    dimnames(result@guideLFCs@data),
+    dimnames(result@guideGIs@data)
+  )
+  expect_identical(result@guideLFCs@replicates, result@guideGIs@replicates)
+})
+
 test_that("GIScores accepts data.tables without modifying the input", {
   input <- data.table::as.data.table(make_fixed_pair_scores())
   original <- data.table::copy(input)
@@ -206,6 +300,7 @@ test_that("GIScores creates a position-agnostic symmetric multiplex screen", {
   input$GI <- as.numeric(factor(input$query_gene)) *
     100 +
     as.numeric(factor(input$library_gene))
+  input$LFC <- input$GI / 10
   result <- GIScores(
     input,
     pos_agnostic = TRUE,
@@ -255,11 +350,38 @@ test_that("GIScores creates a position-agnostic symmetric multiplex screen", {
   for (replicate_name in result@guideGIs@block_description) {
     expect_true(isSymmetric(result@guideGIs@data[,, replicate_name]))
   }
+  expect_identical(dim(result@guideLFCs@data), dim(result@guideGIs@data))
+  expect_identical(
+    dimnames(result@guideLFCs@data),
+    dimnames(result@guideGIs@data)
+  )
   expected <- mean(c(
     input$GI[input$query_gene == "G1" & input$library_gene == "G2"],
     input$GI[input$query_gene == "G2" & input$library_gene == "G1"]
   ))
   expect_equal(result@guideGIs@data["G1", "G2", 1], expected)
+})
+
+test_that("GIScores globally flattens optional guide LFCs with guide GIs", {
+  input <- make_multiplex_scores()
+  input$GI <- as.numeric(factor(input$query_gene)) *
+    100 +
+    as.numeric(factor(input$library_gene))
+  input$LFC <- input$GI / 10
+
+  result <- GIScores(
+    input,
+    pos_agnostic = TRUE,
+    symmetric_analysis_method = "global_preaverage",
+    block_layer = "guide_pair"
+  )
+
+  expect_identical(result@guideLFCs@space, result@guideGIs@space)
+  expect_identical(dim(result@guideLFCs@data), dim(result@guideGIs@data))
+  expect_identical(
+    dimnames(result@guideLFCs@data),
+    dimnames(result@guideGIs@data)
+  )
 })
 
 test_that("GIScores validates its input and required gene columns", {

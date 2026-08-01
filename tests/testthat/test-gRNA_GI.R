@@ -147,3 +147,49 @@ test_that("gRNA_GI validates declared slot types", {
     )
   )
 })
+
+test_that("gRNA_GI validates blocking metadata", {
+  expect_error(
+    make_gRNA_GI_for_class_tests(block_layer = c("guide_pair", "bio_rep")),
+    "block_layer.*empty or one"
+  )
+  expect_error(
+    make_gRNA_GI_for_class_tests(block_layer = "gene_pair"),
+    "biological.*block_layer"
+  )
+  expect_error(
+    make_gRNA_GI_for_class_tests(blocks = character(), use_blocks = TRUE),
+    "blocks.*populated"
+  )
+  expect_error(
+    make_gRNA_GI_for_class_tests(block_description = "one_column"),
+    "final 'data' dimension"
+  )
+  expect_error(
+    make_gRNA_GI_for_class_tests(blocks = "g1"),
+    "equal lengths"
+  )
+})
+
+test_that("gRNA_GI validates shared array metadata", {
+  expect_error(
+    make_gRNA_GI_for_class_tests(
+      data = array(seq_len(4L), dim = c(2L, 2L)),
+      space = "gene_pair",
+      replicates = character(),
+      block_layer = character(),
+      blocks = character(),
+      use_blocks = FALSE,
+      block_description = character(),
+      collapse = character()
+    ),
+    "array rank"
+  )
+  expect_error(
+    make_gRNA_GI_for_class_tests(
+      space = "gene_pair",
+      replicates = "gene_pair"
+    ),
+    "unique dimension names"
+  )
+})

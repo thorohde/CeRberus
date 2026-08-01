@@ -42,7 +42,7 @@ make_screen_for_import_scores <- function(
     ),
     limma_models = list(),
     geneGIs = array(numeric(), dim = 0),
-    screen_attr = list(),
+    screen_attr = methods::new("ScreenDesign"),
     dupCorrelation = numeric(),
     metadata = metadata,
     checks = list(),
@@ -71,15 +71,18 @@ test_that("import_scores converts valid standard input to standardized data.tabl
 
   expect_s4_class(result, "ScreenBase")
   expect_true(data.table::is.data.table(result@metadata$input))
-  expect_true(all(c(
-    "query_gene",
-    "library_gene",
-    "bio_rep",
-    "tech_rep",
-    "guide_pair",
-    "GI",
-    "gene_pair"
-  ) %in% names(result@metadata$input)))
+  expect_true(all(
+    c(
+      "query_gene",
+      "library_gene",
+      "bio_rep",
+      "tech_rep",
+      "guide_pair",
+      "GI",
+      "gene_pair"
+    ) %in%
+      names(result@metadata$input)
+  ))
   expect_equal(result@metadata$input$gene_pair, c("A;D", "B;E", "C;F"))
   expect_equal(result@metadata$input$GI, c(0.1, -0.2, 0.3))
   expect_equal(result@metadata$input$extra, c("keep1", "keep2", "keep3"))
@@ -109,7 +112,15 @@ test_that("import_scores standardizes custom input column names", {
 
   expect_named(
     result@metadata$input,
-    c("query_gene", "library_gene", "bio_rep", "tech_rep", "guide_pair", "GI", "gene_pair")
+    c(
+      "query_gene",
+      "library_gene",
+      "bio_rep",
+      "tech_rep",
+      "guide_pair",
+      "GI",
+      "gene_pair"
+    )
   )
   expect_equal(result@metadata$input$query_gene, c("A", "B"))
   expect_equal(result@metadata$input$library_gene, c("C", "D"))
@@ -142,7 +153,10 @@ test_that("import_scores tolerates absent optional replicate and score columns",
 
   result <- import_scores(screen)
 
-  expect_named(result@metadata$input, c("query_gene", "library_gene", "gene_pair"))
+  expect_named(
+    result@metadata$input,
+    c("query_gene", "library_gene", "gene_pair")
+  )
   expect_equal(result@metadata$input$gene_pair, c("A;C", "B;D"))
 })
 
@@ -162,12 +176,17 @@ test_that("import_scores preserves metadata other than input", {
 
 test_that("import_scores validates input object and required gene columns", {
   expect_error(
-    import_scores(make_screen_for_import_scores(list(query_gene = "A", library_gene = "B"))),
+    import_scores(make_screen_for_import_scores(list(
+      query_gene = "A",
+      library_gene = "B"
+    ))),
     "needs to be a data frame"
   )
 
   expect_error(
-    import_scores(make_screen_for_import_scores(data.frame(library_gene = "B"))),
+    import_scores(make_screen_for_import_scores(data.frame(
+      library_gene = "B"
+    ))),
     "query gene column"
   )
 
@@ -185,12 +204,20 @@ test_that("import_scores validates custom required gene column names", {
   )
 
   expect_error(
-    import_scores(make_screen_for_import_scores(input, query_col = "missing_query", lib_col = "library")),
+    import_scores(make_screen_for_import_scores(
+      input,
+      query_col = "missing_query",
+      lib_col = "library"
+    )),
     "query gene column"
   )
 
   expect_error(
-    import_scores(make_screen_for_import_scores(input, query_col = "query", lib_col = "missing_library")),
+    import_scores(make_screen_for_import_scores(
+      input,
+      query_col = "query",
+      lib_col = "missing_library"
+    )),
     "library gene column"
   )
 })

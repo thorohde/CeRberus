@@ -20,7 +20,7 @@ make_dupcor_plot_screen <- function(dupcor_data = make_dupcor_plot_data()) {
     ),
     limma_models = list(),
     geneGIs = array(numeric(), dim = 0),
-    screen_attr = list(),
+    screen_attr = methods::new("ScreenDesign"),
     dupCorrelation = numeric(),
     metadata = list(dupcor_data = dupcor_data),
     checks = list(),
@@ -30,7 +30,11 @@ make_dupcor_plot_screen <- function(dupcor_data = make_dupcor_plot_data()) {
 
 make_dupcor_plot_data <- function() {
   data.table::data.table(
-    config = c("default_guide_pair_used", "default_tech_rep_used", "bio_rep_collapsed_guide_pair_used"),
+    config = c(
+      "default_guide_pair_used",
+      "default_tech_rep_used",
+      "bio_rep_collapsed_guide_pair_used"
+    ),
     dcor = c(0.05, 0.31, -0.02),
     kept = c("selected", "", "")
   )
@@ -53,14 +57,28 @@ test_that("compute_dupcor_plot adds a ggplot object to every screen", {
   expect_s3_class(result$selected@metadata$dupcor_plot, "ggplot")
   expect_s3_class(result$alternative@metadata$dupcor_plot, "ggplot")
 
-  expect_equal(result$selected@metadata$dupcor_plot$data, screens$selected@metadata$dupcor_data)
-  expect_equal(result$alternative@metadata$dupcor_plot$data, screens$alternative@metadata$dupcor_data)
-  expect_equal(result$selected@metadata$dupcor_plot$labels$x, "Duplicate correlation")
-  expect_equal(result$selected@metadata$dupcor_plot$labels$y, "Limma configuration")
+  expect_equal(
+    result$selected@metadata$dupcor_plot$data,
+    screens$selected@metadata$dupcor_data
+  )
+  expect_equal(
+    result$alternative@metadata$dupcor_plot$data,
+    screens$alternative@metadata$dupcor_data
+  )
+  expect_equal(
+    result$selected@metadata$dupcor_plot$labels$x,
+    "Duplicate correlation"
+  )
+  expect_equal(
+    result$selected@metadata$dupcor_plot$labels$y,
+    "Limma configuration"
+  )
 })
 
 test_that("compute_dupcor_plot builds the expected plot layers and fill scale", {
-  result <- CeRberus:::compute_dupcor_plot(list(screen = make_dupcor_plot_screen()))
+  result <- CeRberus:::compute_dupcor_plot(list(
+    screen = make_dupcor_plot_screen()
+  ))
   plot <- result$screen@metadata$dupcor_plot
 
   expect_equal(length(plot$layers), 2L)
@@ -80,7 +98,12 @@ test_that("compute_dupcor_plot builds the expected plot layers and fill scale", 
 })
 
 test_that("compute_dupcor_plot writes the plot file and creates parent directories", {
-  output_file <- file.path(tempdir(), "dupcor-plot-test", "nested", "dupcor_plot.pdf")
+  output_file <- file.path(
+    tempdir(),
+    "dupcor-plot-test",
+    "nested",
+    "dupcor_plot.pdf"
+  )
   if (file.exists(output_file)) {
     unlink(output_file)
   }
@@ -110,7 +133,10 @@ test_that("compute_dupcor_plot validates input length and verbose", {
     "verbose must be TRUE or FALSE"
   )
   expect_error(
-    CeRberus:::compute_dupcor_plot(list(screen = valid_screen), verbose = c(TRUE, FALSE)),
+    CeRberus:::compute_dupcor_plot(
+      list(screen = valid_screen),
+      verbose = c(TRUE, FALSE)
+    ),
     "verbose must be TRUE or FALSE"
   )
 })

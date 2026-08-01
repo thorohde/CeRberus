@@ -112,11 +112,10 @@ test_that("collapse_replicates preserves non-collapsed replicate dimension order
 
 test_that("collapse_replicates rejects non-replicate collapse layers", {
   data <- make_collapse_array()
-  object <- make_gRNA_GI_for_collapse(data, collapse = "query_gene")
 
   expect_error(
-    collapse_replicates(object),
-    "All collapse layers must be replicate dimensions"
+    make_gRNA_GI_for_collapse(data, collapse = "query_gene"),
+    "cannot be collapsed as replicates"
   )
 })
 

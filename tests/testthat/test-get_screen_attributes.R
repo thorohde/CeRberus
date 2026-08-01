@@ -1,4 +1,7 @@
-make_screen_for_attributes <- function(input, screen_attr = list(existing = "remove me")) {
+make_screen_for_attributes <- function(
+  input,
+  screen_attr = methods::new("ScreenDesign")
+) {
   methods::new(
     "ScreenBase",
     guideLFCs = methods::new(
@@ -84,12 +87,15 @@ test_that("get_screen_attributes stores directional and unordered gene pairs", {
 
 test_that("get_screen_attributes preserves metadata input and replaces previous attributes", {
   input <- make_attribute_input()
-  screen <- make_screen_for_attributes(input)
+  screen <- make_screen_for_attributes(
+    input,
+    screen_attr = make_screen_design(query_genes = "existing")
+  )
 
   result <- get_screen_attributes(screen)
 
   expect_equal(result@metadata$input, input)
-  expect_false("existing" %in% names(result@screen_attr))
+  expect_false("existing" %in% result@screen_attr$query_genes)
 })
 
 test_that("get_screen_attributes handles duplicated rows without duplicating gene sets or pair lists", {
@@ -101,8 +107,14 @@ test_that("get_screen_attributes handles duplicated rows without duplicating gen
 
   expect_equal(result@screen_attr$query_genes, c("A", "B", "C", "D"))
   expect_equal(result@screen_attr$library_genes, c("B", "C", "A", "E"))
-  expect_equal(result@screen_attr$all_pairs, c("A;B", "A;C", "B;A", "C;A", "C;E", "D;E"))
-  expect_equal(result@screen_attr$observations_per_query, c(A = 3L, B = 1L, C = 2L, D = 1L))
+  expect_equal(
+    result@screen_attr$all_pairs,
+    c("A;B", "A;C", "B;A", "C;A", "C;E", "D;E")
+  )
+  expect_equal(
+    result@screen_attr$observations_per_query,
+    c(A = 3L, B = 1L, C = 2L, D = 1L)
+  )
 })
 
 test_that("get_screen_attributes requires data.table input columns used by the method", {

@@ -18,7 +18,8 @@ GIScores(
   pos_agnostic = FALSE,
   symmetric_analysis_method = "preaverage",
   verbose = FALSE,
-  screen_type = c("auto", "fixed_pair", "multiplex")
+  screen_type = c("auto", "fixed_pair", "multiplex"),
+  lfc_col = NULL
 )
 }
 \arguments{
@@ -64,6 +65,10 @@ all unordered pairs. This argument is only used when
 \item{screen_type}{Character scalar controlling screen classification.
 \code{"auto"} uses the inferred screen attributes, while \code{"fixed_pair"} and
 \code{"multiplex"} explicitly select the corresponding screen structure.}
+
+\item{lfc_col}{Optional name of the numeric guide log-fold-change column.
+If \code{NULL}, a column named \code{LFC} is used when present. If no such column is
+present, the returned object's guide-level LFC container remains empty.}
 }
 \value{
 An S4 object inheriting from \code{ScreenBase}, typically a

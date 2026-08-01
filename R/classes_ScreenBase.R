@@ -11,7 +11,8 @@
 #'   `MArrayLM` object covering all unordered pairs.
 #' @slot geneGIs Numeric array of aggregated gene-level GI scores, p-values, and
 #'   FDR values.
-#' @slot screen_attr List of inferred screen attributes.
+#' @slot screen_attr Internal `ScreenDesign` object containing the canonical
+#'   inferred gene sets, pair structure, and derived screen attributes.
 #' @slot dupCorrelation Numeric duplicate-correlation estimate(s).
 #' @slot metadata List of run metadata and standardized input data.
 #' @slot checks List of screen-design checks.
@@ -26,13 +27,42 @@ setClass(
     "guideGIs" = "gRNA_GI",
     "limma_models" = "list",
     "geneGIs" = "array",
-    "screen_attr" = "list",
+    "screen_attr" = "ScreenDesign",
     "dupCorrelation" = "numeric",
     "metadata" = "list",
     "checks" = "list",
     "errors" = "list"
   )
 )
+
+setValidity("ScreenBase", function(object) {
+  effect_design_map <- c(
+    query_main_effects = "query_genes",
+    library_main_effects = "library_genes"
+  )
+
+  for (.effect_slot in names(effect_design_map)) {
+    .effects <- methods::slot(object@guideLFCs, .effect_slot)
+    if (length(.effects) == 0L) {
+      next
+    }
+
+    .design_field <- effect_design_map[[.effect_slot]]
+    .genes <- object@screen_attr[[.design_field]]
+
+    if (is.null(.genes) || !setequal(names(.effects), .genes)) {
+      return(paste0(
+        "Names of guideLFCs@",
+        .effect_slot,
+        " must match screen_attr$",
+        .design_field,
+        "."
+      ))
+    }
+  }
+
+  TRUE
+})
 
 #' Fixed-pair CRISPR screen
 #'

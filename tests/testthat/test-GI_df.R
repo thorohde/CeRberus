@@ -20,7 +20,7 @@ make_screen_for_gi_df <- function(class, geneGIs, symmGeneGIs = NULL) {
     ),
     limma_models = list(),
     geneGIs = geneGIs,
-    screen_attr = list(),
+    screen_attr = methods::new("ScreenDesign"),
     dupCorrelation = numeric(),
     metadata = list(),
     checks = list(),

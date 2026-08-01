@@ -169,13 +169,13 @@ test_that("screen_report uses fallback text when checks and metadata fields are 
     block_layer = character()
   )
 
-  screen@screen_attr$n_query_genes <- NA_real_
-  screen@screen_attr$n_lib_genes <- numeric()
-  screen@screen_attr$n_all_genes <- NULL
-  screen@screen_attr$query_genes_not_in_lib <- character()
-  screen@screen_attr$library_genes_not_in_query <- character()
-  screen@screen_attr$all_pairs <- character()
-  screen@screen_attr$unique_pairs <- character()
+  methods::slot(screen@screen_attr, "n_query_genes", check = FALSE) <- NA_real_
+  methods::slot(screen@screen_attr, "n_lib_genes", check = FALSE) <- numeric()
+  methods::slot(screen@screen_attr, "n_all_genes", check = FALSE) <- NULL
+  screen@screen_attr@query_genes_not_in_lib <- character()
+  screen@screen_attr@library_genes_not_in_query <- character()
+  screen@screen_attr@all_pairs <- character()
+  screen@screen_attr@unique_pairs <- character()
 
   result <- screen_report(screen, interactive = TRUE, print = FALSE)
 

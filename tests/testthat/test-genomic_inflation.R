@@ -22,7 +22,7 @@ make_genomic_inflation_screen <- function(
     ),
     limma_models = list(),
     geneGIs = array(numeric(), dim = 0),
-    screen_attr = list(),
+    screen_attr = methods::new("ScreenDesign"),
     dupCorrelation = numeric(),
     metadata = list(),
     checks = list(),

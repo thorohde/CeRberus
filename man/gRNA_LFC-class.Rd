@@ -16,5 +16,12 @@ their dimension metadata.
 \item{\code{space}}{Character vector naming biological dimensions.}
 
 \item{\code{replicates}}{Character vector naming replicate dimensions.}
+
+\item{\code{collapse}}{Character vector of replicate layers collapsed during
+construction.}
+
+\item{\code{query_main_effects}}{Named numeric vector of query-gene main effects.}
+
+\item{\code{library_main_effects}}{Named numeric vector of library-gene main effects.}
 }}
 

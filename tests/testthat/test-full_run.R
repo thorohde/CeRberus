@@ -52,7 +52,7 @@ make_full_run_screen <- function(
     ),
     limma_models = list(),
     geneGIs = array(numeric(), dim = 0),
-    screen_attr = list(),
+    screen_attr = methods::new("ScreenDesign"),
     dupCorrelation = dupcor,
     metadata = list(
       config = name,

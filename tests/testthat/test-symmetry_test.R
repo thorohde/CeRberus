@@ -27,7 +27,7 @@ make_multiplex_screen_for_symmetry <- function(
     guideGIs = guideGIs,
     limma_models = list(),
     geneGIs = array(numeric(), dim = 0),
-    screen_attr = list(),
+    screen_attr = methods::new("ScreenDesign"),
     dupCorrelation = numeric(),
     metadata = list(),
     checks = list(),

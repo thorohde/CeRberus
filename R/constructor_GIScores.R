@@ -16,6 +16,9 @@
 #' @param tech_rep_col Name of the technical-replicate column.
 #' @param guide_col Name of the guide-pair column.
 #' @param gi_col Name of the numeric genetic-interaction score column.
+#' @param lfc_col Optional name of the numeric guide log-fold-change column.
+#'   If `NULL`, a column named `LFC` is used when present. If no such column is
+#'   present, the returned object's guide-level LFC container remains empty.
 #' @param collapse_layers Optional character vector of replicate layers to
 #'   average before model fitting, for example `"guide_pair"`, `"tech_rep"`, or
 #'   `"bio_rep"`.
@@ -58,7 +61,8 @@ GIScores <- function(
   pos_agnostic = FALSE,
   symmetric_analysis_method = "preaverage",
   verbose = FALSE,
-  screen_type = c("auto", "fixed_pair", "multiplex")
+  screen_type = c("auto", "fixed_pair", "multiplex"),
+  lfc_col = NULL
 ) {
   screen_type <- match.arg(screen_type)
 
@@ -115,6 +119,7 @@ GIScores <- function(
       tech_rep_col = tech_rep_col,
       guide_col = guide_col,
       gi_col = gi_col,
+      lfc_col = lfc_col,
       requested_screen_type = screen_type,
       symmetric_analysis_method = symmetric_analysis_method
     )
@@ -122,6 +127,7 @@ GIScores <- function(
 
   gi_obj@guideGIs@collapse <- as.character(collapse_layers)
   gi_obj@guideGIs@block_layer <- as.character(block_layer)
+  gi_obj@guideLFCs@collapse <- as.character(collapse_layers)
 
   gi_obj <- import_scores(gi_obj)
   gi_obj <- get_screen_attributes(gi_obj)
@@ -138,6 +144,13 @@ GIScores <- function(
   gi_obj@guideGIs <- gi_obj@guideGIs |> fill_gRNA_GIs(gi_obj@metadata$input)
   gi_obj@guideGIs <- gi_obj@guideGIs |> collapse_replicates()
   gi_obj@guideGIs <- gi_obj@guideGIs |> flatten_guide_gis()
+
+  if ("LFC" %in% colnames(gi_obj@metadata$input)) {
+    gi_obj@guideLFCs <- gi_obj@guideLFCs |>
+      fill_gRNA_LFCs(gi_obj@metadata$input) |>
+      collapse_replicates() |>
+      flatten_guide_lfcs()
+  }
 
   if (methods::is(gi_obj, "MultiplexScreen") && pos_agnostic) {
     query_genes <- rownames(gi_obj@guideGIs@data)
@@ -161,6 +174,12 @@ GIScores <- function(
       gi_obj@guideGIs@data[,, .r] <- make_symmetric(
         gi_obj@guideGIs@data[,, .r]
       )
+
+      if (length(gi_obj@guideLFCs@data) > 0L) {
+        gi_obj@guideLFCs@data[,, .r] <- make_symmetric(
+          gi_obj@guideLFCs@data[,, .r]
+        )
+      }
     }
 
     if (identical(symmetric_analysis_method, "global_preaverage")) {
@@ -169,7 +188,15 @@ GIScores <- function(
         pairs = gi_obj@screen_attr$unique_pairs
       )
 
+      if (length(gi_obj@guideLFCs@data) > 0L) {
+        gi_obj@guideLFCs@data <- flatten_symmetric_pairs(
+          .arr = gi_obj@guideLFCs@data,
+          pairs = gi_obj@screen_attr$unique_pairs
+        )
+      }
+
       gi_obj@guideGIs@space <- "gene_pair"
+      gi_obj@guideLFCs@space <- "gene_pair"
     }
 
     gi_obj <- methods::as(

@@ -21,7 +21,7 @@ make_compute_models_screen <- function(
   class,
   guideGIs,
   dupCorrelation,
-  screen_attr = list(),
+  screen_attr = methods::new("ScreenDesign"),
   metadata = list(),
   symmGeneGIs = data.table::data.table()
 ) {
@@ -145,7 +145,7 @@ test_that("compute_models fits one limma model per multiplex query gene", {
     class = "MultiplexScreen",
     guideGIs = guideGIs,
     dupCorrelation = c(Q1 = 0.05, Q2 = 0.1),
-    screen_attr = list(
+    screen_attr = make_screen_design(
       query_genes = c("Q1", "Q2"),
       library_genes = c("L1", "L2", "L3")
     )
@@ -180,7 +180,11 @@ test_that("compute_models fits one global model for global_preaverage screens", 
     class = "PosAgnMultiplexScreen",
     guideGIs = guideGIs,
     dupCorrelation = 0.1,
-    screen_attr = list(unique_pairs = rownames(data)),
+    screen_attr = make_screen_design(
+      query_genes = c("A", "B", "E"),
+      library_genes = c("C", "D", "F"),
+      all_pairs = rownames(data)
+    ),
     metadata = list(symmetric_analysis_method = "global_preaverage")
   )
 
@@ -204,7 +208,7 @@ test_that("compute_models retains per-query models for preaverage screens", {
     class = "PosAgnMultiplexScreen",
     guideGIs = guideGIs,
     dupCorrelation = c(Q1 = 0.05, Q2 = 0.1),
-    screen_attr = list(
+    screen_attr = make_screen_design(
       query_genes = c("Q1", "Q2"),
       library_genes = c("L1", "L2", "L3")
     ),
@@ -228,7 +232,7 @@ test_that("compute_models stores failed multiplex query models and warns", {
     class = "MultiplexScreen",
     guideGIs = guideGIs,
     dupCorrelation = c(Q1 = 0.05, Q_missing = 0.1),
-    screen_attr = list(
+    screen_attr = make_screen_design(
       query_genes = c("Q1", "Q_missing"),
       library_genes = c("L1", "L2", "L3")
     )
@@ -248,11 +252,8 @@ test_that("compute_models stores failed multiplex query models and warns", {
 
 test_that("compute_models errors directly for invalid fixed-pair model input", {
   data <- make_fixed_pair_model_matrix()
-  guideGIs <- make_gRNA_GI_for_compute_models(
-    data = data,
-    space = "gene_pair",
-    blocks = c("b1", "b2")
-  )
+  guideGIs <- make_gRNA_GI_for_compute_models(data = data, space = "gene_pair")
+  guideGIs@blocks <- c("b1", "b2")
   screen <- make_compute_models_screen(
     class = "FixedPairScreen",
     guideGIs = guideGIs,

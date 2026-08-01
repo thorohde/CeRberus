@@ -22,7 +22,8 @@ list of per-query models; global position-agnostic analysis stores one
 \item{\code{geneGIs}}{Numeric array of aggregated gene-level GI scores, p-values, and
 FDR values.}
 
-\item{\code{screen_attr}}{List of inferred screen attributes.}
+\item{\code{screen_attr}}{Internal \code{ScreenDesign} object containing the canonical
+inferred gene sets, pair structure, and derived screen attributes.}
 
 \item{\code{dupCorrelation}}{Numeric duplicate-correlation estimate(s).}
 

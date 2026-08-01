@@ -27,12 +27,10 @@ make_screen_for_create_log <- function() {
     ),
     limma_models = list(Q1 = list(coefficients = 1), Q2 = NULL),
     geneGIs = array(numeric(), dim = 0),
-    screen_attr = list(
-      n_query_genes = 2L,
-      n_lib_genes = 3L,
-      n_all_genes = 5L,
-      all_pairs = c("Q1;L1", "Q1;L2", "Q2;L3"),
-      unique_pairs = c("L1;Q1", "L2;Q1", "L3;Q2")
+    screen_attr = make_screen_design(
+      query_genes = c("Q1", "Q2"),
+      library_genes = c("L1", "L2", "L3"),
+      all_pairs = c("Q1;L1", "Q1;L2", "Q2;L3")
     ),
     dupCorrelation = c(Q1 = 0.1, Q2 = NA_real_),
     metadata = list(

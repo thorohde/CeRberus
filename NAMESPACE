@@ -2,6 +2,7 @@
 
 export(GIScores)
 export(collapse_replicates)
+export(compute_gene_main_effects)
 export(flatten_array)
 export(full_run)
 export(genomic_inflation)

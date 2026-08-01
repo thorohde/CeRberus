@@ -20,7 +20,7 @@ make_configuration_screen <- function(dupcor) {
     ),
     limma_models = list(),
     geneGIs = array(numeric(), dim = 0),
-    screen_attr = list(),
+    screen_attr = methods::new("ScreenDesign"),
     dupCorrelation = dupcor,
     metadata = list(),
     checks = list(),
@@ -126,15 +126,24 @@ test_that("find_optimal_configuration validates input list and keep_all", {
     "gi_list must be named"
   )
   expect_error(
-    CeRberus:::find_optimal_configuration(list(a = valid_screen, a = valid_screen)),
+    CeRberus:::find_optimal_configuration(list(
+      a = valid_screen,
+      a = valid_screen
+    )),
     "gi_list must have unique names"
   )
   expect_error(
-    CeRberus:::find_optimal_configuration(list(a = valid_screen), keep_all = NA),
+    CeRberus:::find_optimal_configuration(
+      list(a = valid_screen),
+      keep_all = NA
+    ),
     "keep_all must be TRUE or FALSE"
   )
   expect_error(
-    CeRberus:::find_optimal_configuration(list(a = valid_screen), keep_all = c(TRUE, FALSE)),
+    CeRberus:::find_optimal_configuration(
+      list(a = valid_screen),
+      keep_all = c(TRUE, FALSE)
+    ),
     "keep_all must be TRUE or FALSE"
   )
 })

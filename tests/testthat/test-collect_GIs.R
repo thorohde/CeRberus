@@ -31,7 +31,7 @@ make_collect_screen <- function(
   class,
   guideGIs,
   limma_models,
-  screen_attr = list(),
+  screen_attr = methods::new("ScreenDesign"),
   metadata = list(),
   symmGeneGIs = data.table::data.table()
 ) {
@@ -172,7 +172,7 @@ test_that("collect_gis builds a query-by-library-by-variable array for multiplex
         c(0.07, 0.08, 0.09)
       )
     ),
-    screen_attr = list(
+    screen_attr = make_screen_design(
       query_genes = c("A", "B", "C"),
       library_genes = c("A", "B", "C")
     )
@@ -214,7 +214,7 @@ test_that("collect_gis keeps failed multiplex models as NA rows", {
         c(0.07, 0.08, 0.09)
       )
     ),
-    screen_attr = list(
+    screen_attr = make_screen_design(
       query_genes = c("A", "B", "C"),
       library_genes = c("A", "B", "C")
     )
@@ -240,7 +240,7 @@ test_that("collect_gis warns when multiplex output loses guide-level genes", {
       A = make_collect_model(c("A", "B"), c(0.1, 0.2), c(0.01, 0.02)),
       B = make_collect_model(c("A", "B"), c(-0.1, -0.2), c(0.03, 0.04))
     ),
-    screen_attr = list(
+    screen_attr = make_screen_design(
       query_genes = c("A", "B"),
       library_genes = c("A", "B")
     )
@@ -278,10 +278,10 @@ test_that("collect_gis creates symmetrized output for position-agnostic multiple
         c(0.05, 0.06, 0.50)
       )
     ),
-    screen_attr = list(
+    screen_attr = make_screen_design(
       query_genes = c("A", "B", "C"),
       library_genes = c("A", "B", "C"),
-      unique_pairs = c("A;B", "A;C", "B;C")
+      all_pairs = c("A;B", "A;C", "B;C")
     ),
     symmGeneGIs = data.table::data.table()
   )
@@ -331,7 +331,11 @@ test_that("collect_gis applies one global FDR correction in canonical pair order
       coefficients = coefficients,
       pvalues = pvalues
     ),
-    screen_attr = list(unique_pairs = pairs),
+    screen_attr = make_screen_design(
+      query_genes = c("A", "B", "C"),
+      library_genes = c("A", "B", "C"),
+      all_pairs = pairs
+    ),
     metadata = list(symmetric_analysis_method = "global_preaverage")
   )
 
@@ -373,7 +377,11 @@ test_that("global position-agnostic collection respects the requested FDR method
       coefficients = c(0.1, 0.2, 0.3),
       pvalues = pvalues
     ),
-    screen_attr = list(unique_pairs = pairs),
+    screen_attr = make_screen_design(
+      query_genes = c("A", "B", "C"),
+      library_genes = c("A", "B", "C"),
+      all_pairs = pairs
+    ),
     metadata = list(symmetric_analysis_method = "global_preaverage")
   )
 
@@ -405,7 +413,11 @@ test_that("global position-agnostic collection rejects reordered model pairs", {
       coefficients = c(0.1, 0.2, 0.3),
       pvalues = c(0.01, 0.04, 0.20)
     ),
-    screen_attr = list(unique_pairs = expected_pairs),
+    screen_attr = make_screen_design(
+      query_genes = c("A", "B", "C"),
+      library_genes = c("A", "B", "C"),
+      all_pairs = expected_pairs
+    ),
     metadata = list(symmetric_analysis_method = "global_preaverage")
   )
 

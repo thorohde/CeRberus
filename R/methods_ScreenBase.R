@@ -158,6 +158,17 @@ setMethod(
 
     .md$input <- as.data.table(.md$input)
 
+    .lfc_col <- .md$lfc_col
+    if (!is.null(.lfc_col) && !.lfc_col %in% colnames(.md$input)) {
+      stop(
+        "The guide LFC column is not in the provided dataset.",
+        call. = FALSE
+      )
+    }
+    if (is.null(.lfc_col)) {
+      .lfc_col <- "LFC"
+    }
+
     setnames(
       .md$input,
       old = c(
@@ -166,7 +177,8 @@ setMethod(
         .md$guide_col,
         .md$query_col,
         .md$lib_col,
-        .md$gi_col
+        .md$gi_col,
+        .lfc_col
       ),
       new = c(
         "bio_rep",
@@ -174,10 +186,15 @@ setMethod(
         "guide_pair",
         "query_gene",
         "library_gene",
-        "GI"
+        "GI",
+        "LFC"
       ),
       skip_absent = TRUE
     )
+
+    if ("LFC" %in% colnames(.md$input) && !is.numeric(.md$input$LFC)) {
+      stop("The guide LFC column must be numeric.", call. = FALSE)
+    }
 
     .md$input[,
       gene_pair := paste0(get("query_gene"), ";", get("library_gene"))
@@ -196,31 +213,34 @@ setMethod(
   signature = signature(gi_obj = "ScreenBase"),
   function(gi_obj) {
     .i <- gi_obj@metadata$input
-    .a <- list(contrasts = NULL)
-    .a$query_genes <- .i[, unique(get("query_gene"))]
-    .a$library_genes <- .i[, unique(get("library_gene"))]
-    .a$all_genes <- union(.a$query_genes, .a$library_genes)
-    .a$query_genes_not_in_lib <- setdiff(.a$query_genes, .a$library_genes)
-    .a$library_genes_not_in_query <- setdiff(.a$library_genes, .a$query_genes)
+    .query_genes <- .i[, unique(get("query_gene"))]
+    .library_genes <- .i[, unique(get("library_gene"))]
+    .all_genes <- union(.query_genes, .library_genes)
 
-    .a$n_query_genes <- length(.a$query_genes)
-    .a$n_lib_genes <- length(.a$library_genes)
-    .a$n_all_genes <- length(.a$all_genes)
-
-    .a$observations_per_query <- purrr::map_int(
-      purrr::set_names(.a$query_genes),
+    .observations_per_query <- purrr::map_int(
+      purrr::set_names(.query_genes),
       \(.g) {
         .i[query_gene == .g, .N]
       }
     )
 
-    .a$all_pairs <- .i[, unique(get("gene_pair"))]
-    .a$unique_pairs <- .i[, unique(sort_gene_pairs(
-      get("query_gene"),
-      get("library_gene")
-    ))]
-
-    gi_obj@screen_attr <- .a
+    gi_obj@screen_attr <- new(
+      "ScreenDesign",
+      query_genes = .query_genes,
+      library_genes = .library_genes,
+      all_genes = .all_genes,
+      query_genes_not_in_lib = setdiff(.query_genes, .library_genes),
+      library_genes_not_in_query = setdiff(.library_genes, .query_genes),
+      n_query_genes = length(.query_genes),
+      n_lib_genes = length(.library_genes),
+      n_all_genes = length(.all_genes),
+      observations_per_query = .observations_per_query,
+      all_pairs = .i[, unique(get("gene_pair"))],
+      unique_pairs = .i[, unique(sort_gene_pairs(
+        get("query_gene"),
+        get("library_gene")
+      ))]
+    )
     return(gi_obj)
   }
 )
@@ -327,10 +347,13 @@ setMethod(
       gi_obj@guideGIs@space <- "gene_pair"
     }
 
+    gi_obj@guideLFCs@space <- gi_obj@guideGIs@space
+
     gi_obj@guideGIs@replicates <- intersect(
       c("guide_pair", "tech_rep", "bio_rep"),
       colnames(.md$input)
     )
+    gi_obj@guideLFCs@replicates <- gi_obj@guideGIs@replicates
 
     gi_obj@metadata <- .md
     return(gi_obj)
@@ -557,15 +580,30 @@ setMethod(
 setMethod(
   "collect_gis",
   signature = signature(gi_obj = "PosAgnMultiplexScreen"),
-  function(gi_obj, fdr_method = "BH") {
+  function(
+    gi_obj,
+    fdr_method = "BH",
+    ihw_covariate = NULL,
+    ihw_covariate_name = "ihw_covariate",
+    ihw_args = list()
+  ) {
+    valid_fdr_methods <- c(p.adjust.methods, "stableIHW")
     stopifnot(
-      "Unknown FDR method provided." = fdr_method %in% p.adjust.methods
+      "Unknown FDR method provided." = fdr_method %in% valid_fdr_methods
     )
 
     symmetric_analysis_method <- get_symmetric_analysis_method(gi_obj)
 
     if (identical(symmetric_analysis_method, "preaverage")) {
-      gi_obj <- methods::callNextMethod(gi_obj)
+      if (identical(fdr_method, "stableIHW")) {
+        stop(
+          "stableIHW adjustment is currently available only for ",
+          "global_preaverage position-agnostic screens.",
+          call. = FALSE
+        )
+      }
+
+      gi_obj <- methods::callNextMethod(gi_obj, fdr_method = fdr_method)
 
       .x <- data.table(gene_pair = gi_obj@screen_attr$unique_pairs)
 
@@ -617,7 +655,83 @@ setMethod(
 
     gi <- gi_obj@limma_models$coefficients[, 1L]
     pval <- gi_obj@limma_models$p.value[, 1L]
-    fdr <- stats::p.adjust(pval, method = fdr_method)
+
+    if (identical(fdr_method, "stableIHW")) {
+      if (!requireNamespace("stableIHW", quietly = TRUE)) {
+        stop(
+          "fdr_method = 'stableIHW' requires the stableIHW package.",
+          call. = FALSE
+        )
+      }
+
+      stopifnot(
+        "ihw_covariate must be supplied for stableIHW adjustment." = !is.null(
+          ihw_covariate
+        ),
+        "ihw_covariate must be an atomic vector." = is.atomic(ihw_covariate) &&
+          is.null(dim(ihw_covariate)),
+        "ihw_covariate must have one value per unordered gene pair." = length(
+          ihw_covariate
+        ) ==
+          length(model_pairs),
+        "ihw_covariate_name must be one non-empty character value." = is.character(
+          ihw_covariate_name
+        ) &&
+          length(ihw_covariate_name) == 1L &&
+          !is.na(ihw_covariate_name) &&
+          nzchar(ihw_covariate_name),
+        "ihw_args must be a list." = is.list(ihw_args),
+        "ihw_args must not contain pvalues or covariates." = !any(
+          c("pvalues", "covariates") %in% names(ihw_args)
+        )
+      )
+
+      reserved_columns <- c(
+        "gene_pair",
+        "query_gene",
+        "library_gene",
+        "GI",
+        "GI_z",
+        "pval",
+        "FDR"
+      )
+      if (ihw_covariate_name %in% reserved_columns) {
+        stop(
+          "ihw_covariate_name must not overwrite a standard result column.",
+          call. = FALSE
+        )
+      }
+
+      covariate_names <- names(ihw_covariate)
+      if (!is.null(covariate_names)) {
+        if (
+          anyNA(covariate_names) ||
+            any(!nzchar(covariate_names)) ||
+            anyDuplicated(covariate_names) ||
+            !setequal(covariate_names, model_pairs)
+        ) {
+          stop(
+            "Named ihw_covariate values must uniquely match all unordered gene pairs.",
+            call. = FALSE
+          )
+        }
+        ihw_covariate <- ihw_covariate[model_pairs]
+      }
+
+      ihw_result <- do.call(
+        stableIHW::ihw,
+        c(
+          list(
+            pvalues = as.numeric(pval),
+            covariates = unname(ihw_covariate)
+          ),
+          ihw_args
+        )
+      )
+      fdr <- stableIHW::adj_pvalues(ihw_result)
+    } else {
+      fdr <- stats::p.adjust(pval, method = fdr_method)
+    }
 
     gi_obj@geneGIs <- cbind(
       GI = as.numeric(gi),
@@ -636,6 +750,31 @@ setMethod(
       pval = as.numeric(pval),
       FDR = as.numeric(fdr)
     )
+
+    if (identical(fdr_method, "stableIHW")) {
+      gi_obj@symmGeneGIs[, (ihw_covariate_name) := unname(ihw_covariate)]
+      data.table::setcolorder(
+        gi_obj@symmGeneGIs,
+        c(
+          "gene_pair",
+          "query_gene",
+          "library_gene",
+          "GI",
+          "GI_z",
+          "pval",
+          ihw_covariate_name,
+          "FDR"
+        )
+      )
+      gi_obj@metadata$multiple_testing <- list(
+        method = "stableIHW",
+        covariate_name = ihw_covariate_name,
+        arguments = ihw_args,
+        result = ihw_result
+      )
+    } else {
+      gi_obj@metadata$multiple_testing <- list(method = fdr_method)
+    }
 
     return(gi_obj)
   }
