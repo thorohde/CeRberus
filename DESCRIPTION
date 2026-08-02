@@ -11,7 +11,6 @@ URL: https://github.com/thorohde/CeRberus
 Depends: 
     R (>= 4.1.0)
 Suggests: 
-    stableIHW,
     lintr,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

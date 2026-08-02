@@ -1,12 +1,18 @@
-make_screen_for_gi_df <- function(class, geneGIs, symmGeneGIs = NULL) {
+make_screen_for_gi_df <- function(
+  class,
+  geneGIs,
+  symmGeneGIs = NULL,
+  guideLFCs = methods::new(
+    "gRNA_LFC",
+    data = array(numeric(), dim = 0),
+    space = character(),
+    replicates = character()
+  ),
+  screen_attr = methods::new("ScreenDesign")
+) {
   args <- list(
     Class = class,
-    guideLFCs = methods::new(
-      "gRNA_LFC",
-      data = array(numeric(), dim = 0),
-      space = character(),
-      replicates = character()
-    ),
+    guideLFCs = guideLFCs,
     guideGIs = methods::new(
       "gRNA_GI",
       data = array(numeric(), dim = 0),
@@ -20,7 +26,7 @@ make_screen_for_gi_df <- function(class, geneGIs, symmGeneGIs = NULL) {
     ),
     limma_models = list(),
     geneGIs = geneGIs,
-    screen_attr = methods::new("ScreenDesign"),
+    screen_attr = screen_attr,
     dupCorrelation = numeric(),
     metadata = list(),
     checks = list(),
@@ -97,6 +103,50 @@ test_that("gi_df converts fixed-pair gene GI matrices to data.table output", {
   expect_equal(result$FDR, c(0.02, 0.04))
 })
 
+test_that("gi_df adds positional main effects to fixed-pair output", {
+  geneGIs <- make_fixed_pair_geneGIs()
+  guideLFCs <- methods::new(
+    "gRNA_LFC",
+    query_main_effects = c(A = -1.5, B = -0.5),
+    library_main_effects = c(C = 0.25, D = 0.75)
+  )
+  screen <- make_screen_for_gi_df(
+    "FixedPairScreen",
+    geneGIs,
+    guideLFCs = guideLFCs,
+    screen_attr = methods::new(
+      "ScreenDesign",
+      query_genes = c("A", "B"),
+      library_genes = c("C", "D"),
+      all_genes = c("A", "B", "C", "D"),
+      query_genes_not_in_lib = c("A", "B"),
+      library_genes_not_in_query = c("C", "D"),
+      n_query_genes = 2L,
+      n_lib_genes = 2L,
+      n_all_genes = 4L,
+      observations_per_query = c(A = 1L, B = 1L)
+    )
+  )
+
+  result <- gi_df(screen)
+
+  expect_named(
+    result,
+    c(
+      "gene_pair",
+      "query_gene",
+      "library_gene",
+      "GI",
+      "pval",
+      "query_main_effect",
+      "library_main_effect",
+      "FDR"
+    )
+  )
+  expect_equal(result$query_main_effect, c(-1.5, -0.5))
+  expect_equal(result$library_main_effect, c(0.25, 0.75))
+})
+
 test_that("gi_df converts multiplex gene GI arrays to long-wide data.table output", {
   geneGIs <- make_multiplex_geneGIs()
   screen <- make_screen_for_gi_df("MultiplexScreen", geneGIs)
@@ -142,6 +192,50 @@ test_that("gi_df converts multiplex gene GI arrays to long-wide data.table outpu
   expected <- expected[, .SD, .SDcols = names(result)]
 
   expect_equal(as.data.frame(result), as.data.frame(expected))
+})
+
+test_that("gi_df adds positional main effects to multiplex output", {
+  geneGIs <- make_multiplex_geneGIs()
+  guideLFCs <- methods::new(
+    "gRNA_LFC",
+    query_main_effects = c(Q1 = -1.5, Q2 = -0.5),
+    library_main_effects = c(L1 = 0.25, L2 = 0.75)
+  )
+  screen <- make_screen_for_gi_df(
+    "MultiplexScreen",
+    geneGIs,
+    guideLFCs = guideLFCs,
+    screen_attr = methods::new(
+      "ScreenDesign",
+      query_genes = c("Q1", "Q2"),
+      library_genes = c("L1", "L2"),
+      all_genes = c("Q1", "Q2", "L1", "L2"),
+      query_genes_not_in_lib = c("Q1", "Q2"),
+      library_genes_not_in_query = c("L1", "L2"),
+      n_query_genes = 2L,
+      n_lib_genes = 2L,
+      n_all_genes = 4L,
+      observations_per_query = c(Q1 = 2L, Q2 = 2L)
+    )
+  )
+
+  result <- gi_df(screen)
+
+  expect_named(
+    result,
+    c(
+      "gene_pair",
+      "query_gene",
+      "library_gene",
+      "GI",
+      "pval",
+      "query_main_effect",
+      "library_main_effect",
+      "FDR"
+    )
+  )
+  expect_equal(result$query_main_effect, c(-1.5, -1.5, -0.5, -0.5))
+  expect_equal(result$library_main_effect, c(0.25, 0.75, 0.25, 0.75))
 })
 
 test_that("gi_df returns symmetrized data for position-agnostic multiplex screens", {

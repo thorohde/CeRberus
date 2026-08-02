@@ -53,15 +53,53 @@ test_that("compute_gene_main_effects computes positional means", {
   expect_true(methods::validObject(result))
 })
 
-test_that("compute_gene_main_effects requires a directional LFC array", {
+test_that("compute_gene_main_effects computes fixed-pair positional means", {
+  lfc_data <- array(
+    c(
+      1,
+      3,
+      NA,
+      5,
+      7,
+      NA,
+      9,
+      11,
+      NA,
+      13,
+      15,
+      NA
+    ),
+    dim = c(3L, 2L, 2L),
+    dimnames = list(
+      gene_pair = c("A;C", "A;D", "B;D"),
+      guide_pair = c("guide_1", "guide_2"),
+      bio_rep = c("bio_1", "bio_2")
+    )
+  )
   object <- methods::new(
+    "gRNA_LFC",
+    data = lfc_data,
+    space = "gene_pair",
+    replicates = c("guide_pair", "bio_rep")
+  )
+
+  result <- compute_gene_main_effects(object)
+
+  expect_identical(result@data, lfc_data)
+  expect_equal(result@query_main_effects, c(A = 8, B = NA_real_))
+  expect_equal(result@library_main_effects, c(C = 7, D = 9))
+  expect_true(methods::validObject(result))
+})
+
+test_that("compute_gene_main_effects validates biological dimensions", {
+  fixed_pair_object <- methods::new(
     "gRNA_LFC",
     data = array(
       seq_len(4L),
       dim = c(2L, 2L),
       dimnames = list(
-        gene_pair = c("A;B", "A;C"),
-        replicate = c("guide_1", "guide_2")
+        gene_pair = c("A;B", "invalid_pair"),
+        guide_pair = c("guide_1", "guide_2")
       )
     ),
     space = "gene_pair",
@@ -69,11 +107,11 @@ test_that("compute_gene_main_effects requires a directional LFC array", {
   )
 
   expect_error(
-    compute_gene_main_effects(object),
-    "first two LFC dimensions must be query_gene and library_gene"
+    compute_gene_main_effects(fixed_pair_object),
+    "format 'query_gene;library_gene'"
   )
 
-  object <- methods::new(
+  directional_object <- methods::new(
     "gRNA_LFC",
     data = array(
       seq_len(4L),
@@ -87,7 +125,7 @@ test_that("compute_gene_main_effects requires a directional LFC array", {
   )
 
   expect_error(
-    compute_gene_main_effects(object),
+    compute_gene_main_effects(directional_object),
     "query-gene dimension must have non-empty names"
   )
 })

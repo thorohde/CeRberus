@@ -33,16 +33,17 @@ make_collect_screen <- function(
   limma_models,
   screen_attr = methods::new("ScreenDesign"),
   metadata = list(),
-  symmGeneGIs = data.table::data.table()
+  symmGeneGIs = data.table::data.table(),
+  guideLFCs = methods::new(
+    "gRNA_LFC",
+    data = array(numeric(), dim = 0),
+    space = character(),
+    replicates = character()
+  )
 ) {
   args <- list(
     Class = class,
-    guideLFCs = methods::new(
-      "gRNA_LFC",
-      data = array(numeric(), dim = 0),
-      space = character(),
-      replicates = character()
-    ),
+    guideLFCs = guideLFCs,
     guideGIs = guideGIs,
     limma_models = limma_models,
     geneGIs = array(numeric(), dim = 0),
@@ -355,6 +356,63 @@ test_that("collect_gis applies one global FDR correction in canonical pair order
   expect_equal(unname(result@geneGIs[, "GI"]), coefficients)
   expect_equal(unname(result@geneGIs[, "pval"]), pvalues)
   expect_equal(unname(result@geneGIs[, "FDR"]), expected_fdr)
+})
+
+test_that("position-agnostic output merges positional main effects equally", {
+  pairs <- c("B;C", "A;B", "A;C")
+  pvalues <- c(0.001, 0.02, 0.40)
+  guide_data <- matrix(
+    seq_len(12L),
+    nrow = 3L,
+    dimnames = list(
+      gene_pair = pairs,
+      replicate = paste0("r", seq_len(4L))
+    )
+  )
+  screen <- make_collect_screen(
+    class = "PosAgnMultiplexScreen",
+    guideGIs = make_collect_guideGIs(guide_data, space = "gene_pair"),
+    limma_models = make_collect_model(
+      genes = pairs,
+      coefficients = c(-0.5, 0.8, 0.1),
+      pvalues = pvalues
+    ),
+    screen_attr = make_screen_design(
+      query_genes = c("A", "B", "C"),
+      library_genes = c("A", "B", "C"),
+      all_pairs = pairs
+    ),
+    metadata = list(symmetric_analysis_method = "global_preaverage"),
+    guideLFCs = methods::new(
+      "gRNA_LFC",
+      query_main_effects = c(A = -2, B = 0, C = 2),
+      library_main_effects = c(A = 0, B = 2, C = 4)
+    )
+  )
+
+  result <- collect_gis(screen)
+
+  expect_named(
+    result@symmGeneGIs,
+    c(
+      "gene_pair",
+      "query_gene",
+      "library_gene",
+      "GI",
+      "GI_z",
+      "pval",
+      "gene1_main_effect",
+      "gene2_main_effect",
+      "FDR"
+    )
+  )
+  expect_equal(result@symmGeneGIs$gene1_main_effect, c(1, -1, -1))
+  expect_equal(result@symmGeneGIs$gene2_main_effect, c(3, 1, 3))
+  expect_identical(result@metadata$multiple_testing$method, "BH")
+  expect_error(
+    collect_gis(screen, fdr_method = "stableIHW"),
+    "Unknown FDR method provided"
+  )
 })
 
 

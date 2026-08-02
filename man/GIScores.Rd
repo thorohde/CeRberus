@@ -68,7 +68,9 @@ all unordered pairs. This argument is only used when
 
 \item{lfc_col}{Optional name of the numeric guide log-fold-change column.
 If \code{NULL}, a column named \code{LFC} is used when present. If no such column is
-present, the returned object's guide-level LFC container remains empty.}
+present, the returned object's guide-level LFC container remains empty.
+Supplied LFCs also trigger automatic positional gene main-effect
+computation for every screen design.}
 }
 \value{
 An S4 object inheriting from \code{ScreenBase}, typically a
@@ -82,4 +84,14 @@ the object for duplicate-correlation estimation and limma-based aggregation.
 The input table is expected in long format with one guide-pair observation
 per row. Column names can be customized with the \verb{*_col} arguments and are
 standardized internally.
+
+For screens with guide LFC input, \code{GIScores()} automatically computes
+separate query- and library-position gene main effects. These are retained as
+provenance in the \code{gRNA_LFC} container. After model fitting and
+\code{collect_gis()}, \code{gi_df()} adds \code{query_main_effect} and
+\code{library_main_effect} columns to directional results. Position-agnostic
+results instead contain \code{gene1_main_effect} and \code{gene2_main_effect}, based on
+the equal mean of each gene's query and library effects. These columns can be
+used to construct covariates for downstream procedures such as IHW; CeRberus
+continues to apply the requested standard \code{p.adjust()} method internally.
 }

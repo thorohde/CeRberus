@@ -580,29 +580,12 @@ setMethod(
 setMethod(
   "collect_gis",
   signature = signature(gi_obj = "PosAgnMultiplexScreen"),
-  function(
-    gi_obj,
-    fdr_method = "BH",
-    ihw_covariate = NULL,
-    ihw_covariate_name = "ihw_covariate",
-    ihw_args = list()
-  ) {
-    valid_fdr_methods <- c(p.adjust.methods, "stableIHW")
-    stopifnot(
-      "Unknown FDR method provided." = fdr_method %in% valid_fdr_methods
-    )
+  function(gi_obj, fdr_method = "BH") {
+    stopifnot("Unknown FDR method provided." = fdr_method %in% p.adjust.methods)
 
     symmetric_analysis_method <- get_symmetric_analysis_method(gi_obj)
 
     if (identical(symmetric_analysis_method, "preaverage")) {
-      if (identical(fdr_method, "stableIHW")) {
-        stop(
-          "stableIHW adjustment is currently available only for ",
-          "global_preaverage position-agnostic screens.",
-          call. = FALSE
-        )
-      }
-
       gi_obj <- methods::callNextMethod(gi_obj, fdr_method = fdr_method)
 
       .x <- data.table(gene_pair = gi_obj@screen_attr$unique_pairs)
@@ -630,7 +613,44 @@ setMethod(
         )
       ]
 
+      if (
+        length(gi_obj@guideLFCs@query_main_effects) > 0L &&
+          length(gi_obj@guideLFCs@library_main_effects) > 0L
+      ) {
+        merged_main_effects <- rowMeans(
+          cbind(
+            gi_obj@guideLFCs@query_main_effects[
+              gi_obj@screen_attr$all_genes
+            ],
+            gi_obj@guideLFCs@library_main_effects[
+              gi_obj@screen_attr$all_genes
+            ]
+          ),
+          na.rm = TRUE
+        )
+        merged_main_effects[is.nan(merged_main_effects)] <- NA_real_
+        names(merged_main_effects) <- gi_obj@screen_attr$all_genes
+
+        .x[, gene1_main_effect := merged_main_effects[query_gene]]
+        .x[, gene2_main_effect := merged_main_effects[library_gene]]
+        data.table::setcolorder(
+          .x,
+          c(
+            "gene_pair",
+            "query_gene",
+            "library_gene",
+            "GI",
+            "GI_z",
+            "pval",
+            "gene1_main_effect",
+            "gene2_main_effect",
+            "FDR"
+          )
+        )
+      }
+
       gi_obj@symmGeneGIs <- .x
+      gi_obj@metadata$multiple_testing <- list(method = fdr_method)
 
       return(gi_obj)
     }
@@ -655,83 +675,7 @@ setMethod(
 
     gi <- gi_obj@limma_models$coefficients[, 1L]
     pval <- gi_obj@limma_models$p.value[, 1L]
-
-    if (identical(fdr_method, "stableIHW")) {
-      if (!requireNamespace("stableIHW", quietly = TRUE)) {
-        stop(
-          "fdr_method = 'stableIHW' requires the stableIHW package.",
-          call. = FALSE
-        )
-      }
-
-      stopifnot(
-        "ihw_covariate must be supplied for stableIHW adjustment." = !is.null(
-          ihw_covariate
-        ),
-        "ihw_covariate must be an atomic vector." = is.atomic(ihw_covariate) &&
-          is.null(dim(ihw_covariate)),
-        "ihw_covariate must have one value per unordered gene pair." = length(
-          ihw_covariate
-        ) ==
-          length(model_pairs),
-        "ihw_covariate_name must be one non-empty character value." = is.character(
-          ihw_covariate_name
-        ) &&
-          length(ihw_covariate_name) == 1L &&
-          !is.na(ihw_covariate_name) &&
-          nzchar(ihw_covariate_name),
-        "ihw_args must be a list." = is.list(ihw_args),
-        "ihw_args must not contain pvalues or covariates." = !any(
-          c("pvalues", "covariates") %in% names(ihw_args)
-        )
-      )
-
-      reserved_columns <- c(
-        "gene_pair",
-        "query_gene",
-        "library_gene",
-        "GI",
-        "GI_z",
-        "pval",
-        "FDR"
-      )
-      if (ihw_covariate_name %in% reserved_columns) {
-        stop(
-          "ihw_covariate_name must not overwrite a standard result column.",
-          call. = FALSE
-        )
-      }
-
-      covariate_names <- names(ihw_covariate)
-      if (!is.null(covariate_names)) {
-        if (
-          anyNA(covariate_names) ||
-            any(!nzchar(covariate_names)) ||
-            anyDuplicated(covariate_names) ||
-            !setequal(covariate_names, model_pairs)
-        ) {
-          stop(
-            "Named ihw_covariate values must uniquely match all unordered gene pairs.",
-            call. = FALSE
-          )
-        }
-        ihw_covariate <- ihw_covariate[model_pairs]
-      }
-
-      ihw_result <- do.call(
-        stableIHW::ihw,
-        c(
-          list(
-            pvalues = as.numeric(pval),
-            covariates = unname(ihw_covariate)
-          ),
-          ihw_args
-        )
-      )
-      fdr <- stableIHW::adj_pvalues(ihw_result)
-    } else {
-      fdr <- stats::p.adjust(pval, method = fdr_method)
-    }
+    fdr <- stats::p.adjust(pval, method = fdr_method)
 
     gi_obj@geneGIs <- cbind(
       GI = as.numeric(gi),
@@ -751,8 +695,26 @@ setMethod(
       FDR = as.numeric(fdr)
     )
 
-    if (identical(fdr_method, "stableIHW")) {
-      gi_obj@symmGeneGIs[, (ihw_covariate_name) := unname(ihw_covariate)]
+    if (
+      length(gi_obj@guideLFCs@query_main_effects) > 0L &&
+        length(gi_obj@guideLFCs@library_main_effects) > 0L
+    ) {
+      merged_main_effects <- rowMeans(
+        cbind(
+          gi_obj@guideLFCs@query_main_effects[gi_obj@screen_attr$all_genes],
+          gi_obj@guideLFCs@library_main_effects[gi_obj@screen_attr$all_genes]
+        ),
+        na.rm = TRUE
+      )
+      merged_main_effects[is.nan(merged_main_effects)] <- NA_real_
+      names(merged_main_effects) <- gi_obj@screen_attr$all_genes
+
+      gi_obj@symmGeneGIs[,
+        gene1_main_effect := merged_main_effects[query_gene]
+      ]
+      gi_obj@symmGeneGIs[,
+        gene2_main_effect := merged_main_effects[library_gene]
+      ]
       data.table::setcolorder(
         gi_obj@symmGeneGIs,
         c(
@@ -762,19 +724,13 @@ setMethod(
           "GI",
           "GI_z",
           "pval",
-          ihw_covariate_name,
+          "gene1_main_effect",
+          "gene2_main_effect",
           "FDR"
         )
       )
-      gi_obj@metadata$multiple_testing <- list(
-        method = "stableIHW",
-        covariate_name = ihw_covariate_name,
-        arguments = ihw_args,
-        result = ihw_result
-      )
-    } else {
-      gi_obj@metadata$multiple_testing <- list(method = fdr_method)
     }
+    gi_obj@metadata$multiple_testing <- list(method = fdr_method)
 
     return(gi_obj)
   }
@@ -794,6 +750,34 @@ setMethod(
       library_gene = str_split_i(rownames(output), ";", 2),
       output
     )
+
+    if (
+      length(gi_obj@guideLFCs@query_main_effects) > 0L &&
+        length(gi_obj@guideLFCs@library_main_effects) > 0L
+    ) {
+      output[,
+        query_main_effect := gi_obj@guideLFCs@query_main_effects[query_gene]
+      ]
+      output[,
+        library_main_effect := gi_obj@guideLFCs@library_main_effects[
+          library_gene
+        ]
+      ]
+      data.table::setcolorder(
+        output,
+        c(
+          "gene_pair",
+          "query_gene",
+          "library_gene",
+          "GI",
+          "pval",
+          "query_main_effect",
+          "library_main_effect",
+          "FDR"
+        )
+      )
+    }
+
     return(output)
   }
 )
@@ -815,6 +799,21 @@ setMethod(
         formula = query_gene + library_gene ~ variable,
         value.var = "value"
       )
+
+    if (
+      length(gi_obj@guideLFCs@query_main_effects) > 0L &&
+        length(gi_obj@guideLFCs@library_main_effects) > 0L
+    ) {
+      output[,
+        query_main_effect := gi_obj@guideLFCs@query_main_effects[query_gene]
+      ]
+      output[,
+        library_main_effect := gi_obj@guideLFCs@library_main_effects[
+          library_gene
+        ]
+      ]
+    }
+
     output[, gene_pair := str_c(query_gene, ";", library_gene)]
     output <- output[,
       .SD,
@@ -824,6 +823,8 @@ setMethod(
         "library_gene",
         "GI",
         "pval",
+        if ("query_main_effect" %in% names(output)) "query_main_effect",
+        if ("library_main_effect" %in% names(output)) "library_main_effect",
         "FDR"
       )
     ]

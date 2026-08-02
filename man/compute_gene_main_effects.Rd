@@ -7,9 +7,9 @@
 compute_gene_main_effects(gRNA_LFC)
 }
 \arguments{
-\item{gRNA_LFC}{A \code{\link[=gRNA_LFC-class]{gRNA_LFC}} object containing a directional LFC
-array. The first two dimensions must be named \code{query_gene} and
-\code{library_gene}.}
+\item{gRNA_LFC}{A \code{\link[=gRNA_LFC-class]{gRNA_LFC}} object containing either a directional
+LFC array whose first two dimensions are \code{query_gene} and \code{library_gene}, or
+a fixed-pair LFC array whose first dimension is \code{gene_pair}.}
 }
 \value{
 The input \code{gRNA_LFC} object with named \code{query_main_effects} and
@@ -17,9 +17,12 @@ The input \code{gRNA_LFC} object with named \code{query_main_effects} and
 }
 \description{
 Computes one main effect per query gene and one main effect per library gene
-from a directional guide-level log-fold-change array. Query main effects are
-means over all library genes and retained observations; library main effects
-are means over all query genes and retained observations.
+from guide-level log-fold changes. For directional arrays, query main effects
+are means over all library genes and retained observations, while library main
+effects are means over all query genes and retained observations. For
+fixed-pair arrays, gene-pair labels are split at \code{";"}, and effects are means
+over all retained observations for pairs containing a gene in the respective
+query or library position.
 
 Missing values are removed when calculating means. A gene with only missing
 measurements receives \code{NA_real_}. The guide-level LFC array is not modified.

@@ -85,6 +85,54 @@ test_that("GIScores stores optional guide LFCs with the guide GI structure", {
         input$tech_rep == "t1"
     ]
   )
+  expect_equal(
+    result@guideLFCs@query_main_effects,
+    c(
+      A = mean(input$LFC[input$query_gene == "A"]),
+      B = mean(input$LFC[input$query_gene == "B"])
+    )
+  )
+  expect_equal(
+    result@guideLFCs@library_main_effects,
+    c(
+      C = mean(input$LFC[input$library_gene == "C"]),
+      D = mean(input$LFC[input$library_gene == "D"])
+    )
+  )
+})
+
+test_that("GIScores automatically computes multiplex gene main effects", {
+  input <- make_multiplex_scores()
+  input$LFC <- as.numeric(factor(input$query_gene)) +
+    10 * as.numeric(factor(input$library_gene))
+
+  result <- GIScores(
+    input,
+    screen_type = "multiplex",
+    block_layer = "guide_pair"
+  )
+
+  query_genes <- unique(input$query_gene)
+  expected_query <- stats::setNames(
+    vapply(
+      query_genes,
+      \(.gene) mean(input$LFC[input$query_gene == .gene]),
+      numeric(1L)
+    ),
+    query_genes
+  )
+  library_genes <- unique(input$library_gene)
+  expected_library <- stats::setNames(
+    vapply(
+      library_genes,
+      \(.gene) mean(input$LFC[input$library_gene == .gene]),
+      numeric(1L)
+    ),
+    library_genes
+  )
+
+  expect_equal(result@guideLFCs@query_main_effects, expected_query)
+  expect_equal(result@guideLFCs@library_main_effects, expected_library)
 })
 
 test_that("GIScores standardizes a custom guide LFC column", {

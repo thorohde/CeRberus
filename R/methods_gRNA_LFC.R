@@ -8,16 +8,19 @@ fill_gRNA_LFCs <- function(gRNA_LFC, input, value_var = "LFC") {
 #'
 #' @description
 #' Computes one main effect per query gene and one main effect per library gene
-#' from a directional guide-level log-fold-change array. Query main effects are
-#' means over all library genes and retained observations; library main effects
-#' are means over all query genes and retained observations.
+#' from guide-level log-fold changes. For directional arrays, query main effects
+#' are means over all library genes and retained observations, while library main
+#' effects are means over all query genes and retained observations. For
+#' fixed-pair arrays, gene-pair labels are split at `";"`, and effects are means
+#' over all retained observations for pairs containing a gene in the respective
+#' query or library position.
 #'
 #' Missing values are removed when calculating means. A gene with only missing
 #' measurements receives `NA_real_`. The guide-level LFC array is not modified.
 #'
-#' @param gRNA_LFC A [`gRNA_LFC-class`] object containing a directional LFC
-#'   array. The first two dimensions must be named `query_gene` and
-#'   `library_gene`.
+#' @param gRNA_LFC A [`gRNA_LFC-class`] object containing either a directional
+#'   LFC array whose first two dimensions are `query_gene` and `library_gene`, or
+#'   a fixed-pair LFC array whose first dimension is `gene_pair`.
 #'
 #' @return The input `gRNA_LFC` object with named `query_main_effects` and
 #'   `library_main_effects` slots populated.
@@ -34,12 +37,72 @@ compute_gene_main_effects <- function(gRNA_LFC) {
       2L
   )
 
+  mean_or_na <- function(.values) {
+    .mean <- mean(.values, na.rm = TRUE)
+    if (is.nan(.mean)) NA_real_ else .mean
+  }
+
+  if (identical(gRNA_LFC@space, "gene_pair")) {
+    gene_pairs <- dimnames(gRNA_LFC@data)[[1L]]
+
+    stopifnot(
+      "The gene-pair dimension must have non-empty names." = !is.null(
+        gene_pairs
+      ) &&
+        !anyNA(gene_pairs) &&
+        all(nzchar(gene_pairs)),
+      "Gene-pair names must use the format 'query_gene;library_gene'." = all(
+        stringr::str_count(gene_pairs, stringr::fixed(";")) == 1L
+      )
+    )
+
+    query_by_pair <- stringr::str_split_i(gene_pairs, ";", 1L)
+    library_by_pair <- stringr::str_split_i(gene_pairs, ";", 2L)
+    pair_values <- matrix(
+      gRNA_LFC@data,
+      nrow = length(gene_pairs),
+      dimnames = list(gene_pair = gene_pairs, observation = NULL)
+    )
+
+    query_genes <- unique(query_by_pair)
+    library_genes <- unique(library_by_pair)
+    query_effects <- vapply(
+      query_genes,
+      function(.gene) {
+        mean_or_na(unlist(
+          pair_values[query_by_pair == .gene, , drop = FALSE],
+          use.names = FALSE
+        ))
+      },
+      numeric(1L)
+    )
+    library_effects <- vapply(
+      library_genes,
+      function(.gene) {
+        mean_or_na(unlist(
+          pair_values[library_by_pair == .gene, , drop = FALSE],
+          use.names = FALSE
+        ))
+      },
+      numeric(1L)
+    )
+
+    gRNA_LFC@query_main_effects <- stats::setNames(query_effects, query_genes)
+    gRNA_LFC@library_main_effects <- stats::setNames(
+      library_effects,
+      library_genes
+    )
+
+    methods::validObject(gRNA_LFC)
+    return(gRNA_LFC)
+  }
+
   query_genes <- dimnames(gRNA_LFC@data)[[1L]]
   library_genes <- dimnames(gRNA_LFC@data)[[2L]]
 
   stopifnot(
     "The first two LFC dimensions must be query_gene and library_gene." = identical(
-      names(dimnames(gRNA_LFC@data))[1:2],
+      gRNA_LFC@space[1:2],
       c("query_gene", "library_gene")
     ),
     "The query-gene dimension must have non-empty names." = !is.null(

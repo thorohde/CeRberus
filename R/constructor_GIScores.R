@@ -9,6 +9,16 @@
 #' per row. Column names can be customized with the `*_col` arguments and are
 #' standardized internally.
 #'
+#' For screens with guide LFC input, `GIScores()` automatically computes
+#' separate query- and library-position gene main effects. These are retained as
+#' provenance in the `gRNA_LFC` container. After model fitting and
+#' `collect_gis()`, `gi_df()` adds `query_main_effect` and
+#' `library_main_effect` columns to directional results. Position-agnostic
+#' results instead contain `gene1_main_effect` and `gene2_main_effect`, based on
+#' the equal mean of each gene's query and library effects. These columns can be
+#' used to construct covariates for downstream procedures such as IHW; CeRberus
+#' continues to apply the requested standard `p.adjust()` method internally.
+#'
 #' @param input A data frame or data.table containing guide-level GI scores.
 #' @param query_col Name of the column containing query-gene identifiers.
 #' @param lib_col Name of the column containing library-gene identifiers.
@@ -19,6 +29,8 @@
 #' @param lfc_col Optional name of the numeric guide log-fold-change column.
 #'   If `NULL`, a column named `LFC` is used when present. If no such column is
 #'   present, the returned object's guide-level LFC container remains empty.
+#'   Supplied LFCs also trigger automatic positional gene main-effect
+#'   computation for every screen design.
 #' @param collapse_layers Optional character vector of replicate layers to
 #'   average before model fitting, for example `"guide_pair"`, `"tech_rep"`, or
 #'   `"bio_rep"`.
@@ -149,7 +161,9 @@ GIScores <- function(
     gi_obj@guideLFCs <- gi_obj@guideLFCs |>
       fill_gRNA_LFCs(gi_obj@metadata$input) |>
       collapse_replicates() |>
-      flatten_guide_lfcs()
+      compute_gene_main_effects()
+
+    gi_obj@guideLFCs <- flatten_guide_lfcs(gi_obj@guideLFCs)
   }
 
   if (methods::is(gi_obj, "MultiplexScreen") && pos_agnostic) {
