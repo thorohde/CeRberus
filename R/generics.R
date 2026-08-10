@@ -115,6 +115,28 @@ setGeneric("run_checks", function(gi_obj, ...) standardGeneric("run_checks"))
 setGeneric("set_screen_type", function(gi_obj, ...) {
   standardGeneric("set_screen_type")
 })
+
+#' Summarize a CeRberus screen
+#'
+#' @description
+#' `screen_report()` summarizes the interpreted screen design, model-selection
+#' decisions, screen checks, and stored modelling problems for a CeRberus screen
+#' object.
+#'
+#' @param gi_obj A [`ScreenBase-class`] object or an object from a subclass.
+#' @param ... Additional arguments passed to methods. The `ScreenBase` method
+#'   accepts `interactive`, which returns the report visibly when `TRUE`;
+#'   `print`, which controls console output; and `width`, which controls the
+#'   printed separator width.
+#'
+#' @return A named list with `overview`, `decisions`, `checks`, and `problems`
+#'   sections. The list is returned invisibly unless `interactive = TRUE`.
+#'
+#' @examples
+#' screen <- methods::new("ScreenBase")
+#' report <- screen_report(screen, interactive = TRUE, print = FALSE)
+#'
+#' @export
 setGeneric("screen_report", function(gi_obj, ...) {
   standardGeneric("screen_report")
 })

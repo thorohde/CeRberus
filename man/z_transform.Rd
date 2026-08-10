@@ -7,13 +7,14 @@
 z_transform(.x, .mean, .sd, outlier_quantile = NULL)
 }
 \arguments{
-\item{.x}{Numeric vector to standardize.}
+\item{.x}{Numeric vector to standardize. Missing values are allowed.}
 
-\item{.mean}{Optional numeric scalar mean used for centering. If omitted,
+\item{.mean}{Optional finite numeric scalar used for centering. If omitted,
 \code{mean(.x, na.rm = TRUE)} is used.}
 
-\item{.sd}{Optional numeric scalar standard deviation used for scaling. If
-omitted, \code{stats::sd(.x, na.rm = TRUE)} is used.}
+\item{.sd}{Optional finite, non-negative numeric scalar used for scaling. If
+omitted, \code{stats::sd(.x, na.rm = TRUE)} is used. A value of zero returns
+\code{NA_real_} for every element of \code{.x}.}
 
 \item{outlier_quantile}{Optional numeric scalar in the interval \verb{[0, 0.5)}.
 When supplied, the standard deviation is estimated from values between the

@@ -19,6 +19,61 @@ test_that("z_transform supports supplied mean and standard deviation", {
   expect_equal(result, c(0, 1, 2))
 })
 
+test_that("z_transform requires a numeric vector", {
+  invalid_values <- list(
+    c("1", "2"),
+    list(1, 2),
+    matrix(1:4, nrow = 2L)
+  )
+
+  purrr::walk(invalid_values, function(value) {
+    expect_error(
+      z_transform(value),
+      "`\\.x` must be a numeric vector"
+    )
+  })
+})
+
+test_that("z_transform validates a supplied mean", {
+  invalid_values <- list(
+    NA_real_,
+    Inf,
+    c(1, 2),
+    numeric(),
+    "1"
+  )
+
+  purrr::walk(invalid_values, function(value) {
+    expect_error(
+      z_transform(1:3, .mean = value),
+      "`\\.mean` must be one finite numeric value"
+    )
+  })
+})
+
+test_that("z_transform validates a supplied standard deviation", {
+  invalid_values <- list(
+    NA_real_,
+    Inf,
+    -1,
+    c(1, 2),
+    numeric(),
+    "1"
+  )
+
+  purrr::walk(invalid_values, function(value) {
+    expect_error(
+      z_transform(1:3, .sd = value),
+      "`\\.sd` must be one finite, non-negative numeric value"
+    )
+  })
+
+  expect_error(
+    z_transform(1:10, .sd = -1, outlier_quantile = 0.1),
+    "`\\.sd` must be one finite, non-negative numeric value"
+  )
+})
+
 test_that("z_transform estimates sd from a central quantile interval", {
   x <- c(1:9, 100)
   outlier_quantile <- 0.1

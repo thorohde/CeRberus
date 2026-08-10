@@ -91,7 +91,7 @@ multiplex_obj <- GIScores(my_scores, screen_type = "multiplex")
 Supported values are `"auto"`, `"fixed_pair"`, and `"multiplex"`. An explicit
 selection overrides the inferred type and produces a warning when the two
 disagree. CeRberus records the requested, inferred, and selected types in the
-object metadata and displays them in `screenReport()`.
+object metadata and displays them in `screen_report()`.
 
 ## Quick start: YAML-based workflow
 

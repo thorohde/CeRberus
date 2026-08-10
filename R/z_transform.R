@@ -10,11 +10,12 @@
 #' If the standard deviation is missing or zero, the function returns a vector
 #' of `NA_real_` values with the same length as `.x`.
 #'
-#' @param .x Numeric vector to standardize.
-#' @param .mean Optional numeric scalar mean used for centering. If omitted,
+#' @param .x Numeric vector to standardize. Missing values are allowed.
+#' @param .mean Optional finite numeric scalar used for centering. If omitted,
 #'   `mean(.x, na.rm = TRUE)` is used.
-#' @param .sd Optional numeric scalar standard deviation used for scaling. If
-#'   omitted, `stats::sd(.x, na.rm = TRUE)` is used.
+#' @param .sd Optional finite, non-negative numeric scalar used for scaling. If
+#'   omitted, `stats::sd(.x, na.rm = TRUE)` is used. A value of zero returns
+#'   `NA_real_` for every element of `.x`.
 #' @param outlier_quantile Optional numeric scalar in the interval `[0, 0.5)`.
 #'   When supplied, the standard deviation is estimated from values between the
 #'   `outlier_quantile` and `1 - outlier_quantile` quantiles of `.x`, overriding
@@ -31,6 +32,27 @@
 #####
 
 z_transform <- function(.x, .mean, .sd, outlier_quantile = NULL) {
+  if (!is.numeric(.x) || !is.atomic(.x) || !is.null(dim(.x))) {
+    stop("`.x` must be a numeric vector.", call. = FALSE)
+  }
+
+  if (!missing(.mean) && (
+    !is.numeric(.mean) ||
+      length(.mean) != 1L ||
+      !is.finite(.mean)
+  )) {
+    stop("`.mean` must be one finite numeric value.", call. = FALSE)
+  }
+
+  if (!missing(.sd) && (
+    !is.numeric(.sd) ||
+      length(.sd) != 1L ||
+      !is.finite(.sd) ||
+      .sd < 0
+  )) {
+    stop("`.sd` must be one finite, non-negative numeric value.", call. = FALSE)
+  }
+
   if (missing(.mean)) {
     .mean <- mean(.x, na.rm = TRUE)
   }
@@ -46,7 +68,10 @@ z_transform <- function(.x, .mean, .sd, outlier_quantile = NULL) {
         outlier_quantile < 0 ||
         outlier_quantile >= 0.5
     ) {
-      stop("`outlier_quantile` must be one finite numeric value in [0, 0.5).")
+      stop(
+        "`outlier_quantile` must be one finite numeric value in [0, 0.5).",
+        call. = FALSE
+      )
     }
 
     quantile_bounds <- stats::quantile(
