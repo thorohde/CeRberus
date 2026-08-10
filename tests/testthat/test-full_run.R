@@ -81,7 +81,6 @@ with_mocked_full_run_pipeline <- function(
   calls$fdr_method <- NULL
   calls$keep_all <- NULL
   calls$screen_report_called <- FALSE
-  calls$screen_report_paths <- character()
 
   testthat::local_mocked_bindings(
     collect_all_layer_configurations = function(
@@ -113,6 +112,14 @@ with_mocked_full_run_pipeline <- function(
     },
     find_optimal_configuration = function(gi_list, keep_all = FALSE) {
       calls$keep_all <- keep_all
+      dupcor_data <- data.table::data.table(
+        config = names(gi_list),
+        dcor = c(0.2, 0.4),
+        kept = c("selected", "")
+      )
+      for (name in names(gi_list)) {
+        gi_list[[name]]@metadata$dupcor_data <- dupcor_data
+      }
       if (isTRUE(keep_all)) {
         return(gi_list)
       }
@@ -151,11 +158,6 @@ with_mocked_full_run_pipeline <- function(
         report_version = "1.0",
         screen = list(configuration = gi_obj@metadata$config)
       )
-
-      if (!is.null(file)) {
-        calls$screen_report_paths <- c(calls$screen_report_paths, file)
-        yaml::write_yaml(report, file = file)
-      }
 
       report
     },
@@ -277,16 +279,30 @@ test_that("full_run writes intermediate and final outputs when overwrite_output 
   )))
   report_path <- file.path(
     normalizePath(output_directory, winslash = "/", mustWork = FALSE),
-    "screen_report_default_guide_pair_used.yaml"
+    "screen_report.yaml"
   )
   expect_true(file.exists(report_path))
   report <- yaml::read_yaml(report_path)
   expect_identical(report$report_version, "1.0")
   expect_identical(
-    report$screen$configuration,
+    report$selection$selected_configuration,
     "default_guide_pair_used"
   )
-  expect_identical(calls$screen_report_paths, report_path)
+  expect_named(
+    report$selection$evaluated_configurations,
+    c("default_guide_pair_used", "default_tech_rep_used")
+  )
+  expect_true(
+    report$selection$evaluated_configurations$default_guide_pair_used$selected
+  )
+  expect_false(
+    report$selection$evaluated_configurations$default_tech_rep_used$selected
+  )
+  expect_named(report$configurations, "default_guide_pair_used")
+  expect_identical(
+    report$configurations$default_guide_pair_used$screen$configuration,
+    "default_guide_pair_used"
+  )
   expect_true(file.exists(file.path(output_directory, "CeRberus.log")))
   success_log <- paste(
     readLines(file.path(output_directory, "CeRberus.log"), warn = FALSE),
@@ -346,7 +362,7 @@ test_that("full_run does not write CSV/RDS outputs when overwrite_output is FALS
   )))
   expect_false(file.exists(file.path(
     output_directory,
-    "screen_report_default_guide_pair_used.yaml"
+    "screen_report.yaml"
   )))
   expect_false(file.exists(file.path(output_directory, "CeRberus.log")))
 })
@@ -401,7 +417,7 @@ test_that("full_run writes a failure log and preserves the original error", {
   expect_false(file.exists(file.path(output_directory, "CeRberus.log")))
   expect_false(file.exists(file.path(
     output_directory,
-    "screen_report_default_guide_pair_used.yaml"
+    "screen_report.yaml"
   )))
 })
 
@@ -428,7 +444,7 @@ test_that("full_run can return NULL after running the pipeline", {
   )))
   expect_true(file.exists(file.path(
     output_directory,
-    "screen_report_default_guide_pair_used.yaml"
+    "screen_report.yaml"
   )))
 })
 
@@ -453,16 +469,20 @@ test_that("full_run forwards keep_all_configurations to configuration selection"
 
   expect_true(calls$keep_all)
   expect_named(result, c("default_guide_pair_used", "default_tech_rep_used"))
-  report_paths <- file.path(
-    normalizePath(output_directory, winslash = "/", mustWork = FALSE),
-    paste0(
-      "screen_report_",
-      c("default_guide_pair_used", "default_tech_rep_used"),
-      ".yaml"
-    )
+  report_path <- file.path(
+    output_directory,
+    "screen_report.yaml"
   )
-  expect_true(all(file.exists(report_paths)))
-  expect_setequal(calls$screen_report_paths, report_paths)
+  expect_true(file.exists(report_path))
+  report <- yaml::read_yaml(report_path)
+  expect_named(
+    report$configurations,
+    c("default_guide_pair_used", "default_tech_rep_used")
+  )
+  expect_identical(
+    report$configurations$default_tech_rep_used$screen$configuration,
+    "default_tech_rep_used"
+  )
 })
 
 test_that("full_run rejects scores files without an extension", {

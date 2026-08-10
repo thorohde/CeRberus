@@ -21,7 +21,7 @@ Run the full GI analysis pipeline
 }
 \details{
 When output writing is enabled in the instruction file, \code{full_run()} writes
-one \verb{screen_report_<configuration>.yaml} file for each retained
-configuration. Each report contains typed summaries of the screen design,
-model, checks, problems, and gene-level results.
+one combined \code{screen_report.yaml} file. It records the selected configuration,
+summarizes all evaluated configurations, and contains typed screen, model,
+check, problem, and result details for every retained configuration.
 }

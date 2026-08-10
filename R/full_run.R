@@ -9,9 +9,9 @@
 #'
 #' @details
 #' When output writing is enabled in the instruction file, `full_run()` writes
-#' one `screen_report_<configuration>.yaml` file for each retained
-#' configuration. Each report contains typed summaries of the screen design,
-#' model, checks, problems, and gene-level results.
+#' one combined `screen_report.yaml` file. It records the selected configuration,
+#' summarizes all evaluated configurations, and contains typed screen, model,
+#' check, problem, and result details for every retained configuration.
 #'
 #' @export
 
@@ -192,16 +192,11 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
             }
           )
 
-        purrr::iwalk(.data, function(.x, .y) {
-          screen_report(
-            .x,
-            file = file.path(
-              instr$output_directory,
-              paste0("screen_report_", .y, ".yaml")
-            ),
-            print = FALSE
-          )
-        })
+        combined_report <- build_combined_screen_report(.data)
+        write_screen_report_yaml(
+          combined_report,
+          file.path(instr$output_directory, "screen_report.yaml")
+        )
 
         write_pipeline_log(
           path = file.path(instr$output_directory, "CeRberus.log"),

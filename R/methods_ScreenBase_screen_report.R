@@ -1,5 +1,6 @@
 #####
 
+
 .screen_report_scalar <- function(x) {
   if (is.null(x) || length(x) == 0L || all(is.na(x))) {
     return(NULL)
@@ -152,6 +153,73 @@
   )
 }
 
+build_combined_screen_report <- function(screen_objects) {
+  stopifnot(
+    "screen_objects must be a non-empty list." = is.list(screen_objects) &&
+      length(screen_objects) > 0L,
+    "screen_objects must be named." = !is.null(names(screen_objects)) &&
+      all(!is.na(names(screen_objects))) &&
+      all(nzchar(names(screen_objects))),
+    "screen object names must be unique." = !anyDuplicated(names(screen_objects)),
+    "Every entry must inherit from ScreenBase." = all(purrr::map_lgl(
+      screen_objects,
+      ~ methods::is(.x, "ScreenBase")
+    ))
+  )
+
+  duplicate_correlation_data <- screen_objects[[1L]]@metadata$dupcor_data
+  evaluated_configurations <- list()
+  selected_configuration <- NULL
+
+  if (
+    is.data.frame(duplicate_correlation_data) &&
+      all(c("config", "dcor", "kept") %in% names(duplicate_correlation_data))
+  ) {
+    evaluated_configurations <- purrr::map(
+      seq_len(nrow(duplicate_correlation_data)),
+      function(index) {
+        list(
+          duplicate_correlation = duplicate_correlation_data$dcor[[index]],
+          selected = identical(
+            duplicate_correlation_data$kept[[index]],
+            "selected"
+          )
+        )
+      }
+    )
+    names(evaluated_configurations) <- duplicate_correlation_data$config
+
+    selected <- duplicate_correlation_data$config[
+      duplicate_correlation_data$kept == "selected"
+    ]
+    if (length(selected) > 0L) {
+      selected_configuration <- selected[[1L]]
+    }
+  }
+
+  configuration_reports <- purrr::imap(
+    screen_objects,
+    function(screen, configuration) {
+      report <- .build_screen_report(screen)
+      report$report_version <- NULL
+      report$screen <- c(
+        list(configuration = configuration),
+        report$screen
+      )
+      report
+    }
+  )
+
+  list(
+    report_version = "1.0",
+    selection = list(
+      selected_configuration = selected_configuration,
+      evaluated_configurations = evaluated_configurations
+    ),
+    configurations = configuration_reports
+  )
+}
+
 .print_screen_report <- function(report, width = 80) {
   line <- function(character = "-") {
     paste(rep(character, width), collapse = "")
@@ -258,7 +326,7 @@
   invisible(report)
 }
 
-.write_screen_report_yaml <- function(report, file) {
+write_screen_report_yaml <- function(report, file) {
   stopifnot(
     "file must be a single path string." = is.character(file) &&
       length(file) == 1L &&
@@ -306,7 +374,7 @@ setMethod(
     report <- .build_screen_report(gi_obj)
 
     if (!is.null(file)) {
-      .write_screen_report_yaml(report, file)
+      write_screen_report_yaml(report, file)
     }
 
     if (isTRUE(print)) {

@@ -232,7 +232,7 @@ When `overwrite_output = TRUE`, CeRberus writes output files to `output_director
 - `duplicateCorrelationPlot.png` — duplicate-correlation summary plot
 - `duplicate_correlation.csv` — duplicate-correlation summary table
 - `GI_scores_<configuration>.csv` — gene-level GI scores for retained configurations
-- `screen_report_<configuration>.yaml` — typed overview for each retained configuration
+- `screen_report.yaml` — combined overview of evaluated and retained configurations
 
 Reports can be read and compared with the `yaml` package:
 
@@ -240,13 +240,19 @@ Reports can be read and compared with the `yaml` package:
 report <- yaml::read_yaml(
   file.path(
     "path/to/output",
-    "screen_report_default_guide_pair_used.yaml"
+    "screen_report.yaml"
   )
 )
 
-report$checks
-report$results
+report$selection
+report$configurations
 ```
+
+`selection$evaluated_configurations` lists every configuration considered during
+duplicate-correlation selection. `configurations` contains the complete typed
+report for each retained configuration. With `keep_all_configurations: true`,
+all configurations are retained; otherwise, only the selected configuration has
+complete model and result details.
 
 When `overwrite_output = FALSE`, CeRberus still runs the analysis but does not write these files.
 

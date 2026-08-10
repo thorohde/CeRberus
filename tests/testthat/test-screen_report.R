@@ -99,6 +99,24 @@ add_screen_report_results <- function(screen) {
   screen
 }
 
+make_combined_report_screens <- function() {
+  duplicate_correlation_data <- data.table::data.table(
+    config = c("configuration_a", "configuration_b"),
+    dcor = c(0.1, 0.2),
+    kept = c("selected", "")
+  )
+
+  screens <- list(
+    configuration_a = make_screen_for_report(class = "MultiplexScreen"),
+    configuration_b = make_screen_for_report(class = "FixedPairScreen")
+  )
+
+  purrr::map(screens, function(screen) {
+    screen@metadata$dupcor_data <- duplicate_correlation_data
+    screen
+  })
+}
+
 test_that("screen_report is part of the public package API", {
   expect_true("screen_report" %in% getNamespaceExports("CeRberus"))
 })
@@ -274,6 +292,113 @@ test_that("screen_report summarizes results for every supported screen class", {
       info = class
     )
   }
+})
+
+test_that("combined screen report contains selection and configuration details", {
+  screens <- make_combined_report_screens()
+
+  report <- build_combined_screen_report(screens)
+
+  expect_named(
+    report,
+    c("report_version", "selection", "configurations")
+  )
+  expect_identical(report$report_version, "1.0")
+  expect_identical(
+    report$selection$selected_configuration,
+    "configuration_a"
+  )
+  expect_named(
+    report$selection$evaluated_configurations,
+    c("configuration_a", "configuration_b")
+  )
+  expect_identical(
+    report$selection$evaluated_configurations$configuration_a$duplicate_correlation,
+    0.1
+  )
+  expect_identical(
+    report$selection$evaluated_configurations$configuration_b$duplicate_correlation,
+    0.2
+  )
+  expect_true(
+    report$selection$evaluated_configurations$configuration_a$selected
+  )
+  expect_false(
+    report$selection$evaluated_configurations$configuration_b$selected
+  )
+
+  expect_named(report$configurations, names(screens))
+  expect_identical(
+    report$configurations$configuration_a$screen$configuration,
+    "configuration_a"
+  )
+  expect_identical(
+    report$configurations$configuration_b$screen$configuration,
+    "configuration_b"
+  )
+  expect_identical(
+    report$configurations$configuration_a$screen$class,
+    "MultiplexScreen"
+  )
+  expect_identical(
+    report$configurations$configuration_b$screen$class,
+    "FixedPairScreen"
+  )
+  expect_null(report$configurations$configuration_a$report_version)
+  expect_null(report$configurations$configuration_b$report_version)
+})
+
+test_that("combined screen report supports a YAML round-trip", {
+  report <- make_combined_report_screens() |>
+    build_combined_screen_report()
+  path <- tempfile(fileext = ".yaml")
+
+  write_screen_report_yaml(report, path)
+  written <- yaml::read_yaml(path)
+
+  expect_identical(
+    written$selection$selected_configuration,
+    "configuration_a"
+  )
+  expect_named(
+    written$selection$evaluated_configurations,
+    c("configuration_a", "configuration_b")
+  )
+  expect_true(
+    written$selection$evaluated_configurations$configuration_a$selected
+  )
+  expect_identical(
+    written$configurations$configuration_b$screen$configuration,
+    "configuration_b"
+  )
+})
+
+test_that("combined screen report validates its screen-object list", {
+  screen <- make_screen_for_report(class = "MultiplexScreen")
+
+  expect_error(
+    build_combined_screen_report(list()),
+    "screen_objects must be a non-empty list"
+  )
+  expect_error(
+    build_combined_screen_report(list(screen)),
+    "screen_objects must be named"
+  )
+  expect_error(
+    build_combined_screen_report(stats::setNames(list(screen), "")),
+    "screen_objects must be named"
+  )
+  expect_error(
+    build_combined_screen_report(structure(
+      list(screen, screen),
+      names = c("configuration", "configuration")
+    )),
+    "screen object names must be unique"
+  )
+  expect_error(
+    build_combined_screen_report(list(configuration = list())),
+    "Every entry must inherit from ScreenBase"
+  )
 })
 
 test_that("screen_report prints a readable report", {
