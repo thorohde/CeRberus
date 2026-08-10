@@ -33,7 +33,7 @@ Collate:
     'methods_gRNA_LFC.R'
     'methods_ScreenDesign.R'
     'methods_ScreenBase.R'
-    'methods_Screenbase_ScreenReport.R'
+    'methods_ScreenBase_screen_report.R'
     'normalize_readcounts.R'
     'remove_PCs.R'
     'sort_gene_pairs.R'

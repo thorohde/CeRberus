@@ -1,0 +1,9 @@
+^LICENSE\.md$
+^\.lintr$
+^\.positai$
+^\.claude$
+^R_development$
+^other_stuff$
+^\.agents$
+^\.codex$
+^package_management\.qmd$

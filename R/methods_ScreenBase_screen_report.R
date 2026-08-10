@@ -1,9 +1,27 @@
 #####
 
+#' @describeIn screen_report Summarize a `ScreenBase` object.
+#'
+#' @param interactive Logical scalar. Return the report visibly when `TRUE`.
+#' @param print Logical scalar. Print the report to the console when `TRUE`.
+#' @param width Positive numeric scalar controlling the printed separator width.
 setMethod(
   "screen_report",
   signature = signature(gi_obj = "ScreenBase"),
   function(gi_obj, interactive = FALSE, print = TRUE, width = 80) {
+    stopifnot(
+      "interactive must be TRUE or FALSE." = is.logical(interactive) &&
+        length(interactive) == 1L &&
+        !is.na(interactive),
+      "print must be TRUE or FALSE." = is.logical(print) &&
+        length(print) == 1L &&
+        !is.na(print),
+      "width must be one finite positive numeric value." = is.numeric(width) &&
+        length(width) == 1L &&
+        is.finite(width) &&
+        width > 0
+    )
+
     .line <- function(char = "-") paste(rep(char, width), collapse = "")
 
     .value <- function(x, default = "not available") {

@@ -83,6 +83,10 @@ make_screen_for_screen_report <- function(
   screen
 }
 
+test_that("screen_report is part of the public package API", {
+  expect_true("screen_report" %in% getNamespaceExports("CeRberus"))
+})
+
 test_that("screen_report returns structured report content in interactive mode", {
   screen <- make_screen_for_screen_report(
     class = "MultiplexScreen",
@@ -156,6 +160,38 @@ test_that("screen_report prints section headings and key summary lines", {
   expect_match(output, "PROBLEMS")
   expect_match(output, "Screen class: FixedPairScreen")
   expect_match(output, "Selected model strategy: fixed-pair")
+})
+
+test_that("screen_report validates output controls", {
+  screen <- make_screen_for_screen_report(class = "MultiplexScreen")
+
+  invalid_logical_values <- list(NA, logical(), c(TRUE, FALSE), 1, "TRUE")
+  purrr::walk(invalid_logical_values, function(value) {
+    expect_error(
+      screen_report(screen, interactive = value, print = FALSE),
+      "interactive must be TRUE or FALSE"
+    )
+    expect_error(
+      screen_report(screen, print = value),
+      "print must be TRUE or FALSE"
+    )
+  })
+
+  invalid_widths <- list(NA_real_, Inf, 0, -1, numeric(), c(40, 80), "80")
+  purrr::walk(invalid_widths, function(value) {
+    expect_error(
+      screen_report(screen, print = FALSE, width = value),
+      "width must be one finite positive numeric value"
+    )
+  })
+})
+
+test_that("screen_report uses a valid custom separator width", {
+  screen <- make_screen_for_screen_report(class = "MultiplexScreen")
+
+  output <- capture.output(screen_report(screen, width = 12))
+
+  expect_equal(output[[2L]], paste(rep("=", 12L), collapse = ""))
 })
 
 test_that("screen_report uses fallback text when checks and metadata fields are missing", {

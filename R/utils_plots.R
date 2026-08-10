@@ -96,7 +96,7 @@ pvalue_qq_plot <- function(
 
   plot_data <- plot_data[
     !is.na(pval),
-    .(
+    list(
       gene_pair,
       query_gene = stringr::str_split_i(gene_pair, ";", 1),
       library_gene = stringr::str_split_i(gene_pair, ";", 2),
@@ -118,24 +118,24 @@ pvalue_qq_plot <- function(
 
   plot_data <- plot_data[order(ctrl, pval, decreasing = FALSE)]
   plot_data <- plot_data[,
-    .(
+    list(
       gene_pair,
       pval,
       obs = pval,
       exp = stats::ppoints(.N)
     ),
-    by = .(ctrl)
+    by = list(ctrl)
   ]
 
   inflation_summary <- plot_data[,
-    .(
+    list(
       n = .N,
       lambda = stats::qchisq(stats::median(1 - pval), df = 1) /
         stats::qchisq(0.5, df = 1),
       min_p = min(pval),
       median_p = stats::median(pval)
     ),
-    by = .(ctrl)
+    by = list(ctrl)
   ]
 
   inflation_caption <- paste0(

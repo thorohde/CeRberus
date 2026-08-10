@@ -7,6 +7,14 @@
 # IDE state
 .positai/
 
+# Local lint configuration
+.lintr
+
+# Local development files
+R_development/
+other_stuff/
+package_management.qmd
+
 # R package build and check artifacts
 *.Rcheck/
 /*.tar.gz
