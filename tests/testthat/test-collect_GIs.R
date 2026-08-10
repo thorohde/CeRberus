@@ -108,6 +108,7 @@ test_that("collect_gis extracts fixed-pair coefficients, p-values, and adjusted 
     unname(result@geneGIs[, "FDR"]),
     stats::p.adjust(c(0.01, 0.20, 0.03), method = "BH")
   )
+  expect_identical(result@metadata$fdr_method, "BH")
 })
 
 test_that("collect_gis respects requested FDR method for fixed-pair screens", {
@@ -128,6 +129,7 @@ test_that("collect_gis respects requested FDR method for fixed-pair screens", {
     unname(result@geneGIs[, "FDR"]),
     stats::p.adjust(c(0.01, 0.20, 0.03), method = "bonferroni")
   )
+  expect_identical(result@metadata$fdr_method, "bonferroni")
 })
 
 test_that("collect_gis rejects unknown FDR methods", {
@@ -192,6 +194,7 @@ test_that("collect_gis builds a query-by-library-by-variable array for multiplex
     unname(result@geneGIs["A", , "FDR"]),
     stats::p.adjust(c(0.01, 0.02, 0.03), method = "BH")
   )
+  expect_identical(result@metadata$fdr_method, "BH")
 })
 
 test_that("collect_gis keeps failed multiplex models as NA rows", {
@@ -308,6 +311,7 @@ test_that("collect_gis creates symmetrized output for position-agnostic multiple
       fdr_method = "BH"
     )
   )
+  expect_identical(result@metadata$fdr_method, "BH")
   expect_equal(result@symmGeneGIs$GI_z, z_transform(c(0.2, 0.4, 0.5)))
 })
 
@@ -356,6 +360,7 @@ test_that("collect_gis applies one global FDR correction in canonical pair order
   expect_equal(unname(result@geneGIs[, "GI"]), coefficients)
   expect_equal(unname(result@geneGIs[, "pval"]), pvalues)
   expect_equal(unname(result@geneGIs[, "FDR"]), expected_fdr)
+  expect_identical(result@metadata$fdr_method, "BH")
 })
 
 test_that("position-agnostic output merges positional main effects equally", {
@@ -449,6 +454,7 @@ test_that("global position-agnostic collection respects the requested FDR method
     result@symmGeneGIs$FDR,
     stats::p.adjust(pvalues, method = "bonferroni")
   )
+  expect_identical(result@metadata$fdr_method, "bonferroni")
 })
 
 

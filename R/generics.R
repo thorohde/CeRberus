@@ -119,22 +119,29 @@ setGeneric("set_screen_type", function(gi_obj, ...) {
 #' Summarize a CeRberus screen
 #'
 #' @description
-#' `screen_report()` summarizes the interpreted screen design, model-selection
-#' decisions, screen checks, and stored modelling problems for a CeRberus screen
-#' object.
+#' `screen_report()` creates a typed summary of a CeRberus screen. The report
+#' contains the interpreted design, dimensions, model configuration, screen
+#' checks, stored modelling problems, and a summary of gene-level results.
+#'
+#' The returned list can be inspected directly in R or written as YAML by
+#' supplying `file`. Report values retain their native types, such as numeric
+#' counts and logical check results, to support comparisons between runs.
 #'
 #' @param gi_obj A [`ScreenBase-class`] object or an object from a subclass.
 #' @param ... Additional arguments passed to methods. The `ScreenBase` method
-#'   accepts `interactive`, which returns the report visibly when `TRUE`;
-#'   `print`, which controls console output; and `width`, which controls the
-#'   printed separator width.
+#'   accepts `file`, an optional `.yaml` or `.yml` output path; `print`, which
+#'   controls console output; and `width`, which controls the printed separator
+#'   width.
 #'
-#' @return A named list with `overview`, `decisions`, `checks`, and `problems`
-#'   sections. The list is returned invisibly unless `interactive = TRUE`.
+#' @return A named list with `report_version`, `screen`, `dimensions`, `model`,
+#'   `checks`, `problems`, and `results` sections.
 #'
 #' @examples
 #' screen <- methods::new("ScreenBase")
-#' report <- screen_report(screen, interactive = TRUE, print = FALSE)
+#' report <- screen_report(screen, print = FALSE)
+#'
+#' report_file <- tempfile(fileext = ".yaml")
+#' screen_report(screen, file = report_file)
 #'
 #' @export
 setGeneric("screen_report", function(gi_obj, ...) {

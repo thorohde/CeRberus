@@ -19,68 +19,86 @@ exportClasses(ScreenBase)
 exportClasses(gRNA_GI)
 exportClasses(gRNA_LFC)
 importFrom(abind,abind)
-importFrom(data.table,as.data.table)
-importFrom(data.table,copy)
-importFrom(data.table,data.table)
-importFrom(data.table,fcase)
-importFrom(data.table,fifelse)
-importFrom(data.table,fwrite)
-importFrom(data.table,is.data.table)
-importFrom(data.table,rbindlist)
-importFrom(data.table,setnames)
+importFrom(data.table,
+  as.data.table,
+  copy,
+  data.table,
+  fcase,
+  fifelse,
+  fwrite,
+  is.data.table,
+  rbindlist,
+  setnames
+)
 importFrom(dplyr,near)
-importFrom(ggplot2,aes)
-importFrom(ggplot2,geom_boxplot)
-importFrom(ggplot2,geom_col)
-importFrom(ggplot2,geom_jitter)
-importFrom(ggplot2,geom_vline)
-importFrom(ggplot2,ggplot)
-importFrom(ggplot2,ggsave)
-importFrom(ggplot2,labs)
-importFrom(ggplot2,scale_color_manual)
-importFrom(ggplot2,scale_fill_manual)
-importFrom(ggplot2,theme_light)
-importFrom(limma,duplicateCorrelation)
-importFrom(limma,eBayes)
-importFrom(limma,lmFit)
-importFrom(methods,"slot<-")
-importFrom(methods,as)
-importFrom(methods,is)
-importFrom(methods,new)
-importFrom(methods,slot)
-importFrom(methods,slotNames)
-importFrom(purrr,discard)
-importFrom(purrr,imap)
-importFrom(purrr,iwalk)
-importFrom(purrr,keep)
-importFrom(purrr,list_flatten)
-importFrom(purrr,map)
-importFrom(purrr,map2)
-importFrom(purrr,map2_dbl)
-importFrom(purrr,map_chr)
-importFrom(purrr,map_dbl)
-importFrom(purrr,map_int)
-importFrom(purrr,map_lgl)
-importFrom(purrr,modify)
-importFrom(purrr,modify_if)
-importFrom(purrr,pwalk)
-importFrom(purrr,reduce)
-importFrom(purrr,safely)
-importFrom(purrr,set_names)
-importFrom(purrr,walk)
+importFrom(ggplot2,
+  aes,
+  geom_boxplot,
+  geom_col,
+  geom_jitter,
+  geom_vline,
+  ggplot,
+  ggsave,
+  labs,
+  scale_color_manual,
+  scale_fill_manual,
+  theme_light
+)
+importFrom(limma,
+  duplicateCorrelation,
+  eBayes,
+  lmFit
+)
+importFrom(methods,
+  "slot<-",
+  as,
+  is,
+  new,
+  slot,
+  slotNames
+)
+importFrom(purrr,
+  discard,
+  imap,
+  iwalk,
+  keep,
+  list_flatten,
+  map,
+  map2,
+  map2_dbl,
+  map_chr,
+  map_dbl,
+  map_int,
+  map_lgl,
+  modify,
+  modify_if,
+  pwalk,
+  reduce,
+  safely,
+  set_names,
+  walk
+)
 importFrom(reshape2,acast)
-importFrom(stats,as.formula)
-importFrom(stats,cor)
-importFrom(stats,median)
-importFrom(stats,p.adjust)
-importFrom(stats,p.adjust.methods)
-importFrom(stats,prcomp)
-importFrom(stats,sd)
-importFrom(stringr,str_c)
-importFrom(stringr,str_match)
-importFrom(stringr,str_split_i)
-importFrom(utils,combn)
-importFrom(utils,ls.str)
-importFrom(utils,str)
-importFrom(yaml,read_yaml)
-importFrom(yaml,write_yaml)
+importFrom(stats,
+  as.formula,
+  cor,
+  median,
+  p.adjust,
+  p.adjust.methods,
+  prcomp,
+  sd
+)
+importFrom(stringr,
+  str_c,
+  str_match,
+  str_split_i
+)
+importFrom(utils,
+  combn,
+  ls.str,
+  str
+)
+importFrom(yaml,
+  read_yaml,
+  write_yaml
+)

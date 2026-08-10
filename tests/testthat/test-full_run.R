@@ -81,6 +81,7 @@ with_mocked_full_run_pipeline <- function(
   calls$fdr_method <- NULL
   calls$keep_all <- NULL
   calls$screen_report_called <- FALSE
+  calls$screen_report_paths <- character()
 
   testthat::local_mocked_bindings(
     collect_all_layer_configurations = function(
@@ -139,9 +140,24 @@ with_mocked_full_run_pipeline <- function(
         GI = gi_obj@dupCorrelation
       )
     },
-    screen_report = function(gi_obj, interactive = FALSE, print = TRUE, ...) {
+    screen_report = function(
+      gi_obj,
+      file = NULL,
+      print = is.null(file),
+      ...
+    ) {
       calls$screen_report_called <- TRUE
-      invisible(list())
+      report <- list(
+        report_version = "1.0",
+        screen = list(configuration = gi_obj@metadata$config)
+      )
+
+      if (!is.null(file)) {
+        calls$screen_report_paths <- c(calls$screen_report_paths, file)
+        yaml::write_yaml(report, file = file)
+      }
+
+      report
     },
     .package = "CeRberus"
   )
@@ -259,6 +275,18 @@ test_that("full_run writes intermediate and final outputs when overwrite_output 
     output_directory,
     "GI_scores_default_guide_pair_used.csv"
   )))
+  report_path <- file.path(
+    normalizePath(output_directory, winslash = "/", mustWork = FALSE),
+    "screen_report_default_guide_pair_used.yaml"
+  )
+  expect_true(file.exists(report_path))
+  report <- yaml::read_yaml(report_path)
+  expect_identical(report$report_version, "1.0")
+  expect_identical(
+    report$screen$configuration,
+    "default_guide_pair_used"
+  )
+  expect_identical(calls$screen_report_paths, report_path)
   expect_true(file.exists(file.path(output_directory, "CeRberus.log")))
   success_log <- paste(
     readLines(file.path(output_directory, "CeRberus.log"), warn = FALSE),
@@ -316,6 +344,10 @@ test_that("full_run does not write CSV/RDS outputs when overwrite_output is FALS
     output_directory,
     "duplicateCorrelationPlot.png"
   )))
+  expect_false(file.exists(file.path(
+    output_directory,
+    "screen_report_default_guide_pair_used.yaml"
+  )))
   expect_false(file.exists(file.path(output_directory, "CeRberus.log")))
 })
 
@@ -367,6 +399,10 @@ test_that("full_run writes a failure log and preserves the original error", {
     fixed = TRUE
   )
   expect_false(file.exists(file.path(output_directory, "CeRberus.log")))
+  expect_false(file.exists(file.path(
+    output_directory,
+    "screen_report_default_guide_pair_used.yaml"
+  )))
 })
 
 test_that("full_run can return NULL after running the pipeline", {
@@ -390,6 +426,10 @@ test_that("full_run can return NULL after running the pipeline", {
     output_directory,
     "GI_scores_default_guide_pair_used.csv"
   )))
+  expect_true(file.exists(file.path(
+    output_directory,
+    "screen_report_default_guide_pair_used.yaml"
+  )))
 })
 
 test_that("full_run forwards keep_all_configurations to configuration selection", {
@@ -401,7 +441,7 @@ test_that("full_run forwards keep_all_configurations to configuration selection"
     yaml_fpath,
     scores_file = scores_file,
     output_directory = output_directory,
-    overwrite_output = FALSE,
+    overwrite_output = TRUE,
     keep_all_configurations = TRUE
   )
   calls <- new.env(parent = emptyenv())
@@ -413,6 +453,16 @@ test_that("full_run forwards keep_all_configurations to configuration selection"
 
   expect_true(calls$keep_all)
   expect_named(result, c("default_guide_pair_used", "default_tech_rep_used"))
+  report_paths <- file.path(
+    normalizePath(output_directory, winslash = "/", mustWork = FALSE),
+    paste0(
+      "screen_report_",
+      c("default_guide_pair_used", "default_tech_rep_used"),
+      ".yaml"
+    )
+  )
+  expect_true(all(file.exists(report_paths)))
+  expect_setequal(calls$screen_report_paths, report_paths)
 })
 
 test_that("full_run rejects scores files without an extension", {

@@ -8,30 +8,34 @@
 \usage{
 screen_report(gi_obj, ...)
 
-\S4method{screen_report}{ScreenBase}(gi_obj, interactive = FALSE, print = TRUE, width = 80)
+\S4method{screen_report}{ScreenBase}(gi_obj, file = NULL, print = is.null(file), width = 80)
 }
 \arguments{
 \item{gi_obj}{A \code{\link[=ScreenBase-class]{ScreenBase}} object or an object from a subclass.}
 
 \item{...}{Additional arguments passed to methods. The \code{ScreenBase} method
-accepts \code{interactive}, which returns the report visibly when \code{TRUE};
-\code{print}, which controls console output; and \code{width}, which controls the
-printed separator width.}
+accepts \code{file}, an optional \code{.yaml} or \code{.yml} output path; \code{print}, which
+controls console output; and \code{width}, which controls the printed separator
+width.}
 
-\item{interactive}{Logical scalar. Return the report visibly when \code{TRUE}.}
+\item{file}{Optional path to a \code{.yaml} or \code{.yml} report file.}
 
 \item{print}{Logical scalar. Print the report to the console when \code{TRUE}.}
 
 \item{width}{Positive numeric scalar controlling the printed separator width.}
 }
 \value{
-A named list with \code{overview}, \code{decisions}, \code{checks}, and \code{problems}
-sections. The list is returned invisibly unless \code{interactive = TRUE}.
+A named list with \code{report_version}, \code{screen}, \code{dimensions}, \code{model},
+\code{checks}, \code{problems}, and \code{results} sections.
 }
 \description{
-\code{screen_report()} summarizes the interpreted screen design, model-selection
-decisions, screen checks, and stored modelling problems for a CeRberus screen
-object.
+\code{screen_report()} creates a typed summary of a CeRberus screen. The report
+contains the interpreted design, dimensions, model configuration, screen
+checks, stored modelling problems, and a summary of gene-level results.
+
+The returned list can be inspected directly in R or written as YAML by
+supplying \code{file}. Report values retain their native types, such as numeric
+counts and logical check results, to support comparisons between runs.
 }
 \section{Functions}{
 \itemize{
@@ -40,6 +44,9 @@ object.
 }}
 \examples{
 screen <- methods::new("ScreenBase")
-report <- screen_report(screen, interactive = TRUE, print = FALSE)
+report <- screen_report(screen, print = FALSE)
+
+report_file <- tempfile(fileext = ".yaml")
+screen_report(screen, file = report_file)
 
 }

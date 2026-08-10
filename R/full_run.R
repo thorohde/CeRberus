@@ -7,6 +7,12 @@
 #' @return A named list of retained CeRberus screen objects when
 #'   `return_output = TRUE`; otherwise `NULL`.
 #'
+#' @details
+#' When output writing is enabled in the instruction file, `full_run()` writes
+#' one `screen_report_<configuration>.yaml` file for each retained
+#' configuration. Each report contains typed summaries of the screen design,
+#' model, checks, problems, and gene-level results.
+#'
 #' @export
 
 #####
@@ -162,7 +168,7 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
       if (isTRUE(instr$verbose)) {
         purrr::iwalk(.data, function(.x, .y) {
           cat("\nConfiguration: ", .y, "\n", sep = "")
-          screen_report(.x, interactive = FALSE, print = TRUE)
+          screen_report(.x, print = TRUE)
         })
       }
 
@@ -185,6 +191,17 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
               )
             }
           )
+
+        purrr::iwalk(.data, function(.x, .y) {
+          screen_report(
+            .x,
+            file = file.path(
+              instr$output_directory,
+              paste0("screen_report_", .y, ".yaml")
+            ),
+            print = FALSE
+          )
+        })
 
         write_pipeline_log(
           path = file.path(instr$output_directory, "CeRberus.log"),

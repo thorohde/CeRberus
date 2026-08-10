@@ -515,6 +515,7 @@ setMethod(
     )
 
     gi_obj@geneGIs <- output
+    gi_obj@metadata$fdr_method <- fdr_method
 
     return(gi_obj)
   }
@@ -556,6 +557,7 @@ setMethod(
       )
 
     gi_obj@geneGIs <- output
+    gi_obj@metadata$fdr_method <- fdr_method
 
     if (
       length(setdiff(
@@ -582,6 +584,7 @@ setMethod(
   signature = signature(gi_obj = "PosAgnMultiplexScreen"),
   function(gi_obj, fdr_method = "BH") {
     stopifnot("Unknown FDR method provided." = fdr_method %in% p.adjust.methods)
+    gi_obj@metadata$fdr_method <- fdr_method
 
     symmetric_analysis_method <- get_symmetric_analysis_method(gi_obj)
 

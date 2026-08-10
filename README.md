@@ -93,6 +93,30 @@ selection overrides the inferred type and produces a warning when the two
 disagree. CeRberus records the requested, inferred, and selected types in the
 object metadata and displays them in `screen_report()`.
 
+### Screen reports
+
+`screen_report()` returns a typed summary of a CeRberus screen. Numeric values
+and logical checks retain their types so reports from different runs can be
+compared programmatically.
+
+```r
+report <- screen_report(gi_obj, print = FALSE)
+
+report$screen
+report$dimensions
+report$results
+```
+
+Supply a YAML path to write the same report to disk:
+
+```r
+screen_report(
+  gi_obj,
+  file = "screen_report.yaml",
+  print = FALSE
+)
+```
+
 ## Quick start: YAML-based workflow
 
 The typical standalone workflow is:
@@ -208,6 +232,21 @@ When `overwrite_output = TRUE`, CeRberus writes output files to `output_director
 - `duplicateCorrelationPlot.png` — duplicate-correlation summary plot
 - `duplicate_correlation.csv` — duplicate-correlation summary table
 - `GI_scores_<configuration>.csv` — gene-level GI scores for retained configurations
+- `screen_report_<configuration>.yaml` — typed overview for each retained configuration
+
+Reports can be read and compared with the `yaml` package:
+
+```r
+report <- yaml::read_yaml(
+  file.path(
+    "path/to/output",
+    "screen_report_default_guide_pair_used.yaml"
+  )
+)
+
+report$checks
+report$results
+```
 
 When `overwrite_output = FALSE`, CeRberus still runs the analysis but does not write these files.
 

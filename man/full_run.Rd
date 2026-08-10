@@ -19,3 +19,9 @@ A named list of retained CeRberus screen objects when
 \description{
 Run the full GI analysis pipeline
 }
+\details{
+When output writing is enabled in the instruction file, \code{full_run()} writes
+one \verb{screen_report_<configuration>.yaml} file for each retained
+configuration. Each report contains typed summaries of the screen design,
+model, checks, problems, and gene-level results.
+}
