@@ -107,7 +107,10 @@ make_combined_report_screens <- function() {
   )
 
   screens <- list(
-    configuration_a = make_screen_for_report(class = "MultiplexScreen"),
+    configuration_a = make_screen_for_report(
+      class = "MultiplexScreen",
+      limma_models = list(model = list())
+    ),
     configuration_b = make_screen_for_report(class = "FixedPairScreen")
   )
 
@@ -161,7 +164,7 @@ test_that("screen_report returns a typed report", {
   expect_identical(report$model$replicate_layers, "guide_pair")
   expect_identical(report$model$collapsed_layers, character())
   expect_identical(report$model$block_layer, "guide_pair")
-  expect_identical(report$model$duplicate_correlation, numeric())
+  expect_null(report$model$duplicate_correlation)
   expect_identical(report$model$fitted_models, 0L)
 
   expect_true(report$checks$gene_sets_equal)
@@ -179,6 +182,15 @@ test_that("screen_report returns a typed report", {
   expect_null(report$results$fdr_method)
   expect_identical(report$results$fdr_threshold, 0.05)
   expect_null(report$results$tested_gene_pairs)
+})
+
+test_that("screen_report averages finite duplicate correlations", {
+  screen <- make_screen_for_report(class = "MultiplexScreen")
+  screen@dupCorrelation <- c(Q1 = 0.1, Q2 = 0.2, Q3 = NA_real_)
+
+  report <- screen_report(screen, print = FALSE)
+
+  expect_equal(report$model$duplicate_correlation, 0.15)
 })
 
 test_that("screen_report represents unavailable scalar values as NULL", {
@@ -340,9 +352,24 @@ test_that("combined screen report contains selection and configuration details",
     report$configurations$configuration_a$screen$class,
     "MultiplexScreen"
   )
+  expect_named(
+    report$configurations$configuration_b,
+    c("status", "screen", "model")
+  )
   expect_identical(
-    report$configurations$configuration_b$screen$class,
-    "FixedPairScreen"
+    report$configurations$configuration_b$status,
+    "not_computed"
+  )
+  expect_named(
+    report$configurations$configuration_b$screen,
+    "configuration"
+  )
+  expect_named(
+    report$configurations$configuration_b$model,
+    "duplicate_correlation"
+  )
+  expect_null(
+    report$configurations$configuration_b$model$duplicate_correlation
   )
   expect_null(report$configurations$configuration_a$report_version)
   expect_null(report$configurations$configuration_b$report_version)

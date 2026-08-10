@@ -9,6 +9,17 @@
   x[[1L]]
 }
 
+.screen_report_mean <- function(x) {
+  x <- as.numeric(x)
+  x <- x[is.finite(x)]
+
+  if (length(x) == 0L) {
+    return(NULL)
+  }
+
+  mean(x)
+}
+
 .screen_report_model_count <- function(gi_obj) {
   if (inherits(gi_obj@limma_models, "MArrayLM")) {
     return(1L)
@@ -125,7 +136,7 @@
       replicate_layers = as.character(gi_obj@guideGIs@replicates),
       collapsed_layers = as.character(gi_obj@guideGIs@collapse),
       block_layer = .screen_report_scalar(gi_obj@guideGIs@block_layer),
-      duplicate_correlation = as.numeric(gi_obj@dupCorrelation),
+      duplicate_correlation = .screen_report_mean(gi_obj@dupCorrelation),
       fitted_models = .screen_report_model_count(gi_obj)
     ),
     checks = list(
@@ -202,6 +213,20 @@ build_combined_screen_report <- function(screen_objects) {
     function(screen, configuration) {
       report <- .build_screen_report(screen)
       report$report_version <- NULL
+
+      if (
+        report$model$fitted_models == 0L &&
+          !isTRUE(report$results$available)
+      ) {
+        return(list(
+          status = "not_computed",
+          screen = list(configuration = configuration),
+          model = list(
+            duplicate_correlation = report$model$duplicate_correlation
+          )
+        ))
+      }
+
       report$screen <- c(
         list(configuration = configuration),
         report$screen

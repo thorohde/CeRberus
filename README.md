@@ -249,10 +249,11 @@ report$configurations
 ```
 
 `selection$evaluated_configurations` lists every configuration considered during
-duplicate-correlation selection. `configurations` contains the complete typed
-report for each retained configuration. With `keep_all_configurations: true`,
-all configurations are retained; otherwise, only the selected configuration has
-complete model and result details.
+duplicate-correlation selection. Duplicate-correlation vectors are summarized by
+their finite mean. `configurations` contains the complete typed report for each
+computed configuration. With `keep_all_configurations: true`, configurations
+without fitted models or results are retained as compact `not_computed` summaries
+instead of full reports containing unavailable values.
 
 When `overwrite_output = FALSE`, CeRberus still runs the analysis but does not write these files.
 
