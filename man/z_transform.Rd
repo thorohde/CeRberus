@@ -4,7 +4,7 @@
 \alias{z_transform}
 \title{Compute z-scores}
 \usage{
-z_transform(.x, .mean, .sd)
+z_transform(.x, .mean, .sd, outlier_quantile = NULL)
 }
 \arguments{
 \item{.x}{Numeric vector to standardize.}
@@ -14,6 +14,11 @@ z_transform(.x, .mean, .sd)
 
 \item{.sd}{Optional numeric scalar standard deviation used for scaling. If
 omitted, \code{stats::sd(.x, na.rm = TRUE)} is used.}
+
+\item{outlier_quantile}{Optional numeric scalar in the interval \verb{[0, 0.5)}.
+When supplied, the standard deviation is estimated from values between the
+\code{outlier_quantile} and \code{1 - outlier_quantile} quantiles of \code{.x}, overriding
+\code{.sd}. Missing values are ignored.}
 }
 \value{
 A numeric vector of z-scores with the same length as \code{.x}.
@@ -21,7 +26,9 @@ A numeric vector of z-scores with the same length as \code{.x}.
 \description{
 Standardizes a numeric vector by subtracting a mean and dividing by a
 standard deviation. If \code{.mean} or \code{.sd} are not supplied, they are estimated
-from \code{.x} with missing values ignored.
+from \code{.x} with missing values ignored. When \code{outlier_quantile} is supplied,
+the standard deviation is instead estimated from values within the specified
+central quantile interval.
 
 If the standard deviation is missing or zero, the function returns a vector
 of \code{NA_real_} values with the same length as \code{.x}.

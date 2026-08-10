@@ -19,6 +19,31 @@ test_that("z_transform supports supplied mean and standard deviation", {
   expect_equal(result, c(0, 1, 2))
 })
 
+test_that("z_transform estimates sd from a central quantile interval", {
+  x <- c(1:9, 100)
+  outlier_quantile <- 0.1
+  bounds <- stats::quantile(
+    x,
+    probs = c(outlier_quantile, 1 - outlier_quantile)
+  )
+  central_values <- x[x >= bounds[[1L]] & x <= bounds[[2L]]]
+
+  result <- z_transform(x, outlier_quantile = outlier_quantile)
+  expected <- (x - mean(x)) / stats::sd(central_values)
+
+  expect_equal(result, expected)
+  expect_gt(result[[length(result)]], z_transform(x)[[length(x)]])
+})
+
+test_that("outlier_quantile overrides a supplied standard deviation", {
+  x <- c(1:9, 100)
+
+  result <- z_transform(x, .sd = 1000, outlier_quantile = 0.1)
+  expected <- z_transform(x, outlier_quantile = 0.1)
+
+  expect_equal(result, expected)
+})
+
 test_that("z_transform estimates mean and sd while ignoring missing values", {
   x <- c(1, NA_real_, 3, 5)
 
@@ -28,6 +53,15 @@ test_that("z_transform estimates mean and sd while ignoring missing values", {
   expect_equal(result, expected)
   expect_true(is.na(result[2]))
   expect_equal(is.na(result), is.na(x))
+})
+
+test_that("z_transform ignores missing values when estimating central sd", {
+  x <- c(1:9, 100, NA_real_)
+
+  result <- z_transform(x, outlier_quantile = 0.1)
+
+  expect_false(all(is.na(result[-length(result)])))
+  expect_true(is.na(result[[length(result)]]))
 })
 
 test_that("z_transform preserves vector names", {
@@ -42,6 +76,12 @@ test_that("z_transform returns all NA when standard deviation is zero", {
   result <- z_transform(c(3, 3, 3))
 
   expect_equal(result, rep(NA_real_, 3))
+})
+
+test_that("z_transform returns all NA when central standard deviation is zero", {
+  result <- z_transform(c(0, rep(1, 8), 2), outlier_quantile = 0.1)
+
+  expect_equal(result, rep(NA_real_, 10))
 })
 
 test_that("z_transform returns all NA when standard deviation is missing", {
@@ -60,4 +100,15 @@ test_that("z_transform handles empty numeric input", {
 
   expect_type(result, "double")
   expect_length(result, 0L)
+})
+
+test_that("z_transform validates outlier_quantile", {
+  invalid_values <- list(-0.1, 0.5, 1, Inf, NA_real_, c(0.1, 0.2), "0.1")
+
+  purrr::walk(invalid_values, function(value) {
+    expect_error(
+      z_transform(1:10, outlier_quantile = value),
+      "must be one finite numeric value in \\[0, 0.5\\)"
+    )
+  })
 })
