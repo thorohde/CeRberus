@@ -8,10 +8,16 @@
 #'   `return_output = TRUE`; otherwise `NULL`.
 #'
 #' @details
-#' When output writing is enabled in the instruction file, `full_run()` writes
-#' one combined `screen_report.yaml` file. It records the selected configuration,
-#' summarizes all evaluated configurations, and contains typed screen, model,
-#' check, problem, and result details for every retained configuration.
+#' When `overwrite_output = TRUE`, `full_run()` clears existing contents from
+#' `output_directory` before starting the analysis and then writes the outputs
+#' from the current run. The scores and instruction files must be located
+#' outside `output_directory`. When `overwrite_output = FALSE`, existing
+#' directory contents are preserved and no output files are written.
+#'
+#' The pipeline writes one combined `screen_report.yaml` file. It records the
+#' selected configuration, summarizes all evaluated configurations, and
+#' contains typed screen, model, check, problem, and result details for every
+#' retained configuration.
 #'
 #' @export
 
@@ -25,6 +31,66 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
   )
 
   instr <- read_instructions(yaml_fpath)
+
+  if (isTRUE(instr$overwrite_output)) {
+    .output_dir <- instr$output_directory
+    .is_root <- !nzchar(.output_dir) ||
+      grepl("^[A-Za-z]:$", .output_dir) ||
+      grepl("^//[^/]+/[^/]+$", .output_dir)
+
+    if (.is_root) {
+      stop(
+        "Refusing to empty a filesystem root as output_directory.",
+        call. = FALSE
+      )
+    }
+
+    .output_path <- normalizePath(
+      .output_dir,
+      winslash = "/",
+      mustWork = FALSE
+    )
+    .protected_paths <- vapply(
+      c(scores_file = instr$scores_file, instruction_file = yaml_fpath),
+      normalizePath,
+      character(1),
+      winslash = "/",
+      mustWork = TRUE
+    )
+
+    if (.Platform$OS.type == "windows") {
+      .output_path <- tolower(.output_path)
+      .protected_paths <- tolower(.protected_paths)
+    }
+
+    .protected_inside_output <- .protected_paths == .output_path |
+      startsWith(.protected_paths, paste0(.output_path, "/"))
+    if (any(.protected_inside_output)) {
+      stop(
+        "Refusing to empty output_directory because it contains: ",
+        paste(names(.protected_paths)[.protected_inside_output], collapse = ", "),
+        ".",
+        call. = FALSE
+      )
+    }
+
+    if (file.exists(.output_dir) && !dir.exists(.output_dir)) {
+      stop("output_directory exists but is not a directory.", call. = FALSE)
+    }
+
+    if (dir.exists(.output_dir)) {
+      .output_contents <- list.files(
+        .output_dir,
+        all.files = TRUE,
+        full.names = TRUE,
+        no.. = TRUE
+      )
+      if (length(.output_contents) > 0L &&
+        unlink(.output_contents, recursive = TRUE, force = TRUE) != 0L) {
+        stop("Failed to empty output_directory.", call. = FALSE)
+      }
+    }
+  }
 
   dir.create(instr$output_directory, showWarnings = FALSE, recursive = TRUE)
 

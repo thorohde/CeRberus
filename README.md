@@ -152,7 +152,7 @@ The YAML instruction file controls the pipeline run.
 | parameter | description | default |
 |---|---|---|
 | `FDR` | Multiple-testing correction method. Currently supported: `BH`, `bonferroni` | `BH` |
-| `overwrite_output` | Whether to write output files to `output_directory` | `TRUE` |
+| `overwrite_output` | Whether to clear `output_directory` before analysis and write outputs from the current run | `TRUE` |
 | `screen_type` | Screen structure: `auto`, `fixed_pair`, or `multiplex` | `auto` |
 | `pos_agnostic` | Average both orientations for position-agnostic multiplex analysis | `FALSE` |
 | `symmetric_analysis_method` | Position-agnostic strategy: `preaverage` or `global_preaverage` | `preaverage` |
@@ -226,7 +226,10 @@ CeRberus follows this general procedure:
 
 ## Output
 
-When `overwrite_output = TRUE`, CeRberus writes output files to `output_directory`. These can include:
+When `overwrite_output = TRUE`, CeRberus clears all existing contents from
+`output_directory` before starting the analysis and writes the outputs from the
+current run. The scores file and YAML instruction file must be located outside
+`output_directory`. Outputs can include:
 
 - `all_GI_objects.rds` — intermediate CeRberus screen objects before final selection
 - `duplicateCorrelationPlot.png` — duplicate-correlation summary plot
@@ -255,7 +258,8 @@ computed configuration. With `keep_all_configurations: true`, configurations
 without fitted models or results are retained as compact `not_computed` summaries
 instead of full reports containing unavailable values.
 
-When `overwrite_output = FALSE`, CeRberus still runs the analysis but does not write these files.
+When `overwrite_output = FALSE`, CeRberus preserves existing directory contents,
+still runs the analysis, and does not write these files.
 
 ## Standalone use in R pipelines
 

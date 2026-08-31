@@ -100,7 +100,7 @@ test_that("symmetry_test returns TRUE for exactly symmetric guide GI matrices", 
 
 #####
 
-test_that("symmetry_test accepts matrices that are symmetric within dplyr near tolerance", {
+test_that("symmetry_test accepts matrices within the default absolute tolerance", {
   near_symmetric_matrix <- make_named_matrix(c(
     1,
     2,
@@ -117,6 +117,16 @@ test_that("symmetry_test accepts matrices that are symmetric within dplyr near t
   )
 
   expect_true(symmetry_test(screen))
+})
+
+#####
+
+test_that("all_near uses a strict absolute tolerance", {
+  tolerance <- sqrt(.Machine$double.eps)
+
+  expect_true(CeRberus:::all_near(1, 1 + tolerance / 2))
+  expect_false(CeRberus:::all_near(1, 1 + tolerance))
+  expect_false(CeRberus:::all_near(NA_real_, NA_real_))
 })
 
 #####
@@ -203,6 +213,27 @@ test_that("symmetry_test uses pairwise complete observations for missing values"
   )
 
   expect_true(symmetry_test(screen, cutoff = 0.99))
+})
+
+#####
+
+test_that("symmetry_test accepts symmetric matrices with paired missing values", {
+  symmetric_matrix <- make_named_matrix(c(
+    1.0,
+    2.0,
+    NA,
+    2.0,
+    4.0,
+    5.0,
+    NA,
+    5.0,
+    6.0
+  ))
+  screen <- make_multiplex_screen_for_symmetry(
+    make_symmetry_array(symmetric_matrix, replicate_names = "rep1")
+  )
+
+  expect_true(symmetry_test(screen))
 })
 
 #####

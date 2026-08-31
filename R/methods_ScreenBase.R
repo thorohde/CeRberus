@@ -192,6 +192,20 @@ setMethod(
       skip_absent = TRUE
     )
 
+    .unsupported_cols <- intersect(
+      c("condition", "orientation"),
+      colnames(.md$input)
+    )
+    if (length(.unsupported_cols) > 0L) {
+      stop(
+        "Unsupported input column(s): ",
+        paste(.unsupported_cols, collapse = ", "),
+        ". CeRberus does not currently model condition or orientation; ",
+        "remove these dimensions before importing the scores.",
+        call. = FALSE
+      )
+    }
+
     if ("LFC" %in% colnames(.md$input) && !is.numeric(.md$input$LFC)) {
       stop("The guide LFC column must be numeric.", call. = FALSE)
     }
@@ -1120,7 +1134,7 @@ setMethod(
   function(gi_obj, cutoff = 0.99) {
     .test <- map_lgl(set_names(gi_obj@guideGIs@replicates), \(.r) {
       .x <- gi_obj@guideGIs@data[,, .r]
-      if (all(.x == t(.x)) || all(dplyr::near(.x, t(.x)))) {
+      if (isTRUE(all(.x == t(.x))) || all_near(.x, t(.x))) {
         return(TRUE)
       } else {
         return(

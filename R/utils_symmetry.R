@@ -103,6 +103,12 @@ make_symmetric <- function(.x) {
 
 #####
 
+all_near <- function(x, y, tolerance = sqrt(.Machine$double.eps)) {
+  isTRUE(all(abs(x - y) < tolerance))
+}
+
+#####
+
 gather_symmetric_scores <- function(pairs, .arr, sep = ";") {
   #  if (!isSymmetric(.arr)) {
   #    warning(stringr::str_c("Input array is asymmetric! ABBA: ",

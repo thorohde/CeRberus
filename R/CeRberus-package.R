@@ -12,7 +12,6 @@
 #' @importFrom data.table is.data.table
 #' @importFrom data.table rbindlist
 #' @importFrom data.table setnames
-#' @importFrom dplyr near
 #' @importFrom ggplot2 aes
 #' @importFrom ggplot2 geom_boxplot
 #' @importFrom ggplot2 geom_col

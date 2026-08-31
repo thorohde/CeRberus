@@ -221,3 +221,31 @@ test_that("import_scores validates custom required gene column names", {
     "library gene column"
   )
 })
+
+test_that("import_scores rejects unsupported condition and orientation columns", {
+  input <- make_standard_import_scores()
+
+  condition_input <- transform(input, condition = "treated")
+  expect_error(
+    import_scores(make_screen_for_import_scores(condition_input)),
+    "Unsupported input column\\(s\\): condition"
+  )
+
+  orientation_input <- transform(input, orientation = "forward")
+  expect_error(
+    import_scores(make_screen_for_import_scores(orientation_input)),
+    "Unsupported input column\\(s\\): orientation"
+  )
+
+  both_input <- transform(
+    input,
+    condition = "treated",
+    orientation = "forward"
+  )
+  expect_error(
+    import_scores(make_screen_for_import_scores(both_input)),
+    "Unsupported input column\\(s\\): condition, orientation"
+  )
+
+  expect_no_error(import_scores(make_screen_for_import_scores(input)))
+})

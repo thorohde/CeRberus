@@ -30,7 +30,6 @@ importFrom(data.table,
   rbindlist,
   setnames
 )
-importFrom(dplyr,near)
 importFrom(ggplot2,
   aes,
   geom_boxplot,
