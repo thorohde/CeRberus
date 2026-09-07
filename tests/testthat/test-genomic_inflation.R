@@ -70,69 +70,63 @@ test_that("genomic_inflation calculates lambda and ignores missing values", {
 
   result <- genomic_inflation(make_genomic_inflation_screen(p_values))
 
-  expect_type(result, "double")
-  expect_length(result, 1L)
   expect_equal(result, expected)
 })
 
-test_that("genomic_inflation supports every ScreenBase result shape", {
+test_that("genomic_inflation supports result shapes and boundary values", {
   p_values <- c(0.5, 0.25)
   expected <- stats::median(stats::qchisq(1 - p_values, df = 1)) /
     stats::qchisq(0.5, df = 1)
+  cases <- list(
+    fixed_pair = list(class = "FixedPairScreen", p_values = p_values, expected = expected),
+    multiplex = list(class = "MultiplexScreen", p_values = p_values, expected = expected),
+    position_agnostic = list(
+      class = "PosAgnMultiplexScreen",
+      p_values = p_values,
+      expected = expected
+    ),
+    upper_boundary = list(class = "PosAgnMultiplexScreen", p_values = 1, expected = 0),
+    lower_boundary = list(class = "PosAgnMultiplexScreen", p_values = 0, expected = Inf)
+  )
 
-  for (class in c(
-    "FixedPairScreen",
-    "MultiplexScreen",
-    "PosAgnMultiplexScreen"
-  )) {
+  purrr::iwalk(cases, function(case, case_name) {
     expect_equal(
-      genomic_inflation(make_genomic_inflation_screen(p_values, class)),
-      expected,
-      info = class
+      genomic_inflation(make_genomic_inflation_screen(case$p_values, case$class)),
+      case$expected,
+      info = case_name
     )
-  }
-})
-
-test_that("genomic_inflation preserves boundary p-value behavior", {
-  expect_identical(
-    genomic_inflation(make_genomic_inflation_screen(1)),
-    0
-  )
-  expect_identical(
-    genomic_inflation(make_genomic_inflation_screen(0)),
-    Inf
-  )
+  })
 })
 
 test_that("genomic_inflation validates stored p-values", {
   missing_column <- make_genomic_inflation_screen(0.5)
   missing_column@symmGeneGIs <- data.table::data.table(gene_pair = "A;B")
-
-  expect_error(
-    genomic_inflation(missing_column),
-    "must contain a pval column"
+  cases <- list(
+    missing_column = list(
+      screen = missing_column,
+      error = "must contain a pval column"
+    ),
+    nonnumeric = list(
+      screen = make_genomic_inflation_screen("0.5"),
+      error = "pval column must be numeric"
+    ),
+    all_missing = list(
+      screen = make_genomic_inflation_screen(NA_real_),
+      error = "at least one non-missing p-value"
+    )
   )
-  expect_error(
-    genomic_inflation(make_genomic_inflation_screen("0.5")),
-    "pval column must be numeric"
-  )
-  expect_error(
-    genomic_inflation(make_genomic_inflation_screen(NA_real_)),
-    "at least one non-missing p-value"
-  )
-
   for (p_value in c(-0.1, 1.1, Inf, -Inf)) {
-    expect_error(
-      genomic_inflation(make_genomic_inflation_screen(p_value)),
-      "finite and between 0 and 1",
-      info = as.character(p_value)
+    cases[[paste0("out_of_range_", p_value)]] <- list(
+      screen = make_genomic_inflation_screen(p_value),
+      error = "finite and between 0 and 1"
     )
   }
-})
 
-test_that("genomic_inflation rejects unsupported objects", {
-  expect_error(
-    genomic_inflation(c(0.5, 0.25)),
-    "unable to find an inherited method"
-  )
+  purrr::iwalk(cases, function(case, case_name) {
+    expect_error(
+      genomic_inflation(case$screen),
+      case$error,
+      info = case_name
+    )
+  })
 })

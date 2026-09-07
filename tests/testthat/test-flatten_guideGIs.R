@@ -88,37 +88,59 @@ test_that("flatten_guide_gis flattens multiplex replicate dimensions while prese
   expect_equal(result@data["Q2", "L3", "g2_b2"], data["Q2", "L3", "g2", "b2"])
 })
 
-test_that("flatten_guide_gis extracts block labels from guide-pair replicate descriptions", {
-  object <- make_gRNA_GI_for_flatten(
-    make_fixed_pair_flatten_array(),
-    blocks = character(),
-    block_layer = "guide_pair"
+test_that("flatten_guide_gis derives or preserves block labels", {
+  data <- make_fixed_pair_flatten_array()
+  descriptions <- c(
+    "g1_b1_t1", "g1_b1_t2", "g1_b2_t1", "g1_b2_t2",
+    "g2_b1_t1", "g2_b1_t2", "g2_b2_t1", "g2_b2_t2"
+  )
+  cases <- list(
+    guide_pair = list(
+      object = make_gRNA_GI_for_flatten(
+        data,
+        blocks = character(),
+        block_layer = "guide_pair"
+      ),
+      blocks = c("g1", "g1", "g1", "g1", "g2", "g2", "g2", "g2")
+    ),
+    bio_rep = list(
+      object = make_gRNA_GI_for_flatten(
+        data,
+        blocks = character(),
+        block_layer = "bio_rep"
+      ),
+      blocks = c("b1", "b1", "b2", "b2", "b1", "b1", "b2", "b2")
+    ),
+    tech_rep = list(
+      object = make_gRNA_GI_for_flatten(
+        data,
+        blocks = character(),
+        block_layer = "tech_rep"
+      ),
+      blocks = c("t1", "t2", "t1", "t2", "t1", "t2", "t1", "t2")
+    ),
+    explicit_none = list(
+      object = make_gRNA_GI_for_flatten(
+        data,
+        block_layer = "guide_pair",
+        blocks = "none"
+      ),
+      blocks = "none"
+    )
   )
 
-  result <- flatten_guide_gis(object)
-
-  expect_true(result@use_blocks)
-  expect_equal(result@block_description, colnames(result@data))
-  expect_equal(result@blocks, c("g1", "g1", "g1", "g1", "g2", "g2", "g2", "g2"))
-})
-
-test_that("flatten_guide_gis extracts block labels from bio-rep and tech-rep descriptions", {
-  bio_object <- make_gRNA_GI_for_flatten(
-    make_fixed_pair_flatten_array(),
-    blocks = character(),
-    block_layer = "bio_rep"
-  )
-  tech_object <- make_gRNA_GI_for_flatten(
-    make_fixed_pair_flatten_array(),
-    blocks = character(),
-    block_layer = "tech_rep"
-  )
-
-  bio_result <- flatten_guide_gis(bio_object)
-  tech_result <- flatten_guide_gis(tech_object)
-
-  expect_equal(bio_result@blocks, c("b1", "b1", "b2", "b2", "b1", "b1", "b2", "b2"))
-  expect_equal(tech_result@blocks, c("t1", "t2", "t1", "t2", "t1", "t2", "t1", "t2"))
+  purrr::iwalk(cases, function(case, case_name) {
+    result <- flatten_guide_gis(case$object)
+    expect_equal(
+      list(
+        use_blocks = result@use_blocks,
+        description = result@block_description,
+        blocks = result@blocks
+      ),
+      list(use_blocks = TRUE, description = descriptions, blocks = case$blocks),
+      info = case_name
+    )
+  })
 })
 
 test_that("flatten_guide_gis does not use blocks when block layer is missing or sole replicate", {
@@ -141,17 +163,4 @@ test_that("flatten_guide_gis does not use blocks when block layer is missing or 
 
   expect_false(isTRUE(no_block_result@use_blocks))
   expect_false(single_replicate_result@use_blocks)
-})
-
-test_that("flatten_guide_gis preserves explicit single-value blocks such as none", {
-  object <- make_gRNA_GI_for_flatten(
-    make_fixed_pair_flatten_array(),
-    block_layer = "guide_pair",
-    blocks = "none"
-  )
-
-  result <- flatten_guide_gis(object)
-
-  expect_true(result@use_blocks)
-  expect_equal(result@blocks, "none")
 })

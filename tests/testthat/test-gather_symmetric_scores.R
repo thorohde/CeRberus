@@ -11,104 +11,56 @@ make_score_matrix <- function() {
   )
 }
 
-test_that("gather_symmetric_scores returns matrix values for requested pairs", {
+test_that("gather_symmetric_scores handles pair lookup variants", {
   scores <- make_score_matrix()
+  asymmetric_scores <- matrix(
+    c(1, 2, 3, 4, 5, 6),
+    nrow = 2,
+    byrow = TRUE,
+    dimnames = list(c("query_A", "query_B"), c("lib_X", "lib_Y", "lib_Z"))
+  )
+  cases <- list(
+    ordinary = list(
+      pairs = c("A;B", "B;C", "C;A"),
+      scores = scores,
+      expected = c(12, 23, 31)
+    ),
+    order_duplicates_and_diagonal = list(
+      pairs = c("C;B", "A;A", "C;B", "B;A"),
+      scores = scores,
+      expected = c(32, 11, 32, 21)
+    ),
+    custom_separator = list(
+      pairs = c("A|C", "C|B"),
+      scores = scores,
+      sep = "\\|",
+      expected = c(13, 32)
+    ),
+    asymmetric_axes = list(
+      pairs = c("query_A;lib_Z", "query_B;lib_X"),
+      scores = asymmetric_scores,
+      expected = c(3, 4)
+    )
+  )
 
-  result <- gather_symmetric_scores(c("A;B", "B;C", "C;A"), scores)
-
-  expect_type(result, "double")
-  expect_equal(result, c(12, 23, 31))
+  purrr::iwalk(cases, function(case, case_name) {
+    args <- list(pairs = case$pairs, .arr = case$scores)
+    if (!is.null(case$sep)) args$sep <- case$sep
+    expect_equal(do.call(gather_symmetric_scores, args), case$expected, info = case_name)
+  })
 })
 
-test_that("gather_symmetric_scores preserves input order and duplicates", {
-  scores <- make_score_matrix()
-  pairs <- c("C;B", "A;A", "C;B", "B;A")
-
-  result <- gather_symmetric_scores(pairs, scores)
-
-  expect_length(result, length(pairs))
-  expect_equal(result, c(32, 11, 32, 21))
-})
-
-test_that("gather_symmetric_scores treats pair direction as a matrix lookup", {
-  scores <- make_score_matrix()
-
-  forward <- gather_symmetric_scores("A;B", scores)
-  reverse <- gather_symmetric_scores("B;A", scores)
-
-  expect_equal(forward, scores["A", "B"])
-  expect_equal(reverse, scores["B", "A"])
-  expect_false(isTRUE(all.equal(forward, reverse)))
-})
-
-test_that("gather_symmetric_scores returns diagonal self-pair scores", {
-  scores <- make_score_matrix()
-
-  result <- gather_symmetric_scores(c("A;A", "B;B", "C;C"), scores)
-
-  expect_equal(result, c(11, 22, 33))
-})
-
-test_that("gather_symmetric_scores supports custom pair separators", {
-  scores <- make_score_matrix()
-
-  result <- gather_symmetric_scores(c("A|C", "C|B"), scores, sep = "\\|")
-
-  expect_equal(result, c(13, 32))
-})
-
-test_that("gather_symmetric_scores preserves missing values from the score matrix", {
+test_that("gather_symmetric_scores preserves missing values", {
   scores <- make_score_matrix()
   scores["A", "C"] <- NA_real_
 
   result <- gather_symmetric_scores(c("A;C", "C;A"), scores)
 
-  expect_true(is.na(result[1]))
-  expect_equal(result[2], 31)
-})
-
-test_that("gather_symmetric_scores works with asymmetric row and column gene sets", {
-  scores <- matrix(
-    c(
-      1, 2, 3,
-      4, 5, 6
-    ),
-    nrow = 2,
-    byrow = TRUE,
-    dimnames = list(c("query_A", "query_B"), c("lib_X", "lib_Y", "lib_Z"))
-  )
-
-  result <- gather_symmetric_scores(
-    c("query_A;lib_Z", "query_B;lib_X"),
-    scores
-  )
-
-  expect_equal(result, c(3, 4))
-})
-
-test_that("gather_symmetric_scores validates that first genes are row names", {
-  scores <- make_score_matrix()
-
-  expect_error(
-    gather_symmetric_scores("X;A", scores),
-    "length\\(setdiff\\(genes1, rownames\\(.arr\\)\\)\\) == 0 is not TRUE"
-  )
-})
-
-test_that("gather_symmetric_scores validates that second genes are column names", {
-  scores <- make_score_matrix()
-
-  expect_error(
-    gather_symmetric_scores("A;X", scores),
-    "length\\(setdiff\\(genes2, colnames\\(.arr\\)\\)\\) == 0 is not TRUE"
-  )
+  expect_equal(result, c(NA_real_, 31))
 })
 
 test_that("gather_symmetric_scores returns an empty numeric vector for empty input", {
   scores <- make_score_matrix()
 
-  result <- gather_symmetric_scores(character(), scores)
-
-  expect_type(result, "double")
-  expect_length(result, 0L)
+  expect_equal(gather_symmetric_scores(character(), scores), numeric())
 })

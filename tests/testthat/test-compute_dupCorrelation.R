@@ -100,88 +100,87 @@ make_global_dupCorrelation_scores <- function(n_genes = 20L) {
   input
 }
 
-test_that("compute_dup_correlation for one space dimension calls limma without blocks when use_blocks is FALSE", {
-  data <- make_fixed_pair_dupCorrelation_matrix()
-  object <- make_gRNA_GI_for_dupCorrelation(data)
-
-  mocked <- with_mocked_duplicateCorrelation(
-    compute_dup_correlation(object),
-    correlations = list(0.123)
-  )
-
-  expect_equal(mocked$result, 0.123)
-  expect_length(mocked$calls, 1L)
-  expect_equal(mocked$calls[[1L]]$object, data)
-  expect_null(mocked$calls[[1L]]$block)
-  expect_equal(mocked$calls[[1L]]$ndups, 1)
-})
-
-test_that("compute_dup_correlation for one space dimension forwards blocks when use_blocks is TRUE", {
+test_that("compute_dup_correlation handles fixed-pair blocking variants", {
   data <- make_fixed_pair_dupCorrelation_matrix()
   blocks <- c("b1", "b1", "b2", "b2")
-  object <- make_gRNA_GI_for_dupCorrelation(
-    data,
-    blocks = blocks,
-    use_blocks = TRUE
+  cases <- list(
+    unblocked = list(
+      use_blocks = FALSE,
+      correlation = 0.123,
+      block = NULL,
+      ndups = 1
+    ),
+    blocked = list(
+      use_blocks = TRUE,
+      correlation = 0.456,
+      block = blocks,
+      ndups = NULL
+    )
   )
 
-  mocked <- with_mocked_duplicateCorrelation(
-    compute_dup_correlation(object),
-    correlations = list(0.456)
-  )
+  purrr::iwalk(cases, function(case, case_name) {
+    object <- make_gRNA_GI_for_dupCorrelation(
+      data,
+      blocks = if (case$use_blocks) blocks else character(),
+      use_blocks = case$use_blocks
+    )
+    mocked <- with_mocked_duplicateCorrelation(
+      compute_dup_correlation(object),
+      correlations = list(case$correlation)
+    )
 
-  expect_equal(mocked$result, 0.456)
-  expect_length(mocked$calls, 1L)
-  expect_equal(mocked$calls[[1L]]$object, data)
-  expect_equal(mocked$calls[[1L]]$block, blocks)
-  expect_null(mocked$calls[[1L]]$ndups)
+    expect_equal(mocked$result, case$correlation, info = case_name)
+    expect_equal(mocked$calls, list(list(
+      object = data,
+      block = case$block,
+      ndups = case$ndups
+    )), info = case_name)
+  })
 })
 
-test_that("compute_dup_correlation for two space dimensions computes one correlation per query without blocks", {
-  data <- make_multiplex_dupCorrelation_array()
-  object <- make_gRNA_GI_for_dupCorrelation(
-    data,
-    space = c("query_gene", "library_gene"),
-    replicates = "replicate"
-  )
-
-  mocked <- with_mocked_duplicateCorrelation(
-    compute_dup_correlation(object),
-    correlations = list(0.1, 0.2)
-  )
-
-  expect_equal(mocked$result, c(Q1 = 0.1, Q2 = 0.2))
-  expect_length(mocked$calls, 2L)
-  expect_equal(mocked$calls[[1L]]$object, data["Q1", , ])
-  expect_equal(mocked$calls[[2L]]$object, data["Q2", , ])
-  expect_equal(mocked$calls[[1L]]$ndups, 1)
-  expect_equal(mocked$calls[[2L]]$ndups, 1)
-  expect_null(mocked$calls[[1L]]$block)
-  expect_null(mocked$calls[[2L]]$block)
-})
-
-test_that("compute_dup_correlation for two space dimensions forwards blocks to each query", {
+test_that("compute_dup_correlation handles multiplex blocking variants", {
   data <- make_multiplex_dupCorrelation_array()
   blocks <- c("b1", "b1", "b2", "b2")
-  object <- make_gRNA_GI_for_dupCorrelation(
-    data,
-    space = c("query_gene", "library_gene"),
-    replicates = "replicate",
-    blocks = blocks,
-    use_blocks = TRUE
+  cases <- list(
+    unblocked = list(
+      use_blocks = FALSE,
+      correlations = list(0.1, 0.2),
+      result = c(Q1 = 0.1, Q2 = 0.2),
+      block = NULL,
+      ndups = 1
+    ),
+    blocked = list(
+      use_blocks = TRUE,
+      correlations = list(0.3, 0.4),
+      result = c(Q1 = 0.3, Q2 = 0.4),
+      block = blocks,
+      ndups = NULL
+    )
   )
 
-  mocked <- with_mocked_duplicateCorrelation(
-    compute_dup_correlation(object),
-    correlations = list(0.3, 0.4)
-  )
+  purrr::iwalk(cases, function(case, case_name) {
+    object <- make_gRNA_GI_for_dupCorrelation(
+      data,
+      space = c("query_gene", "library_gene"),
+      replicates = "replicate",
+      blocks = if (case$use_blocks) blocks else character(),
+      use_blocks = case$use_blocks
+    )
+    mocked <- with_mocked_duplicateCorrelation(
+      compute_dup_correlation(object),
+      correlations = case$correlations
+    )
+    expected_calls <- purrr::map(c("Q1", "Q2"), function(query) {
+      list(
+        object = data[query, , ],
+        block = case$block,
+        ndups = case$ndups
+      )
+    })
 
-  expect_equal(mocked$result, c(Q1 = 0.3, Q2 = 0.4))
-  expect_length(mocked$calls, 2L)
-  expect_equal(mocked$calls[[1L]]$block, blocks)
-  expect_equal(mocked$calls[[2L]]$block, blocks)
-  expect_null(mocked$calls[[1L]]$ndups)
-  expect_null(mocked$calls[[2L]]$ndups)
+    expect_equal(mocked$result, case$result, info = case_name)
+    expect_equal(mocked$calls, expected_calls, info = case_name)
+  })
 })
 
 test_that("compute_dup_correlation for ScreenBase stores the guide-level duplicate correlation", {

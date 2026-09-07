@@ -55,54 +55,63 @@ make_screen_for_create_log <- function() {
   )
 }
 
-test_that("create_log records bounded diagnostics without raw input values", {
-  result <- create_log(
+test_that("create_log records bounded diagnostics without leaking raw input", {
+  populated <- create_log(
     make_screen_for_create_log(),
     status = "failed",
     stage = "fit_models",
     condition = simpleError("pipeline exploded"),
     max_items = 2L
   )
-
-  expect_type(result, "character")
-  expect_length(result, 1L)
-  expect_match(result, "Status: failed", fixed = TRUE)
-  expect_match(result, "Pipeline stage: fit_models", fixed = TRUE)
-  expect_match(result, "Condition: pipeline exploded", fixed = TRUE)
-  expect_match(result, "Configuration: guide_pair_used", fixed = TRUE)
-  expect_match(result, "Class: MultiplexScreen", fixed = TRUE)
-  expect_match(
-    result,
+  populated_markers <- c(
+    "Status: failed",
+    "Pipeline stage: fit_models",
+    "Condition: pipeline exploded",
+    "Configuration: guide_pair_used",
+    "Class: MultiplexScreen",
     "Guide GI data: dimensions=2 x 2; values=4; missing=1",
-    fixed = TRUE
-  )
-  expect_match(
-    result,
     "Duplicate correlation: values=2; finite=1; missing=1",
-    fixed = TRUE
-  )
-  expect_match(
-    result,
     "Failed queries (3): Q2 | Q3 ... +1 more",
-    fixed = TRUE
+    "model failed for Q2"
   )
-  expect_match(result, "model failed for Q2", fixed = TRUE)
-  expect_false(grepl("SECRET_GENE|SECRET_LIBRARY|999", result))
-})
 
-test_that("create_log handles an empty partially constructed screen", {
-  result <- create_log(methods::new("ScreenBase"))
+  expect_true(
+    is.character(populated) &&
+      length(populated) == 1L &&
+      all(vapply(populated_markers, grepl, logical(1), x = populated, fixed = TRUE)) &&
+      !grepl("SECRET_GENE|SECRET_LIBRARY|999", populated)
+  )
 
-  expect_match(result, "Status: available", fixed = TRUE)
-  expect_match(result, "Guide GI data: empty", fixed = TRUE)
-  expect_match(result, "Duplicate correlation: not available", fixed = TRUE)
-  expect_match(result, "Stored model errors (0): none", fixed = TRUE)
+  empty <- create_log(methods::new("ScreenBase"))
+  empty_markers <- c(
+    "Status: available",
+    "Guide GI data: empty",
+    "Duplicate correlation: not available",
+    "Stored model errors (0): none"
+  )
+
+  expect_true(all(vapply(
+    empty_markers,
+    grepl,
+    logical(1),
+    x = empty,
+    fixed = TRUE
+  )))
 })
 
 test_that("create_log validates controls", {
   screen <- methods::new("ScreenBase")
 
-  expect_error(create_log(screen, status = NA_character_), "status must")
-  expect_error(create_log(screen, stage = character()), "stage must")
-  expect_error(create_log(screen, max_items = 0L), "max_items must")
+  expect_error(
+    create_log(screen, status = NA_character_),
+    "^status must be a single non-missing character value\\.$"
+  )
+  expect_error(
+    create_log(screen, stage = character()),
+    "^stage must be a single non-missing character value\\.$"
+  )
+  expect_error(
+    create_log(screen, max_items = 0L),
+    "^max_items must be a single positive whole number\\.$"
+  )
 })

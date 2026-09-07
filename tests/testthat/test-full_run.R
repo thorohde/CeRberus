@@ -164,7 +164,7 @@ with_mocked_full_run_pipeline <- function(
     ) {
       calls$screen_report_called <- TRUE
       report <- list(
-        report_version = "1.0",
+        report_version = "1.1",
         screen = list(configuration = gi_obj@metadata$config)
       )
 
@@ -176,83 +176,96 @@ with_mocked_full_run_pipeline <- function(
   force(code)
 }
 
-test_that("full_run reads CSV scores and forwards options to the pipeline", {
-  scores_file <- tempfile(fileext = ".csv")
-  output_directory <- tempfile("full-run-output-")
-  yaml_fpath <- tempfile(fileext = ".yaml")
-  data.table::fwrite(make_full_run_scores(), scores_file)
-  write_full_run_instructions(
-    yaml_fpath,
-    scores_file = scores_file,
-    output_directory = output_directory,
-    FDR = "bonferroni",
-    overwrite_output = FALSE,
-    verbose = TRUE,
-    screen_type = "fixed_pair",
-    pos_agnostic = TRUE,
-    symmetric_analysis_method = "preaverage"
-  )
-  calls <- new.env(parent = emptyenv())
-
-  result <- with_mocked_full_run_pipeline(
-    full_run(yaml_fpath),
-    calls = calls
+test_that("full_run reads supported score files and forwards pipeline options", {
+  writers <- list(
+    csv = function(scores, path) data.table::fwrite(scores, path),
+    rds = function(scores, path) saveRDS(scores, path)
   )
 
-  expect_type(result, "list")
-  expect_named(result, "default_guide_pair_used")
-  expect_s4_class(result[[1]], "ScreenBase")
-  expect_equal(calls$collected_input, make_full_run_scores())
-  expect_identical(calls$screen_type, "fixed_pair")
-  expect_true(calls$pos_agnostic)
-  expect_identical(calls$symmetric_analysis_method, "preaverage")
-  expect_true(calls$collect_verbose)
-  expect_equal(calls$fdr_method, "bonferroni")
-  expect_null(calls$plot_verbose)
-  expect_null(calls$plot_path)
-  expect_true(calls$screen_report_called)
+  purrr::iwalk(writers, function(write_scores, extension) {
+    scores_file <- tempfile(fileext = paste0(".", extension))
+    output_directory <- tempfile("full-run-output-")
+    yaml_fpath <- tempfile(fileext = ".yaml")
+    scores <- make_full_run_scores()
+    write_scores(scores, scores_file)
+    write_full_run_instructions(
+      yaml_fpath,
+      scores_file = scores_file,
+      output_directory = output_directory,
+      FDR = "bonferroni",
+      overwrite_output = FALSE,
+      verbose = TRUE,
+      screen_type = "fixed_pair",
+      pos_agnostic = TRUE,
+      symmetric_analysis_method = "preaverage"
+    )
+    calls <- new.env(parent = emptyenv())
+
+    result <- with_mocked_full_run_pipeline(
+      full_run(yaml_fpath),
+      calls = calls
+    )
+
+    expect_type(result, "list")
+    expect_named(result, "default_guide_pair_used", info = extension)
+    expect_s4_class(result[[1]], "ScreenBase")
+    expect_equal(calls$collected_input, scores, info = extension)
+    expect_identical(calls$screen_type, "fixed_pair", info = extension)
+    expect_true(calls$pos_agnostic, info = extension)
+    expect_identical(
+      calls$symmetric_analysis_method,
+      "preaverage",
+      info = extension
+    )
+    expect_true(calls$collect_verbose, info = extension)
+    expect_equal(calls$fdr_method, "bonferroni", info = extension)
+    expect_null(calls$plot_verbose, info = extension)
+    expect_null(calls$plot_path, info = extension)
+    expect_true(calls$screen_report_called, info = extension)
+  })
 })
 
-test_that("full_run reads RDS score files", {
-  scores_file <- tempfile(fileext = ".rds")
-  output_directory <- tempfile("full-run-output-")
-  yaml_fpath <- tempfile(fileext = ".yaml")
-  scores <- make_full_run_scores()
-  saveRDS(scores, scores_file)
-  write_full_run_instructions(
-    yaml_fpath,
-    scores_file = scores_file,
-    output_directory = output_directory,
-    overwrite_output = FALSE
-  )
-  calls <- new.env(parent = emptyenv())
-
-  result <- with_mocked_full_run_pipeline(
-    full_run(yaml_fpath),
-    calls = calls
+test_that("full_run preserves output directories when overwrite is disabled", {
+  artifacts <- c(
+    "all_gi_objects.rds",
+    "duplicate_correlation.csv",
+    "GI_scores_default_guide_pair_used.csv",
+    "duplicateCorrelationPlot.png",
+    "screen_report.yaml",
+    "CeRberus.log"
   )
 
-  expect_named(result, "default_guide_pair_used")
-  expect_equal(calls$collected_input, scores)
-})
+  purrr::walk(c(FALSE, TRUE), function(directory_exists) {
+    scores_file <- tempfile(fileext = ".csv")
+    output_directory <- tempfile("full-run-output-")
+    yaml_fpath <- tempfile(fileext = ".yaml")
+    stale_file <- file.path(output_directory, "stale.csv")
+    if (directory_exists) {
+      dir.create(output_directory)
+      file.create(stale_file)
+    }
+    data.table::fwrite(make_full_run_scores(), scores_file)
+    write_full_run_instructions(
+      yaml_fpath,
+      scores_file = scores_file,
+      output_directory = output_directory,
+      overwrite_output = FALSE
+    )
 
-test_that("full_run creates the configured output directory", {
-  scores_file <- tempfile(fileext = ".csv")
-  output_directory <- tempfile("full-run-output-")
-  yaml_fpath <- tempfile(fileext = ".yaml")
-  data.table::fwrite(make_full_run_scores(), scores_file)
-  write_full_run_instructions(
-    yaml_fpath,
-    scores_file = scores_file,
-    output_directory = output_directory,
-    overwrite_output = FALSE
-  )
+    with_mocked_full_run_pipeline(full_run(yaml_fpath))
 
-  with_mocked_full_run_pipeline(
-    full_run(yaml_fpath)
-  )
-
-  expect_true(dir.exists(output_directory))
+    case_name <- if (directory_exists) "existing" else "missing"
+    expect_true(dir.exists(output_directory), info = case_name)
+    purrr::walk(artifacts, function(artifact) {
+      expect_false(
+        file.exists(file.path(output_directory, artifact)),
+        info = paste(case_name, artifact)
+      )
+    })
+    if (directory_exists) {
+      expect_true(file.exists(stale_file), info = case_name)
+    }
+  })
 })
 
 test_that("full_run empties the output directory before overwriting", {
@@ -288,26 +301,6 @@ test_that("full_run empties the output directory before overwriting", {
     output_directory,
     "GI_scores_default_guide_pair_used.csv"
   )))
-})
-
-test_that("full_run preserves existing output when overwrite_output is FALSE", {
-  scores_file <- tempfile(fileext = ".csv")
-  output_directory <- tempfile("full-run-output-")
-  yaml_fpath <- tempfile(fileext = ".yaml")
-  dir.create(output_directory)
-  stale_file <- file.path(output_directory, "stale.csv")
-  file.create(stale_file)
-  data.table::fwrite(make_full_run_scores(), scores_file)
-  write_full_run_instructions(
-    yaml_fpath,
-    scores_file = scores_file,
-    output_directory = output_directory,
-    overwrite_output = FALSE
-  )
-
-  with_mocked_full_run_pipeline(full_run(yaml_fpath))
-
-  expect_true(file.exists(stale_file))
 })
 
 test_that("full_run refuses to delete input files inside the output directory", {
@@ -430,7 +423,7 @@ test_that("full_run writes intermediate and final outputs when overwrite_output 
   )
   expect_true(file.exists(report_path))
   report <- yaml::read_yaml(report_path)
-  expect_identical(report$report_version, "1.0")
+  expect_identical(report$report_version, "1.1")
   expect_identical(
     report$selection$selected_configuration,
     "default_guide_pair_used"
@@ -476,42 +469,6 @@ test_that("full_run writes intermediate and final outputs when overwrite_output 
     c("default_guide_pair_used", "default_tech_rep_used")
   )
   expect_named(result, "default_guide_pair_used")
-})
-
-test_that("full_run does not write CSV/RDS outputs when overwrite_output is FALSE", {
-  scores_file <- tempfile(fileext = ".csv")
-  output_directory <- tempfile("full-run-output-")
-  yaml_fpath <- tempfile(fileext = ".yaml")
-  data.table::fwrite(make_full_run_scores(), scores_file)
-  write_full_run_instructions(
-    yaml_fpath,
-    scores_file = scores_file,
-    output_directory = output_directory,
-    overwrite_output = FALSE
-  )
-
-  with_mocked_full_run_pipeline(
-    full_run(yaml_fpath)
-  )
-
-  expect_false(file.exists(file.path(output_directory, "all_gi_objects.rds")))
-  expect_false(file.exists(file.path(
-    output_directory,
-    "duplicate_correlation.csv"
-  )))
-  expect_false(file.exists(file.path(
-    output_directory,
-    "GI_scores_default_guide_pair_used.csv"
-  )))
-  expect_false(file.exists(file.path(
-    output_directory,
-    "duplicateCorrelationPlot.png"
-  )))
-  expect_false(file.exists(file.path(
-    output_directory,
-    "screen_report.yaml"
-  )))
-  expect_false(file.exists(file.path(output_directory, "CeRberus.log")))
 })
 
 test_that("full_run writes a failure log and preserves the original error", {
@@ -632,36 +589,29 @@ test_that("full_run forwards keep_all_configurations to configuration selection"
   )
 })
 
-test_that("full_run rejects scores files without an extension", {
-  scores_file <- tempfile()
-  output_directory <- tempfile("full-run-output-")
-  yaml_fpath <- tempfile(fileext = ".yaml")
-  file.create(scores_file)
-  write_full_run_instructions(
-    yaml_fpath,
-    scores_file = scores_file,
-    output_directory = output_directory
+test_that("full_run rejects invalid scores file extensions", {
+  cases <- list(
+    missing = list(
+      fileext = "",
+      error = "scores_file must have a file extension"
+    ),
+    unsupported = list(
+      fileext = ".txt",
+      error = "Unsupported scores_file extension: \\.txt"
+    )
   )
 
-  expect_error(
-    full_run(yaml_fpath),
-    "scores_file must have a file extension"
-  )
-})
+  purrr::iwalk(cases, function(case, case_name) {
+    scores_file <- tempfile(fileext = case$fileext)
+    output_directory <- tempfile("full-run-output-")
+    yaml_fpath <- tempfile(fileext = ".yaml")
+    file.create(scores_file)
+    write_full_run_instructions(
+      yaml_fpath,
+      scores_file = scores_file,
+      output_directory = output_directory
+    )
 
-test_that("full_run rejects unsupported scores file extensions", {
-  scores_file <- tempfile(fileext = ".txt")
-  output_directory <- tempfile("full-run-output-")
-  yaml_fpath <- tempfile(fileext = ".yaml")
-  writeLines("not,a,supported,file", scores_file)
-  write_full_run_instructions(
-    yaml_fpath,
-    scores_file = scores_file,
-    output_directory = output_directory
-  )
-
-  expect_error(
-    full_run(yaml_fpath),
-    "Unsupported scores_file extension: \\.txt"
-  )
+    expect_error(full_run(yaml_fpath), case$error, info = case_name)
+  })
 })

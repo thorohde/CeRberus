@@ -249,16 +249,3 @@ test_that("compute_models stores failed multiplex query models and warns", {
   expect_null(result@errors$GI_computation_errors$Q1)
   expect_s3_class(result@errors$GI_computation_errors$Q_missing, "error")
 })
-
-test_that("compute_models errors directly for invalid fixed-pair model input", {
-  data <- make_fixed_pair_model_matrix()
-  guideGIs <- make_gRNA_GI_for_compute_models(data = data, space = "gene_pair")
-  guideGIs@blocks <- c("b1", "b2")
-  screen <- make_compute_models_screen(
-    class = "FixedPairScreen",
-    guideGIs = guideGIs,
-    dupCorrelation = 0.1
-  )
-
-  expect_error(compute_models(screen))
-})

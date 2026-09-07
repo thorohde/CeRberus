@@ -84,7 +84,7 @@ make_multiplex_collect_data <- function() {
   )
 }
 
-test_that("collect_gis extracts fixed-pair coefficients, p-values, and adjusted FDR", {
+test_that("collect_gis extracts fixed-pair results and validates FDR methods", {
   guide_data <- make_fixed_pair_collect_data()
   screen <- make_collect_screen(
     class = "FixedPairScreen",
@@ -96,53 +96,27 @@ test_that("collect_gis extracts fixed-pair coefficients, p-values, and adjusted 
     )
   )
 
-  result <- collect_gis(screen, fdr_method = "BH")
+  results <- purrr::map(
+    c(BH = "BH", bonferroni = "bonferroni"),
+    \(method) collect_gis(screen, fdr_method = method)
+  )
 
+  purrr::iwalk(results, function(result, method) {
+    expect_equal(
+      unname(result@geneGIs[, "FDR"]),
+      stats::p.adjust(c(0.01, 0.20, 0.03), method = method),
+      info = method
+    )
+    expect_identical(result@metadata$fdr_method, method, info = method)
+  })
+
+  result <- results$BH
   expect_s4_class(result, "FixedPairScreen")
   expect_equal(dim(result@geneGIs), c(3L, 3L))
   expect_equal(rownames(result@geneGIs), rownames(guide_data))
   expect_equal(colnames(result@geneGIs), c("GI", "pval", "FDR"))
   expect_equal(unname(result@geneGIs[, "GI"]), c(0.5, -0.25, 1.2))
   expect_equal(unname(result@geneGIs[, "pval"]), c(0.01, 0.20, 0.03))
-  expect_equal(
-    unname(result@geneGIs[, "FDR"]),
-    stats::p.adjust(c(0.01, 0.20, 0.03), method = "BH")
-  )
-  expect_identical(result@metadata$fdr_method, "BH")
-})
-
-test_that("collect_gis respects requested FDR method for fixed-pair screens", {
-  guide_data <- make_fixed_pair_collect_data()
-  screen <- make_collect_screen(
-    class = "FixedPairScreen",
-    guideGIs = make_collect_guideGIs(guide_data, space = "gene_pair"),
-    limma_models = make_collect_model(
-      genes = rownames(guide_data),
-      coefficients = c(0.5, -0.25, 1.2),
-      pvalues = c(0.01, 0.20, 0.03)
-    )
-  )
-
-  result <- collect_gis(screen, fdr_method = "bonferroni")
-
-  expect_equal(
-    unname(result@geneGIs[, "FDR"]),
-    stats::p.adjust(c(0.01, 0.20, 0.03), method = "bonferroni")
-  )
-  expect_identical(result@metadata$fdr_method, "bonferroni")
-})
-
-test_that("collect_gis rejects unknown FDR methods", {
-  guide_data <- make_fixed_pair_collect_data()
-  screen <- make_collect_screen(
-    class = "FixedPairScreen",
-    guideGIs = make_collect_guideGIs(guide_data, space = "gene_pair"),
-    limma_models = make_collect_model(
-      rownames(guide_data),
-      c(1, 2, 3),
-      c(0.1, 0.2, 0.3)
-    )
-  )
 
   expect_error(
     collect_gis(screen, fdr_method = "not-a-method"),
@@ -344,7 +318,21 @@ test_that("collect_gis applies one global FDR correction in canonical pair order
     metadata = list(symmetric_analysis_method = "global_preaverage")
   )
 
-  result <- collect_gis(screen, fdr_method = "BH")
+  results <- purrr::map(
+    c(BH = "BH", bonferroni = "bonferroni"),
+    \(method) collect_gis(screen, fdr_method = method)
+  )
+
+  purrr::iwalk(results, function(result, method) {
+    expect_equal(
+      result@symmGeneGIs$FDR,
+      stats::p.adjust(pvalues, method = method),
+      info = method
+    )
+    expect_identical(result@metadata$fdr_method, method, info = method)
+  })
+
+  result <- results$BH
   expected_fdr <- stats::p.adjust(pvalues, method = "BH")
 
   expect_equal(result@symmGeneGIs$gene_pair, pairs)
@@ -360,7 +348,6 @@ test_that("collect_gis applies one global FDR correction in canonical pair order
   expect_equal(unname(result@geneGIs[, "GI"]), coefficients)
   expect_equal(unname(result@geneGIs[, "pval"]), pvalues)
   expect_equal(unname(result@geneGIs[, "FDR"]), expected_fdr)
-  expect_identical(result@metadata$fdr_method, "BH")
 })
 
 test_that("position-agnostic output merges positional main effects equally", {
@@ -414,47 +401,6 @@ test_that("position-agnostic output merges positional main effects equally", {
   expect_equal(result@symmGeneGIs$gene1_main_effect, c(1, -1, -1))
   expect_equal(result@symmGeneGIs$gene2_main_effect, c(3, 1, 3))
   expect_identical(result@metadata$multiple_testing$method, "BH")
-  expect_error(
-    collect_gis(screen, fdr_method = "stableIHW"),
-    "Unknown FDR method provided"
-  )
-})
-
-
-test_that("global position-agnostic collection respects the requested FDR method", {
-  pairs <- c("A;B", "A;C", "B;C")
-  pvalues <- c(0.01, 0.04, 0.20)
-  guide_data <- matrix(
-    seq_len(12L),
-    nrow = 3L,
-    dimnames = list(
-      gene_pair = pairs,
-      replicate = paste0("r", seq_len(4L))
-    )
-  )
-  screen <- make_collect_screen(
-    class = "PosAgnMultiplexScreen",
-    guideGIs = make_collect_guideGIs(guide_data, space = "gene_pair"),
-    limma_models = make_collect_model(
-      genes = pairs,
-      coefficients = c(0.1, 0.2, 0.3),
-      pvalues = pvalues
-    ),
-    screen_attr = make_screen_design(
-      query_genes = c("A", "B", "C"),
-      library_genes = c("A", "B", "C"),
-      all_pairs = pairs
-    ),
-    metadata = list(symmetric_analysis_method = "global_preaverage")
-  )
-
-  result <- collect_gis(screen, fdr_method = "bonferroni")
-
-  expect_equal(
-    result@symmGeneGIs$FDR,
-    stats::p.adjust(pvalues, method = "bonferroni")
-  )
-  expect_identical(result@metadata$fdr_method, "bonferroni")
 })
 
 

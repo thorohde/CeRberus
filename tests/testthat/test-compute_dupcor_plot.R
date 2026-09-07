@@ -40,7 +40,7 @@ make_dupcor_plot_data <- function() {
   )
 }
 
-test_that("compute_dupcor_plot adds a ggplot object to every screen", {
+test_that("compute_dupcor_plot adds representative plots to every screen", {
   screens <- list(
     selected = make_dupcor_plot_screen(),
     alternative = make_dupcor_plot_screen(data.table::data.table(
@@ -51,92 +51,91 @@ test_that("compute_dupcor_plot adds a ggplot object to every screen", {
   )
 
   result <- CeRberus:::compute_dupcor_plot(screens)
-
-  expect_named(result, names(screens))
-  expect_s4_class(result$selected, "ScreenBase")
-  expect_s3_class(result$selected@metadata$dupcor_plot, "ggplot")
-  expect_s3_class(result$alternative@metadata$dupcor_plot, "ggplot")
+  plots <- purrr::map(result, ~ .x@metadata$dupcor_plot)
+  selected_plot <- plots$selected
+  vline_data <- ggplot2::ggplot_build(selected_plot)$data[[2L]]
+  fill_scale <- selected_plot$scales$get_scales("fill")
 
   expect_equal(
-    result$selected@metadata$dupcor_plot$data,
-    screens$selected@metadata$dupcor_data
-  )
-  expect_equal(
-    result$alternative@metadata$dupcor_plot$data,
-    screens$alternative@metadata$dupcor_data
-  )
-  expect_equal(
-    result$selected@metadata$dupcor_plot$labels$x,
-    "Duplicate correlation"
-  )
-  expect_equal(
-    result$selected@metadata$dupcor_plot$labels$y,
-    "Limma configuration"
-  )
-})
-
-test_that("compute_dupcor_plot builds the expected plot layers and fill scale", {
-  result <- CeRberus:::compute_dupcor_plot(list(
-    screen = make_dupcor_plot_screen()
-  ))
-  plot <- result$screen@metadata$dupcor_plot
-
-  expect_equal(length(plot$layers), 2L)
-  expect_s3_class(plot$layers[[1L]]$geom, "GeomCol")
-  expect_s3_class(plot$layers[[2L]]$geom, "GeomVline")
-
-  vline_data <- ggplot2::ggplot_build(plot)$data[[2L]]
-  expect_equal(vline_data$xintercept, c(0, 0.25))
-  expect_equal(unique(vline_data$linetype), "dashed")
-  expect_equal(unique(vline_data$linewidth), 1)
-
-  fill_scale <- plot$scales$get_scales("fill")
-  expect_equal(
-    fill_scale$palette(2),
-    setNames(c("seagreen", "grey80"), c("selected", ""))
+    list(
+      names = names(result),
+      screen_classes = purrr::map_chr(result, ~ class(.x)[[1L]]),
+      plot_classes = purrr::map_lgl(plots, ~ inherits(.x, "ggplot")),
+      data = purrr::map(plots, "data"),
+      labels = selected_plot$labels[c("x", "y")],
+      geoms = unname(purrr::map_chr(
+        selected_plot$layers,
+        ~ class(.x$geom)[[1L]]
+      )),
+      thresholds = vline_data$xintercept,
+      fill_palette = fill_scale$palette(2)
+    ),
+    list(
+      names = names(screens),
+      screen_classes = c(selected = "ScreenBase", alternative = "ScreenBase"),
+      plot_classes = c(selected = TRUE, alternative = TRUE),
+      data = purrr::map(screens, ~ .x@metadata$dupcor_data),
+      labels = list(
+        x = "Duplicate correlation",
+        y = "Limma configuration"
+      ),
+      geoms = c("GeomCol", "GeomVline"),
+      thresholds = c(0, 0.25),
+      fill_palette = setNames(c("seagreen", "grey80"), c("selected", ""))
+    )
   )
 })
 
 test_that("compute_dupcor_plot writes the plot file and creates parent directories", {
   output_file <- file.path(
-    tempdir(),
-    "dupcor-plot-test",
+    tempfile("dupcor-plot-test-"),
     "nested",
     "dupcor_plot.pdf"
   )
-  if (file.exists(output_file)) {
-    unlink(output_file)
-  }
-  if (dir.exists(dirname(dirname(output_file)))) {
-    unlink(dirname(dirname(output_file)), recursive = TRUE)
-  }
 
   result <- CeRberus:::compute_dupcor_plot(
     list(screen = make_dupcor_plot_screen()),
     .fpath = output_file
   )
 
-  expect_s3_class(result$screen@metadata$dupcor_plot, "ggplot")
-  expect_true(file.exists(output_file))
-  expect_gt(file.info(output_file)$size, 0)
+  expect_equal(
+    list(
+      plot = inherits(result$screen@metadata$dupcor_plot, "ggplot"),
+      exists = file.exists(output_file),
+      nonempty = file.info(output_file)$size > 0
+    ),
+    list(plot = TRUE, exists = TRUE, nonempty = TRUE)
+  )
 })
 
 test_that("compute_dupcor_plot validates input length and verbose", {
   valid_screen <- make_dupcor_plot_screen()
-
-  expect_error(
-    CeRberus:::compute_dupcor_plot(list()),
-    "gi_list must contain at least one screen object"
-  )
-  expect_error(
-    CeRberus:::compute_dupcor_plot(list(screen = valid_screen), verbose = NA),
-    "verbose must be TRUE or FALSE"
-  )
-  expect_error(
-    CeRberus:::compute_dupcor_plot(
-      list(screen = valid_screen),
-      verbose = c(TRUE, FALSE)
+  cases <- list(
+    empty = list(
+      action = function() CeRberus:::compute_dupcor_plot(list()),
+      error = "^gi_list must contain at least one screen object\\.$"
     ),
-    "verbose must be TRUE or FALSE"
+    missing_verbose = list(
+      action = function() {
+        CeRberus:::compute_dupcor_plot(
+          list(screen = valid_screen),
+          verbose = NA
+        )
+      },
+      error = "^verbose must be TRUE or FALSE\\.$"
+    ),
+    vector_verbose = list(
+      action = function() {
+        CeRberus:::compute_dupcor_plot(
+          list(screen = valid_screen),
+          verbose = c(TRUE, FALSE)
+        )
+      },
+      error = "^verbose must be TRUE or FALSE\\.$"
+    )
   )
+
+  purrr::iwalk(cases, function(case, name) {
+    expect_error(case$action(), case$error, info = name)
+  })
 })

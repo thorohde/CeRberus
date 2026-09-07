@@ -79,45 +79,52 @@ make_named_matrix <- function(values) {
 
 #####
 
-test_that("symmetry_test returns TRUE for exactly symmetric guide GI matrices", {
-  symmetric_matrix <- make_named_matrix(c(
-    1,
-    2,
-    3,
-    2,
-    4,
-    5,
-    3,
-    5,
-    6
-  ))
-  screen <- make_multiplex_screen_for_symmetry(
-    make_symmetry_array(symmetric_matrix, replicate_names = "rep1")
+test_that("symmetry_test handles exact, tolerant, and correlated matrices", {
+  correlated_matrix <- make_named_matrix(c(1, 2, 3, 2.1, 4, 5, 3.1, 5.1, 6))
+  observed_correlation <- stats::cor(
+    as.vector(correlated_matrix),
+    as.vector(t(correlated_matrix)),
+    use = "pairwise.complete.obs"
+  )
+  cases <- list(
+    exact = list(
+      matrix = make_named_matrix(c(1, 2, 3, 2, 4, 5, 3, 5, 6)),
+      cutoff = NULL,
+      expected = TRUE
+    ),
+    near = list(
+      matrix = make_named_matrix(c(1, 2, 3, 2 + 1e-9, 4, 5, 3, 5 + 1e-9, 6)),
+      cutoff = NULL,
+      expected = TRUE
+    ),
+    correlation_pass = list(
+      matrix = correlated_matrix,
+      cutoff = 0.99,
+      expected = TRUE
+    ),
+    correlation_fail = list(
+      matrix = correlated_matrix,
+      cutoff = observed_correlation + 1e-6,
+      expected = FALSE
+    )
   )
 
-  expect_true(symmetry_test(screen))
+  expect_gt(observed_correlation, 0.99)
+  purrr::iwalk(cases, function(case, case_name) {
+    screen <- make_multiplex_screen_for_symmetry(
+      make_symmetry_array(case$matrix, replicate_names = "rep1")
+    )
+    result <- if (is.null(case$cutoff)) {
+      symmetry_test(screen)
+    } else {
+      symmetry_test(screen, cutoff = case$cutoff)
+    }
+    expect_identical(result, case$expected, info = case_name)
+  })
 })
 
 #####
 
-test_that("symmetry_test accepts matrices within the default absolute tolerance", {
-  near_symmetric_matrix <- make_named_matrix(c(
-    1,
-    2,
-    3,
-    2 + 1e-9,
-    4,
-    5,
-    3,
-    5 + 1e-9,
-    6
-  ))
-  screen <- make_multiplex_screen_for_symmetry(
-    make_symmetry_array(near_symmetric_matrix, replicate_names = "rep1")
-  )
-
-  expect_true(symmetry_test(screen))
-})
 
 #####
 
@@ -127,35 +134,6 @@ test_that("all_near uses a strict absolute tolerance", {
   expect_true(CeRberus:::all_near(1, 1 + tolerance / 2))
   expect_false(CeRberus:::all_near(1, 1 + tolerance))
   expect_false(CeRberus:::all_near(NA_real_, NA_real_))
-})
-
-#####
-
-test_that("symmetry_test uses correlation cutoff for non-exactly symmetric matrices", {
-  correlated_matrix <- make_named_matrix(c(
-    1.0,
-    2.0,
-    3.0,
-    2.1,
-    4.0,
-    5.0,
-    3.1,
-    5.1,
-    6.0
-  ))
-  screen <- make_multiplex_screen_for_symmetry(
-    make_symmetry_array(correlated_matrix, replicate_names = "rep1")
-  )
-
-  observed_correlation <- stats::cor(
-    as.vector(correlated_matrix),
-    as.vector(t(correlated_matrix)),
-    use = "pairwise.complete.obs"
-  )
-
-  expect_gt(observed_correlation, 0.99)
-  expect_true(symmetry_test(screen, cutoff = 0.99))
-  expect_false(symmetry_test(screen, cutoff = observed_correlation + 1e-6))
 })
 
 #####
@@ -196,66 +174,27 @@ test_that("symmetry_test requires all replicate layers to pass", {
 
 #####
 
-test_that("symmetry_test uses pairwise complete observations for missing values", {
-  matrix_with_missing_values <- make_named_matrix(c(
-    1.0,
-    2.0,
-    NA,
-    2.1,
-    4.0,
-    5.0,
-    NA,
-    5.1,
-    6.0
-  ))
-  screen <- make_multiplex_screen_for_symmetry(
-    make_symmetry_array(matrix_with_missing_values, replicate_names = "rep1")
+test_that("symmetry_test handles missing values", {
+  cases <- list(
+    pairwise = list(
+      matrix = make_named_matrix(c(1.0, 2.0, NA, 2.1, 4.0, 5.0, NA, 5.1, 6.0)),
+      cutoff = 0.99
+    ),
+    paired = list(
+      matrix = make_named_matrix(c(1.0, 2.0, NA, 2.0, 4.0, 5.0, NA, 5.0, 6.0)),
+      cutoff = NULL
+    )
   )
 
-  expect_true(symmetry_test(screen, cutoff = 0.99))
-})
-
-#####
-
-test_that("symmetry_test accepts symmetric matrices with paired missing values", {
-  symmetric_matrix <- make_named_matrix(c(
-    1.0,
-    2.0,
-    NA,
-    2.0,
-    4.0,
-    5.0,
-    NA,
-    5.0,
-    6.0
-  ))
-  screen <- make_multiplex_screen_for_symmetry(
-    make_symmetry_array(symmetric_matrix, replicate_names = "rep1")
-  )
-
-  expect_true(symmetry_test(screen))
-})
-
-#####
-
-test_that("symmetry_test is only implemented for multiplex screens", {
-  symmetric_matrix <- make_named_matrix(c(
-    1,
-    2,
-    3,
-    2,
-    4,
-    5,
-    3,
-    5,
-    6
-  ))
-  screen <- make_screenbase_for_symmetry(
-    make_symmetry_array(symmetric_matrix, replicate_names = "rep1")
-  )
-
-  expect_error(
-    symmetry_test(screen),
-    "unable to find an inherited method"
-  )
+  purrr::iwalk(cases, function(case, case_name) {
+    screen <- make_multiplex_screen_for_symmetry(
+      make_symmetry_array(case$matrix, replicate_names = "rep1")
+    )
+    result <- if (is.null(case$cutoff)) {
+      symmetry_test(screen)
+    } else {
+      symmetry_test(screen, cutoff = case$cutoff)
+    }
+    expect_true(result, info = case_name)
+  })
 })

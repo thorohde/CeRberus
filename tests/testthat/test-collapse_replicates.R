@@ -31,103 +31,87 @@ test_that("collapse_replicates returns the object unchanged when no collapse lay
 
   result <- collapse_replicates(object)
 
-  expect_s4_class(result, "gRNA_GI")
-  expect_equal(result@data, data)
-  expect_equal(result@replicates, c("bio_rep", "tech_rep"))
+  expect_identical(result, object)
 })
 
-test_that("collapse_replicates collapses one replicate dimension by averaging", {
+test_that("collapse_replicates averages selected replicate dimensions", {
   data <- make_collapse_array()
-  object <- make_gRNA_GI_for_collapse(data, collapse = "tech_rep")
-
-  result <- collapse_replicates(object)
-  expected <- apply(data, MARGIN = c(1, 2, 3), FUN = mean, na.rm = TRUE)
-  expected <- array(
-    expected,
-    dim = c(2, 2, 2),
-    dimnames = dimnames(data)[c("query_gene", "library_gene", "bio_rep")]
+  cases <- list(
+    tech_rep = list(
+      collapse = "tech_rep",
+      keep = c("query_gene", "library_gene", "bio_rep"),
+      replicates = "bio_rep"
+    ),
+    bio_rep = list(
+      collapse = "bio_rep",
+      keep = c("query_gene", "library_gene", "tech_rep"),
+      replicates = "tech_rep"
+    ),
+    both = list(
+      collapse = c("bio_rep", "tech_rep"),
+      keep = c("query_gene", "library_gene"),
+      replicates = character()
+    )
   )
 
-  expect_equal(as.vector(result@data), as.vector(expected))
-  expect_equal(unname(dim(result@data)), unname(dim(expected)))
-  expect_equal(dimnames(result@data), dimnames(expected))
-  expect_equal(result@replicates, "bio_rep")
+  purrr::iwalk(cases, function(case, name) {
+    result <- make_gRNA_GI_for_collapse(data, case$collapse) |>
+      collapse_replicates()
+    keep_margin <- match(case$keep, names(dimnames(data)))
+    expected <- array(
+      apply(data, keep_margin, mean, na.rm = TRUE),
+      dim = vapply(dimnames(data)[case$keep], length, integer(1)),
+      dimnames = dimnames(data)[case$keep]
+    )
+
+    expect_equal(
+      list(data = result@data, replicates = result@replicates),
+      list(data = expected, replicates = case$replicates),
+      info = name
+    )
+  })
 })
 
-test_that("collapse_replicates collapses multiple replicate dimensions", {
-  data <- make_collapse_array()
-  object <- make_gRNA_GI_for_collapse(
-    data,
-    collapse = c("bio_rep", "tech_rep")
-  )
-
-  result <- collapse_replicates(object)
-  expected <- apply(data, MARGIN = c(1, 2), FUN = mean, na.rm = TRUE)
-  expected <- array(
-    expected,
-    dim = c(2, 2),
-    dimnames = dimnames(data)[c("query_gene", "library_gene")]
-  )
-
-  expect_equal(as.vector(result@data), as.vector(expected))
-  expect_equal(unname(dim(result@data)), unname(dim(expected)))
-  expect_equal(dimnames(result@data), dimnames(expected))
-  expect_equal(result@replicates, character())
-})
-
-test_that("collapse_replicates ignores missing values when averaging", {
+test_that("collapse_replicates handles missing values while averaging", {
   data <- make_collapse_array()
   data["A", "C", "b1", "t1"] <- NA_real_
   data["A", "C", "b1", "t2"] <- 10
+  data["B", "D", "b2", ] <- NA_real_
   object <- make_gRNA_GI_for_collapse(data, collapse = "tech_rep")
-
-  result <- collapse_replicates(object)
-
-  expect_equal(result@data["A", "C", "b1"], 10)
-})
-
-test_that("collapse_replicates returns NaN when all collapsed values are missing", {
-  data <- make_collapse_array()
-  data["A", "C", "b1", ] <- NA_real_
-  object <- make_gRNA_GI_for_collapse(data, collapse = "tech_rep")
-
-  result <- collapse_replicates(object)
-
-  expect_true(is.nan(result@data["A", "C", "b1"]))
-})
-
-test_that("collapse_replicates preserves non-collapsed replicate dimension order", {
-  data <- make_collapse_array()
-  object <- make_gRNA_GI_for_collapse(data, collapse = "bio_rep")
 
   result <- collapse_replicates(object)
 
   expect_equal(
-    names(dimnames(result@data)),
-    c("query_gene", "library_gene", "tech_rep")
-  )
-  expect_equal(dimnames(result@data)$tech_rep, c("t1", "t2"))
-  expect_equal(result@replicates, "tech_rep")
-})
-
-test_that("collapse_replicates rejects non-replicate collapse layers", {
-  data <- make_collapse_array()
-
-  expect_error(
-    make_gRNA_GI_for_collapse(data, collapse = "query_gene"),
-    "cannot be collapsed as replicates"
+    c(
+      partial = result@data["A", "C", "b1"],
+      all_missing = result@data["B", "D", "b2"]
+    ),
+    c(partial = 10, all_missing = NaN)
   )
 })
 
-test_that("collapse_replicates reports invalid layer names", {
+test_that("collapse_replicates rejects invalid collapse layers", {
   data <- make_collapse_array()
-  object <- make_gRNA_GI_for_collapse(
-    data,
-    collapse = c("tech_rep", "not_a_layer")
+  cases <- list(
+    non_replicate = list(
+      action = function() {
+        make_gRNA_GI_for_collapse(data, collapse = "query_gene")
+      },
+      error = "cannot be collapsed as replicates"
+    ),
+    unknown_layer = list(
+      action = function() {
+        make_gRNA_GI_for_collapse(
+          data,
+          collapse = c("tech_rep", "not_a_layer")
+        ) |>
+          collapse_replicates()
+      },
+      error = "not_a_layer"
+    )
   )
 
-  expect_error(
-    collapse_replicates(object),
-    "not_a_layer"
-  )
+  purrr::iwalk(cases, function(case, name) {
+    expect_error(case$action(), case$error, info = name)
+  })
 })

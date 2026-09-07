@@ -40,52 +40,7 @@ make_attribute_input <- function() {
   )
 }
 
-test_that("get_screen_attributes computes gene sets and counts", {
-  input <- make_attribute_input()
-  screen <- make_screen_for_attributes(input)
-
-  result <- get_screen_attributes(screen)
-
-  expect_s4_class(result, "ScreenBase")
-  expect_equal(result@screen_attr$contrasts, NULL)
-  expect_equal(result@screen_attr$query_genes, c("A", "B", "C", "D"))
-  expect_equal(result@screen_attr$library_genes, c("B", "C", "A", "E"))
-  expect_equal(result@screen_attr$all_genes, c("A", "B", "C", "D", "E"))
-  expect_equal(result@screen_attr$n_query_genes, 4L)
-  expect_equal(result@screen_attr$n_lib_genes, 4L)
-  expect_equal(result@screen_attr$n_all_genes, 5L)
-})
-
-test_that("get_screen_attributes reports genes missing from the opposite axis", {
-  result <- get_screen_attributes(make_screen_for_attributes(make_attribute_input()))
-
-  expect_equal(result@screen_attr$query_genes_not_in_lib, "D")
-  expect_equal(result@screen_attr$library_genes_not_in_query, "E")
-})
-
-test_that("get_screen_attributes counts observations per query gene", {
-  result <- get_screen_attributes(make_screen_for_attributes(make_attribute_input()))
-
-  expect_equal(
-    result@screen_attr$observations_per_query,
-    c(A = 2L, B = 1L, C = 2L, D = 1L)
-  )
-})
-
-test_that("get_screen_attributes stores directional and unordered gene pairs", {
-  result <- get_screen_attributes(make_screen_for_attributes(make_attribute_input()))
-
-  expect_equal(
-    result@screen_attr$all_pairs,
-    c("A;B", "A;C", "B;A", "C;A", "C;E", "D;E")
-  )
-  expect_equal(
-    result@screen_attr$unique_pairs,
-    c("A;B", "A;C", "C;E", "D;E")
-  )
-})
-
-test_that("get_screen_attributes preserves metadata input and replaces previous attributes", {
+test_that("get_screen_attributes replaces the design with derived attributes", {
   input <- make_attribute_input()
   screen <- make_screen_for_attributes(
     input,
@@ -94,8 +49,18 @@ test_that("get_screen_attributes preserves metadata input and replaces previous 
 
   result <- get_screen_attributes(screen)
 
-  expect_equal(result@metadata$input, input)
-  expect_false("existing" %in% result@screen_attr$query_genes)
+  expect_equal(
+    list(design = result@screen_attr, input = result@metadata$input),
+    list(
+      design = make_screen_design(
+        query_genes = c("A", "B", "C", "D"),
+        library_genes = c("B", "C", "A", "E"),
+        all_pairs = c("A;B", "A;C", "B;A", "C;A", "C;E", "D;E"),
+        observations_per_query = c(2L, 1L, 2L, 1L)
+      ),
+      input = input
+    )
+  )
 })
 
 test_that("get_screen_attributes handles duplicated rows without duplicating gene sets or pair lists", {
@@ -105,27 +70,13 @@ test_that("get_screen_attributes handles duplicated rows without duplicating gen
 
   result <- get_screen_attributes(screen)
 
-  expect_equal(result@screen_attr$query_genes, c("A", "B", "C", "D"))
-  expect_equal(result@screen_attr$library_genes, c("B", "C", "A", "E"))
   expect_equal(
-    result@screen_attr$all_pairs,
-    c("A;B", "A;C", "B;A", "C;A", "C;E", "D;E")
+    result@screen_attr,
+    make_screen_design(
+      query_genes = c("A", "B", "C", "D"),
+      library_genes = c("B", "C", "A", "E"),
+      all_pairs = c("A;B", "A;C", "B;A", "C;A", "C;E", "D;E"),
+      observations_per_query = c(3L, 1L, 2L, 1L)
+    )
   )
-  expect_equal(
-    result@screen_attr$observations_per_query,
-    c(A = 3L, B = 1L, C = 2L, D = 1L)
-  )
-})
-
-test_that("get_screen_attributes requires data.table input columns used by the method", {
-  input <- as.data.frame(make_attribute_input())
-  screen <- make_screen_for_attributes(input)
-
-  expect_error(get_screen_attributes(screen))
-
-  missing_gene_pair <- data.table::copy(make_attribute_input())
-  missing_gene_pair[, gene_pair := NULL]
-  screen <- make_screen_for_attributes(missing_gene_pair)
-
-  expect_error(get_screen_attributes(screen))
 })
