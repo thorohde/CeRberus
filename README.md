@@ -107,6 +107,12 @@ report$dimensions
 report$results
 ```
 
+When gene-level p-values are available, `report$results$genomic_inflation`
+contains the genomic inflation factor (lambda). Values near 1 are consistent
+with the theoretical null distribution; values above 1 indicate inflation.
+The field is `NULL` when results or usable p-values are unavailable. Reports
+using this schema have `report_version` `"1.1"`.
+
 Supply a YAML path to write the same report to disk:
 
 ```r

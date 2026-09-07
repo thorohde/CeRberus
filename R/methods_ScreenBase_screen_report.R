@@ -44,6 +44,19 @@
   })
 }
 
+.screen_report_genomic_inflation <- function(gi_obj, results) {
+  if (!"pval" %in% colnames(results) || !is.numeric(results$pval)) {
+    return(NULL)
+  }
+
+  p_values <- results$pval[!is.na(results$pval)]
+  if (length(p_values) == 0L) {
+    return(NULL)
+  }
+
+  genomic_inflation(gi_obj)
+}
+
 .screen_report_results <- function(gi_obj, fdr_threshold = 0.05) {
   results_available <- length(gi_obj@geneGIs) > 0L ||
     (
@@ -53,6 +66,7 @@
 
   output <- list(
     available = results_available,
+    genomic_inflation = NULL,
     fdr_method = .screen_report_scalar(gi_obj@metadata$fdr_method),
     fdr_threshold = fdr_threshold,
     tested_gene_pairs = NULL,
@@ -67,6 +81,10 @@
   }
 
   results <- gi_df(gi_obj)
+  output$genomic_inflation <- .screen_report_genomic_inflation(
+    gi_obj,
+    results
+  )
   required_columns <- c("GI", "FDR")
 
   if (!all(required_columns %in% colnames(results))) {
@@ -115,7 +133,7 @@
   }
 
   list(
-    report_version = "1.0",
+    report_version = "1.1",
     screen = list(
       class = screen_class,
       interpreted_design = interpreted_design,
@@ -236,7 +254,7 @@ build_combined_screen_report <- function(screen_objects) {
   )
 
   list(
-    report_version = "1.0",
+    report_version = "1.1",
     selection = list(
       selected_configuration = selected_configuration,
       evaluated_configurations = evaluated_configurations
