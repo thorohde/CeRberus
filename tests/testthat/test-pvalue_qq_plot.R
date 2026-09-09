@@ -22,7 +22,7 @@ make_pval_qq_screen <- function(symmGeneGIs = make_pval_qq_data()) {
     geneGIs = array(numeric(), dim = 0),
     screen_attr = methods::new("ScreenDesign"),
     dupCorrelation = numeric(),
-    metadata = list(),
+    metadata = list(non_targeting_controls = "NTC"),
     checks = list(),
     errors = list(),
     symmGeneGIs = symmGeneGIs
@@ -64,6 +64,7 @@ test_that("pvalue_qq_plot stores representative plot data and diagnostics", {
         unique(ctrl)
       ],
       group_sizes = stats::setNames(summary$n, summary$ctrl),
+      colors = unname(plot$scales$get_scales("colour")$palette(2L)),
       nonnegative_inflation = all(summary$lambda >= 0),
       caption_has_inflation = grepl("lambda=", plot$labels$caption)
     ),
@@ -79,10 +80,50 @@ test_that("pvalue_qq_plot stores representative plot data and diagnostics", {
       groups = c("target-NTC", "target-target"),
       ntc_like_group = "target-target",
       group_sizes = c(`target-NTC` = 2L, `target-target` = 3L),
+      colors = c("red", "grey"),
       nonnegative_inflation = TRUE,
       caption_has_inflation = TRUE
     )
   )
+})
+
+test_that("pvalue_qq_plot supports every screen design", {
+  fixed_pair <- methods::as(make_pval_qq_screen(), "FixedPairScreen")
+  fixed_pair@geneGIs <- matrix(
+    c(0.1, 0.01, 0.02, -0.2, 0.20, 0.30),
+    nrow = 2L,
+    byrow = TRUE,
+    dimnames = list(
+      c("GENE1;NTC", "GENE1;GENE2"),
+      c("GI", "pval", "FDR")
+    )
+  )
+
+  multiplex <- methods::as(make_pval_qq_screen(), "MultiplexScreen")
+  multiplex@geneGIs <- array(
+    c(0.1, -0.2, 0.01, 0.20, 0.02, 0.30),
+    dim = c(1L, 2L, 3L),
+    dimnames = list(
+      query_gene = "GENE1",
+      library_gene = c("NTC", "GENE2"),
+      variable = c("GI", "pval", "FDR")
+    )
+  )
+
+  screens <- list(
+    fixed_pair = fixed_pair,
+    multiplex = multiplex,
+    position_agnostic = make_pval_qq_screen()
+  )
+  result <- purrr::map(screens, CeRberus::pvalue_qq_plot)
+
+  expect_true(all(purrr::map_lgl(result, ~ inherits(.x@metadata$qq_plot, "ggplot"))))
+  expect_true(all(purrr::map_lgl(result, ~ {
+    identical(
+      unique(.x@metadata$qq_plot_data[ctrl == "target-NTC", ctrl]),
+      "target-NTC"
+    )
+  })))
 })
 
 test_that("pvalue_qq_plot writes a file and creates parent directories", {
@@ -111,7 +152,7 @@ test_that("pvalue_qq_plot validates object type, verbose, and p-values", {
   cases <- list(
     object = list(
       action = function() CeRberus::pvalue_qq_plot(methods::new("ScreenBase")),
-      error = "^gi_obj must be a PosAgnMultiplexScreen object\\.$"
+      error = "^gi_obj must be a concrete ScreenBase object\\.$"
     ),
     verbose = list(
       action = function() {

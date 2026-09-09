@@ -53,6 +53,9 @@
 #'   all unordered pairs. This argument is only used when
 #'   `pos_agnostic = TRUE`; directional analysis remains the default.
 #' @param verbose Logical. If `TRUE`, print a short screen summary.
+#' @param non_targeting_controls Optional character vector of non-targeting
+#'   control gene identifiers. These are retained in the screen metadata for
+#'   downstream result labeling and p-value calibration.
 #'
 #' @return An S4 object inheriting from `ScreenBase`, typically a
 #'   `FixedPairScreen`, `MultiplexScreen`, or `PosAgnMultiplexScreen`.
@@ -74,9 +77,26 @@ GIScores <- function(
   symmetric_analysis_method = "preaverage",
   verbose = FALSE,
   screen_type = c("auto", "fixed_pair", "multiplex"),
-  lfc_col = NULL
+  lfc_col = NULL,
+  non_targeting_controls = NULL
 ) {
   screen_type <- match.arg(screen_type)
+
+  if (
+    !is.null(non_targeting_controls) &&
+      (
+        !is.character(non_targeting_controls) ||
+          length(non_targeting_controls) == 0L ||
+          anyNA(non_targeting_controls) ||
+          any(!nzchar(non_targeting_controls)) ||
+          anyDuplicated(non_targeting_controls)
+      )
+  ) {
+    stop(
+      "non_targeting_controls must be NULL or a non-empty character vector with unique, non-missing values.",
+      call. = FALSE
+    )
+  }
 
   if (
     !is.logical(force_fixed_pair) ||
@@ -132,6 +152,7 @@ GIScores <- function(
       guide_col = guide_col,
       gi_col = gi_col,
       lfc_col = lfc_col,
+      non_targeting_controls = non_targeting_controls,
       requested_screen_type = screen_type,
       symmetric_analysis_method = symmetric_analysis_method
     )

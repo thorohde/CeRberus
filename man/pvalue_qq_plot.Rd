@@ -8,25 +8,21 @@ pvalue_qq_plot(
   gi_obj,
   .fpath = NULL,
   verbose = FALSE,
-  ntc = "NTC",
   ntc_string = "target-NTC",
   target_string = "target-target",
   ntc_color = "red",
-  target_color = "black",
+  target_color = "grey",
   title = "QQ-Plot",
   caption = NULL
 )
 }
 \arguments{
-\item{gi_obj}{A \code{PosAgnMultiplexScreen} object containing \code{gene_pair} and
-\code{pval} columns in its \code{symmGeneGIs} slot.}
+\item{gi_obj}{A \code{ScreenBase} object with gene-pair p-values.}
 
 \item{.fpath}{Optional output file path. Parent directories are created when
 needed.}
 
 \item{verbose}{Logical; print the plot when \code{TRUE}.}
-
-\item{ntc}{Name used to identify non-targeting controls.}
 
 \item{ntc_string}{Label used for target-control pairs.}
 
@@ -41,7 +37,7 @@ needed.}
 \item{caption}{Optional caption prepended to the genomic inflation summary.}
 }
 \value{
-The modified \code{PosAgnMultiplexScreen} object.
+The modified \code{ScreenBase} object.
 }
 \description{
 Creates a Q-Q plot from gene-pair p-values and stores the plot, plotting

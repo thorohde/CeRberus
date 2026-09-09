@@ -28,6 +28,7 @@ Collate:
     'full_run.R'
     'generics.R'
     'globals.R'
+    'utils_ntc.R'
     'methods_gRNA_GI.R'
     'methods_gRNA_LFC.R'
     'methods_ScreenDesign.R'

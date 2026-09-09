@@ -198,6 +198,7 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
         screen_type = instr$screen_type,
         pos_agnostic = instr$pos_agnostic,
         symmetric_analysis_method = instr$symmetric_analysis_method,
+        non_targeting_controls = instr$non_targeting_controls,
         verbose = instr$verbose
       )
 
@@ -230,6 +231,19 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
 
       .stage <- "collect_gis"
       .data <- map(.data, collect_gis, fdr_method = instr$FDR)
+
+      if (instr$overwrite_output) {
+        .data <- purrr::imap(.data, function(.x, .name) {
+          pvalue_qq_plot(
+            .x,
+            .fpath = file.path(
+              instr$output_directory,
+              paste0("pvalueQQPlot_", .name, ".png")
+            ),
+            verbose = instr$verbose
+          )
+        })
+      }
 
       if (isTRUE(instr$verbose)) {
         purrr::iwalk(.data, function(.x, .y) {

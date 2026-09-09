@@ -377,6 +377,50 @@ test_that("GIScores preserves the legacy positional argument order", {
   expect_identical(result@metadata$requested_screen_type, "auto")
 })
 
+test_that("GIScores stores non-targeting controls in metadata", {
+  result <- GIScores(
+    make_fixed_pair_scores(),
+    non_targeting_controls = c("NTC_1", "NTC_2")
+  )
+
+  expect_identical(
+    result@metadata$non_targeting_controls,
+    c("NTC_1", "NTC_2")
+  )
+})
+
+test_that("GIScores validates non-targeting controls", {
+  for (controls in list(character(), c("NTC", "NTC"), NA_character_, 1)) {
+    expect_error(
+      GIScores(
+        make_fixed_pair_scores(),
+        non_targeting_controls = controls
+      ),
+      "non_targeting_controls must be NULL or a non-empty character vector"
+    )
+  }
+})
+
+test_that("GIScores records unmatched non-targeting controls", {
+  input <- make_fixed_pair_scores()
+  input$query_gene[input$query_gene == "A"] <- "NTC"
+
+  matched <- GIScores(input, non_targeting_controls = "NTC")
+  expect_identical(matched@metadata$unmatched_non_targeting_controls, character())
+
+  expect_warning(
+    unmatched <- GIScores(
+      input,
+      non_targeting_controls = c("NTC", "NOT_IN_SCREEN")
+    ),
+    "Configured non-targeting controls not found"
+  )
+  expect_identical(
+    unmatched@metadata$unmatched_non_targeting_controls,
+    "NOT_IN_SCREEN"
+  )
+})
+
 test_that("GIScores creates a position-agnostic symmetric multiplex screen", {
   input <- make_multiplex_scores()
   input$GI <- as.numeric(factor(input$query_gene)) *

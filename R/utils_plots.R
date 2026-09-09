@@ -51,12 +51,10 @@ compute_dupcor_plot <- function(gi_list, .fpath = NULL, verbose = FALSE) {
 #' Creates a Q-Q plot from gene-pair p-values and stores the plot, plotting
 #' data, and genomic inflation summary in the screen object's metadata.
 #'
-#' @param gi_obj A `PosAgnMultiplexScreen` object containing `gene_pair` and
-#'   `pval` columns in its `symmGeneGIs` slot.
+#' @param gi_obj A `ScreenBase` object with gene-pair p-values.
 #' @param .fpath Optional output file path. Parent directories are created when
 #'   needed.
 #' @param verbose Logical; print the plot when `TRUE`.
-#' @param ntc Name used to identify non-targeting controls.
 #' @param ntc_string Label used for target-control pairs.
 #' @param target_string Label used for target-target pairs.
 #' @param ntc_color Color used for target-control pairs.
@@ -70,40 +68,50 @@ pvalue_qq_plot <- function(
   gi_obj,
   .fpath = NULL,
   verbose = FALSE,
-  ntc = "NTC",
   ntc_string = "target-NTC",
   target_string = "target-target",
   ntc_color = "red",
-  target_color = "black",
+  target_color = "grey",
   title = "QQ-Plot",
   caption = NULL
 ) {
   stopifnot(
-    "gi_obj must be a PosAgnMultiplexScreen object." = methods::is(
+    "gi_obj must be a concrete ScreenBase object." = methods::is(
       gi_obj,
-      "PosAgnMultiplexScreen"
-    ),
+      "FixedPairScreen"
+    ) || methods::is(gi_obj, "MultiplexScreen"),
     "verbose must be TRUE or FALSE." = is.logical(verbose) &&
       length(verbose) == 1 &&
-      !is.na(verbose),
-    "The symmGeneGIs table must contain a gene_pair column." = "gene_pair" %in%
-      colnames(gi_obj@symmGeneGIs),
-    "The symmGeneGIs table must contain a pval column." = "pval" %in%
-      colnames(gi_obj@symmGeneGIs)
+      !is.na(verbose)
   )
 
-  plot_data <- data.table::copy(gi_obj@symmGeneGIs)
+  results <- gi_df(gi_obj)
+  stopifnot(
+    "Gene-level results must contain a gene_pair column." = "gene_pair" %in%
+      colnames(results),
+    "Gene-level results must contain a pval column." = "pval" %in%
+      colnames(results)
+  )
+
+  if (!all(c("query_gene", "library_gene") %in% colnames(results))) {
+    results[, `:=`(
+      query_gene = stringr::str_split_i(gene_pair, ";", 1),
+      library_gene = stringr::str_split_i(gene_pair, ";", 2)
+    )]
+  }
+
+  plot_data <- label_ntc_pairs(
+    results,
+    gi_obj@metadata$non_targeting_controls
+  )
 
   plot_data <- plot_data[
     !is.na(pval),
     list(
       gene_pair,
-      query_gene = stringr::str_split_i(gene_pair, ";", 1),
-      library_gene = stringr::str_split_i(gene_pair, ";", 2),
       pval = pmax(as.numeric(pval), .Machine$double.xmin),
       ctrl = data.table::fcase(
-        stringr::str_split_i(gene_pair, ";", 1) == ntc | stringr::str_split_i(gene_pair, ";", 2) == ntc ,
-        ntc_string                                                                                      ,
+        has_NTC, ntc_string,
         default = target_string
       )
     )

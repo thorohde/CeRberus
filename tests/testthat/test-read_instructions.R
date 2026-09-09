@@ -51,6 +51,51 @@ test_that("read_instructions reads a valid YAML instruction file", {
   expect_true(result$verbose)
 })
 
+test_that("read_instructions parses non-targeting controls", {
+  scores_file <- tempfile(fileext = ".csv")
+  output_directory <- tempdir()
+  yaml_fpath <- tempfile(fileext = ".yaml")
+  file.create(scores_file)
+
+  write_instruction_file(
+    yaml_fpath,
+    scores_file = scores_file,
+    output_directory = output_directory
+  )
+  expect_null(read_instructions(yaml_fpath)$non_targeting_controls)
+
+  write_instruction_file(
+    yaml_fpath,
+    scores_file = scores_file,
+    output_directory = output_directory,
+    non_targeting_controls = c("NTC_1", "NTC_2")
+  )
+  expect_identical(
+    read_instructions(yaml_fpath)$non_targeting_controls,
+    c("NTC_1", "NTC_2")
+  )
+})
+
+test_that("read_instructions rejects invalid non-targeting controls", {
+  scores_file <- tempfile(fileext = ".csv")
+  output_directory <- tempdir()
+  yaml_fpath <- tempfile(fileext = ".yaml")
+  file.create(scores_file)
+
+  for (controls in list(character(), c("NTC", "NTC"))) {
+    write_instruction_file(
+      yaml_fpath,
+      scores_file = scores_file,
+      output_directory = output_directory,
+      non_targeting_controls = controls
+    )
+    expect_error(
+      read_instructions(yaml_fpath),
+      "non_targeting_controls must be a non-empty character vector"
+    )
+  }
+})
+
 test_that("read_instructions validates the YAML file path", {
   expect_error(
     read_instructions(character()),

@@ -205,6 +205,37 @@ test_that("gi_df returns symmetrized data for position-agnostic multiplex screen
   expect_equal(result, symmGeneGIs)
 })
 
+test_that("gi_df appends stored NTC annotations for every result shape", {
+  symmetric <- data.table::data.table(
+    gene_pair = c("A;B", "A;C"),
+    query_gene = c("A", "A"),
+    library_gene = c("B", "C")
+  )
+  cases <- list(
+    fixed = make_screen_for_gi_df("FixedPairScreen", make_fixed_pair_geneGIs()),
+    multiplex = make_screen_for_gi_df("MultiplexScreen", make_multiplex_geneGIs()),
+    symmetric = make_screen_for_gi_df(
+      "PosAgnMultiplexScreen",
+      make_multiplex_geneGIs(),
+      symmGeneGIs = symmetric
+    )
+  )
+
+  purrr::iwalk(cases, function(screen, shape) {
+    pairs <- gi_df(screen)$gene_pair
+    screen@metadata$ntc_pair_annotations <- data.table::data.table(
+      gene_pair = pairs,
+      has_NTC = seq_along(pairs) %% 2L == 1L
+    )
+
+    expect_identical(
+      gi_df(screen)$has_NTC,
+      seq_along(pairs) %% 2L == 1L,
+      info = shape
+    )
+  })
+})
+
 test_that("gi_df preserves row order from fixed-pair geneGIs row names", {
   geneGIs <- make_fixed_pair_geneGIs()
   geneGIs <- geneGIs[c("B;D", "A;C"), ]

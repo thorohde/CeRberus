@@ -76,6 +76,21 @@ read_instructions <- function(yaml_fpath) {
     instr$screen_type <- "auto"
   }
 
+  if (!"non_targeting_controls" %in% names(instr)) {
+    instr$non_targeting_controls <- NULL
+  } else if (
+    !is.character(instr$non_targeting_controls) ||
+      length(instr$non_targeting_controls) == 0L ||
+      anyNA(instr$non_targeting_controls) ||
+      any(!nzchar(instr$non_targeting_controls)) ||
+      anyDuplicated(instr$non_targeting_controls)
+  ) {
+    stop(
+      "non_targeting_controls must be a non-empty character vector with unique, non-missing values.",
+      call. = FALSE
+    )
+  }
+
   if (
     !is.character(instr$screen_type) ||
       length(instr$screen_type) != 1L ||
@@ -118,6 +133,7 @@ collect_all_layer_configurations <- function(
   screen_type = c("auto", "fixed_pair", "multiplex"),
   pos_agnostic = FALSE,
   symmetric_analysis_method = "preaverage",
+  non_targeting_controls = NULL,
   verbose = FALSE
 ) {
   screen_type <- match.arg(screen_type)
@@ -137,6 +153,7 @@ collect_all_layer_configurations <- function(
       screen_type = screen_type,
       pos_agnostic = pos_agnostic,
       symmetric_analysis_method = symmetric_analysis_method,
+      non_targeting_controls = non_targeting_controls,
       verbose = verbose
     )
   }
@@ -161,6 +178,7 @@ collect_all_layer_configurations <- function(
             screen_type = screen_type,
             pos_agnostic = pos_agnostic,
             symmetric_analysis_method = symmetric_analysis_method,
+            non_targeting_controls = non_targeting_controls,
             verbose = verbose
           )
         }

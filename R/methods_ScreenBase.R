@@ -214,6 +214,23 @@ setMethod(
       gene_pair := paste0(get("query_gene"), ";", get("library_gene"))
     ]
 
+    .available_genes <- union(
+      unique(.md$input$query_gene),
+      unique(.md$input$library_gene)
+    )
+    .md$unmatched_non_targeting_controls <- setdiff(
+      .md$non_targeting_controls,
+      .available_genes
+    )
+    if (length(.md$unmatched_non_targeting_controls) > 0L) {
+      warning(
+        "Configured non-targeting controls not found in the imported gene columns: ",
+        paste(.md$unmatched_non_targeting_controls, collapse = ", "),
+        ".",
+        call. = FALSE
+      )
+    }
+
     gi_obj@metadata <- .md
 
     return(gi_obj)
@@ -530,6 +547,7 @@ setMethod(
 
     gi_obj@geneGIs <- output
     gi_obj@metadata$fdr_method <- fdr_method
+    gi_obj <- store_ntc_pair_annotations(gi_obj)
 
     return(gi_obj)
   }
@@ -586,6 +604,9 @@ setMethod(
           0
     ) {
       warning("Some genes were lost!")
+    }
+    if (!methods::is(gi_obj, "PosAgnMultiplexScreen")) {
+      gi_obj <- store_ntc_pair_annotations(gi_obj)
     }
     return(gi_obj)
   }
@@ -668,6 +689,7 @@ setMethod(
 
       gi_obj@symmGeneGIs <- .x
       gi_obj@metadata$multiple_testing <- list(method = fdr_method)
+      gi_obj <- store_ntc_pair_annotations(gi_obj)
 
       return(gi_obj)
     }
@@ -748,6 +770,7 @@ setMethod(
       )
     }
     gi_obj@metadata$multiple_testing <- list(method = fdr_method)
+    gi_obj <- store_ntc_pair_annotations(gi_obj)
 
     return(gi_obj)
   }
@@ -795,6 +818,7 @@ setMethod(
       )
     }
 
+    output <- append_ntc_pair_annotations(output, gi_obj)
     return(output)
   }
 )
@@ -846,6 +870,7 @@ setMethod(
       )
     ]
 
+    output <- append_ntc_pair_annotations(output, gi_obj)
     return(output)
   }
 )
@@ -856,7 +881,7 @@ setMethod(
   "gi_df",
   signature = signature(gi_obj = "PosAgnMultiplexScreen"),
   function(gi_obj) {
-    gi_obj@symmGeneGIs
+    append_ntc_pair_annotations(gi_obj@symmGeneGIs, gi_obj)
   }
 )
 

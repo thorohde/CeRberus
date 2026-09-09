@@ -239,6 +239,7 @@ current run. The scores file and YAML instruction file must be located outside
 
 - `all_GI_objects.rds` — intermediate CeRberus screen objects before final selection
 - `duplicateCorrelationPlot.png` — duplicate-correlation summary plot
+- `pvalueQQPlot_<configuration>.png` — p-value QQ plot for each retained configuration; target-target pairs are grey and pairs containing a non-targeting control are red
 - `duplicate_correlation.csv` — duplicate-correlation summary table
 - `GI_scores_<configuration>.csv` — gene-level GI scores for retained configurations
 - `screen_report.yaml` — combined overview of evaluated and retained configurations

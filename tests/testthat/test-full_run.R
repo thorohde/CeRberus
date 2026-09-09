@@ -76,9 +76,11 @@ with_mocked_full_run_pipeline <- function(
   calls$screen_type <- NULL
   calls$pos_agnostic <- NULL
   calls$symmetric_analysis_method <- NULL
+  calls$non_targeting_controls <- NULL
   calls$collect_verbose <- NULL
   calls$plot_path <- NULL
   calls$plot_verbose <- NULL
+  calls$qq_plot_paths <- character()
   calls$fdr_method <- NULL
   calls$keep_all <- NULL
   calls$screen_report_called <- FALSE
@@ -90,6 +92,7 @@ with_mocked_full_run_pipeline <- function(
       screen_type = "auto",
       pos_agnostic,
       symmetric_analysis_method = "preaverage",
+      non_targeting_controls = NULL,
       verbose = FALSE
     ) {
       if (!is.null(inspect_output_directory)) {
@@ -103,6 +106,7 @@ with_mocked_full_run_pipeline <- function(
       calls$screen_type <- screen_type
       calls$pos_agnostic <- pos_agnostic
       calls$symmetric_analysis_method <- symmetric_analysis_method
+      calls$non_targeting_controls <- non_targeting_controls
       calls$collect_verbose <- verbose
       list(
         default_guide_pair_used = make_full_run_screen(
@@ -140,6 +144,12 @@ with_mocked_full_run_pipeline <- function(
       dir.create(dirname(.fpath), showWarnings = FALSE, recursive = TRUE)
       file.create(.fpath)
       .data
+    },
+    pvalue_qq_plot = function(gi_obj, .fpath, verbose = FALSE) {
+      calls$qq_plot_paths <- c(calls$qq_plot_paths, .fpath)
+      dir.create(dirname(.fpath), showWarnings = FALSE, recursive = TRUE)
+      file.create(.fpath)
+      gi_obj
     },
     compute_models = function(gi_obj, ...) {
       gi_obj@metadata$compute_models_called <- TRUE
@@ -225,12 +235,32 @@ test_that("full_run reads supported score files and forwards pipeline options", 
   })
 })
 
+test_that("full_run forwards YAML non-targeting controls", {
+  scores_file <- tempfile(fileext = ".csv")
+  output_directory <- tempfile("full-run-output-")
+  yaml_fpath <- tempfile(fileext = ".yaml")
+  data.table::fwrite(make_full_run_scores(), scores_file)
+  write_full_run_instructions(
+    yaml_fpath,
+    scores_file = scores_file,
+    output_directory = output_directory,
+    overwrite_output = FALSE,
+    non_targeting_controls = c("NTC_1", "NTC_2")
+  )
+  calls <- new.env(parent = emptyenv())
+
+  with_mocked_full_run_pipeline(full_run(yaml_fpath), calls = calls)
+
+  expect_identical(calls$non_targeting_controls, c("NTC_1", "NTC_2"))
+})
+
 test_that("full_run preserves output directories when overwrite is disabled", {
   artifacts <- c(
     "all_gi_objects.rds",
     "duplicate_correlation.csv",
     "GI_scores_default_guide_pair_used.csv",
     "duplicateCorrelationPlot.png",
+    "pvalueQQPlot_default_guide_pair_used.png",
     "screen_report.yaml",
     "CeRberus.log"
   )
@@ -411,6 +441,10 @@ test_that("full_run writes intermediate and final outputs when overwrite_output 
   )))
   expect_true(file.exists(file.path(
     output_directory,
+    "pvalueQQPlot_default_guide_pair_used.png"
+  )))
+  expect_true(file.exists(file.path(
+    output_directory,
     "duplicate_correlation.csv"
   )))
   expect_true(file.exists(file.path(
@@ -469,6 +503,13 @@ test_that("full_run writes intermediate and final outputs when overwrite_output 
     c("default_guide_pair_used", "default_tech_rep_used")
   )
   expect_named(result, "default_guide_pair_used")
+  expect_equal(
+    calls$qq_plot_paths,
+    file.path(
+      normalizePath(output_directory, winslash = "/", mustWork = FALSE),
+      "pvalueQQPlot_default_guide_pair_used.png"
+    )
+  )
 })
 
 test_that("full_run writes a failure log and preserves the original error", {
@@ -573,6 +614,17 @@ test_that("full_run forwards keep_all_configurations to configuration selection"
 
   expect_true(calls$keep_all)
   expect_named(result, c("default_guide_pair_used", "default_tech_rep_used"))
+  expect_equal(
+    calls$qq_plot_paths,
+    file.path(
+      normalizePath(output_directory, winslash = "/", mustWork = FALSE),
+      paste0(
+        "pvalueQQPlot_",
+        c("default_guide_pair_used", "default_tech_rep_used"),
+        ".png"
+      )
+    )
+  )
   report_path <- file.path(
     output_directory,
     "screen_report.yaml"
