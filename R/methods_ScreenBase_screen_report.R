@@ -20,12 +20,28 @@
   mean(x)
 }
 
-.screen_report_model_count <- function(gi_obj) {
-  if (inherits(gi_obj@limma_models, "MArrayLM")) {
+.screen_report_model_count <- function(models) {
+  if (inherits(models, "MArrayLM")) {
     return(1L)
   }
 
-  as.integer(sum(!purrr::map_lgl(gi_obj@limma_models, is.null)))
+  as.integer(sum(!purrr::map_lgl(models, is.null)))
+}
+
+.screen_report_model_slots <- function(gi_obj) {
+  if (!methods::is(gi_obj, "PosAgnMultiplexScreen")) {
+    return(list(
+      guide_gis = gi_obj@guideGIs,
+      limma_models = gi_obj@limma_models,
+      dup_correlation = gi_obj@dupCorrelation
+    ))
+  }
+
+  list(
+    guide_gis = gi_obj@aggregatedGuideGIs,
+    limma_models = gi_obj@aggregatedLimmaModels,
+    dup_correlation = gi_obj@metadata$aggregated_dupCorrelation
+  )
 }
 
 .screen_report_error_messages <- function(errors) {
@@ -76,6 +92,13 @@
     negative_significant_results = NULL
   )
 
+  if (
+    methods::is(gi_obj, "PosAgnMultiplexScreen") &&
+      !is.null(gi_obj@metadata$multiple_testing)
+  ) {
+    output$multiple_testing <- gi_obj@metadata$multiple_testing
+  }
+
   if (!results_available) {
     return(output)
   }
@@ -122,7 +145,12 @@
   screen_attributes <- gi_obj@screen_attr
   metadata <- gi_obj@metadata
   errors <- gi_obj@errors
-  failed_queries <- errors$query_genes_not_usable
+  model_slots <- .screen_report_model_slots(gi_obj)
+  failed_queries <- if (methods::is(gi_obj, "PosAgnMultiplexScreen")) {
+    errors$aggregated_query_genes_not_usable
+  } else {
+    errors$query_genes_not_usable
+  }
   if (is.null(failed_queries)) {
     failed_queries <- character()
   }
@@ -151,11 +179,13 @@
       unordered_pairs = as.integer(length(screen_attributes@unique_pairs))
     ),
     model = list(
-      replicate_layers = as.character(gi_obj@guideGIs@replicates),
-      collapsed_layers = as.character(gi_obj@guideGIs@collapse),
-      block_layer = .screen_report_scalar(gi_obj@guideGIs@block_layer),
-      duplicate_correlation = .screen_report_mean(gi_obj@dupCorrelation),
-      fitted_models = .screen_report_model_count(gi_obj)
+      replicate_layers = as.character(model_slots$guide_gis@replicates),
+      collapsed_layers = as.character(model_slots$guide_gis@collapse),
+      block_layer = .screen_report_scalar(model_slots$guide_gis@block_layer),
+      duplicate_correlation = .screen_report_mean(
+        model_slots$dup_correlation
+      ),
+      fitted_models = .screen_report_model_count(model_slots$limma_models)
     ),
     checks = list(
       gene_sets_equal = .screen_report_scalar(gi_obj@checks$gene_sets_equal),
@@ -176,7 +206,13 @@
         screen_attributes@library_genes_not_in_query
       ),
       unusable_query_genes = as.character(failed_queries),
-      model_errors = .screen_report_error_messages(errors$GI_computation_errors)
+      model_errors = .screen_report_error_messages(
+        if (methods::is(gi_obj, "PosAgnMultiplexScreen")) {
+          errors$aggregated_GI_computation_errors
+        } else {
+          errors$GI_computation_errors
+        }
+      )
     ),
     results = .screen_report_results(gi_obj)
   )

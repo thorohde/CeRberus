@@ -26,6 +26,7 @@ test_that("read_instructions reads a valid YAML instruction file", {
     screen_type = "multiplex",
     pos_agnostic = TRUE,
     symmetric_analysis_method = "global_preaverage",
+    retain_directional = TRUE,
     keep_all_configurations = TRUE,
     verbose = TRUE
   )
@@ -47,6 +48,7 @@ test_that("read_instructions reads a valid YAML instruction file", {
   expect_identical(result$screen_type, "multiplex")
   expect_true(result$pos_agnostic)
   expect_identical(result$symmetric_analysis_method, "global_preaverage")
+  expect_true(result$retain_directional)
   expect_true(result$keep_all_configurations)
   expect_true(result$verbose)
 })
@@ -212,6 +214,7 @@ test_that("read_instructions preserves position-agnostic pipeline defaults", {
   expect_false(result$pos_agnostic)
   expect_identical(result$screen_type, "auto")
   expect_identical(result$symmetric_analysis_method, "preaverage")
+  expect_false(result$retain_directional)
   expect_false(result$keep_all_configurations)
 })
 

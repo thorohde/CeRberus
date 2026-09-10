@@ -105,6 +105,10 @@ read_instructions <- function(yaml_fpath) {
 
   instr$overwrite_output <- as_bool(instr$overwrite_output, default = TRUE)
   instr$pos_agnostic <- as_bool(instr$pos_agnostic, default = FALSE)
+  instr$retain_directional <- as_bool(
+    instr$retain_directional,
+    default = FALSE
+  )
   instr$keep_all_configurations <- as_bool(
     instr$keep_all_configurations,
     default = FALSE
@@ -134,6 +138,7 @@ collect_all_layer_configurations <- function(
   pos_agnostic = FALSE,
   symmetric_analysis_method = "preaverage",
   non_targeting_controls = NULL,
+  retain_directional = FALSE,
   verbose = FALSE
 ) {
   screen_type <- match.arg(screen_type)
@@ -154,6 +159,7 @@ collect_all_layer_configurations <- function(
       pos_agnostic = pos_agnostic,
       symmetric_analysis_method = symmetric_analysis_method,
       non_targeting_controls = non_targeting_controls,
+      retain_directional = retain_directional,
       verbose = verbose
     )
   }
@@ -179,6 +185,7 @@ collect_all_layer_configurations <- function(
             pos_agnostic = pos_agnostic,
             symmetric_analysis_method = symmetric_analysis_method,
             non_targeting_controls = non_targeting_controls,
+            retain_directional = retain_directional,
             verbose = verbose
           )
         }

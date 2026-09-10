@@ -89,11 +89,13 @@ setClass("MultiplexScreen", contains = "ScreenBase")
 #'
 #' @description
 #' S4 class for multiplex screens analyzed without distinguishing query-library
-#' orientation in the final gene-pair output. Pair orientations are averaged
-#' before model fitting. Depending on the selected symmetric analysis method,
-#' limma models are fitted either per query gene or once across all unordered
-#' gene pairs.
+#' orientation in the final gene-pair output. Inherited multiplex slots retain
+#' directional data and results. Separate aggregate slots hold the symmetrized
+#' guide-level data and models used to construct the unordered-pair output.
 #'
+#' @slot aggregatedGuideGIs Symmetrized [`gRNA_GI-class`] guide-level data used
+#'   for position-agnostic fitting.
+#' @slot aggregatedLimmaModels Limma model(s) fitted to `aggregatedGuideGIs`.
 #' @slot symmGeneGIs Data table with one row per unordered gene pair.
 #'
 #' @keywords internal
@@ -102,8 +104,16 @@ setClass("MultiplexScreen", contains = "ScreenBase")
 setClass(
   "PosAgnMultiplexScreen",
   contains = "MultiplexScreen",
-  slots = list("symmGeneGIs" = "data.table"),
-  prototype = list(symmGeneGIs = data.table::data.table())
+  slots = list(
+    "aggregatedGuideGIs" = "gRNA_GI",
+    "aggregatedLimmaModels" = "list",
+    "symmGeneGIs" = "data.table"
+  ),
+  prototype = list(
+    aggregatedGuideGIs = new("gRNA_GI"),
+    aggregatedLimmaModels = list(),
+    symmGeneGIs = data.table::data.table()
+  )
 )
 
 

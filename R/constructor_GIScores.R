@@ -19,6 +19,10 @@
 #' used to construct covariates for downstream procedures such as IHW; CeRberus
 #' continues to apply the requested standard `p.adjust()` method internally.
 #'
+#' Position-agnostic output always preserves aggregate `GI`, `pval`, and `FDR`
+#' columns. With `retain_directional = TRUE`, it also includes directional
+#' `*_ab` and `*_ba` columns and explicit `*_aggregated` aliases.
+#'
 #' @param input A data frame or data.table containing guide-level GI scores.
 #' @param query_col Name of the column containing query-gene identifiers.
 #' @param lib_col Name of the column containing library-gene identifiers.
@@ -52,6 +56,12 @@
 #'   result to one row per unordered gene pair, and fits one limma model across
 #'   all unordered pairs. This argument is only used when
 #'   `pos_agnostic = TRUE`; directional analysis remains the default.
+#' @param retain_directional Logical. For position-agnostic multiplex screens,
+#'   if `TRUE`, also fit and retain directional results for both orientations of
+#'   each unordered gene pair. The default, `FALSE`, retains only aggregate
+#'   model results. Directional FDR values are adjusted within query genes;
+#'   aggregate FDR values use `balanced_fdr()` for `preaverage` and one global
+#'   `p.adjust()` across unordered pairs for `global_preaverage`.
 #' @param verbose Logical. If `TRUE`, print a short screen summary.
 #' @param non_targeting_controls Optional character vector of non-targeting
 #'   control gene identifiers. These are retained in the screen metadata for
@@ -78,7 +88,8 @@ GIScores <- function(
   verbose = FALSE,
   screen_type = c("auto", "fixed_pair", "multiplex"),
   lfc_col = NULL,
-  non_targeting_controls = NULL
+  non_targeting_controls = NULL,
+  retain_directional = FALSE
 ) {
   screen_type <- match.arg(screen_type)
 
@@ -141,6 +152,14 @@ GIScores <- function(
     )
   }
 
+  if (
+    !is.logical(retain_directional) ||
+      length(retain_directional) != 1L ||
+      is.na(retain_directional)
+  ) {
+    stop("retain_directional must be TRUE or FALSE.", call. = FALSE)
+  }
+
   gi_obj <- new(
     "ScreenBase",
     metadata = list(
@@ -154,7 +173,8 @@ GIScores <- function(
       lfc_col = lfc_col,
       non_targeting_controls = non_targeting_controls,
       requested_screen_type = screen_type,
-      symmetric_analysis_method = symmetric_analysis_method
+      symmetric_analysis_method = symmetric_analysis_method,
+      retain_directional = retain_directional
     )
   )
 
@@ -198,46 +218,33 @@ GIScores <- function(
       )
     }
 
-    gi_obj@guideGIs@data <- gi_obj@guideGIs@data[
+    aggregated_guide_gis <- gi_obj@guideGIs
+    aggregated_guide_gis@data <- aggregated_guide_gis@data[
       query_genes,
       query_genes,
       ,
       drop = FALSE
     ]
 
-    for (.r in gi_obj@guideGIs@block_description) {
-      gi_obj@guideGIs@data[,, .r] <- make_symmetric(
-        gi_obj@guideGIs@data[,, .r]
+    for (.r in aggregated_guide_gis@block_description) {
+      aggregated_guide_gis@data[,, .r] <- make_symmetric(
+        aggregated_guide_gis@data[,, .r]
       )
-
-      if (length(gi_obj@guideLFCs@data) > 0L) {
-        gi_obj@guideLFCs@data[,, .r] <- make_symmetric(
-          gi_obj@guideLFCs@data[,, .r]
-        )
-      }
     }
 
     if (identical(symmetric_analysis_method, "global_preaverage")) {
-      gi_obj@guideGIs@data <- flatten_symmetric_pairs(
-        .arr = gi_obj@guideGIs@data,
+      aggregated_guide_gis@data <- flatten_symmetric_pairs(
+        .arr = aggregated_guide_gis@data,
         pairs = gi_obj@screen_attr$unique_pairs
       )
-
-      if (length(gi_obj@guideLFCs@data) > 0L) {
-        gi_obj@guideLFCs@data <- flatten_symmetric_pairs(
-          .arr = gi_obj@guideLFCs@data,
-          pairs = gi_obj@screen_attr$unique_pairs
-        )
-      }
-
-      gi_obj@guideGIs@space <- "gene_pair"
-      gi_obj@guideLFCs@space <- "gene_pair"
+      aggregated_guide_gis@space <- "gene_pair"
     }
 
     gi_obj <- methods::as(
       object = gi_obj,
       Class = "PosAgnMultiplexScreen"
     )
+    gi_obj@aggregatedGuideGIs <- aggregated_guide_gis
   }
 
   if (isTRUE(verbose)) {

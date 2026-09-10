@@ -348,6 +348,12 @@ test_that("GIScores validates constructor options", {
         GIScores(make_fixed_pair_scores(), collapse_layers = "not_a_layer")
       },
       error = "not_a_layer"
+    ),
+    retain_directional = list(
+      call = function() {
+        GIScores(make_fixed_pair_scores(), retain_directional = "yes")
+      },
+      error = "retain_directional must be TRUE or FALSE"
     )
   )
 
@@ -375,6 +381,7 @@ test_that("GIScores preserves the legacy positional argument order", {
 
   expect_s4_class(result, "FixedPairScreen")
   expect_identical(result@metadata$requested_screen_type, "auto")
+  expect_false(result@metadata$retain_directional)
 })
 
 test_that("GIScores stores non-targeting controls in metadata", {
@@ -434,8 +441,10 @@ test_that("GIScores creates a position-agnostic symmetric multiplex screen", {
   )
 
   expect_s4_class(result, "PosAgnMultiplexScreen")
-  for (replicate_name in result@guideGIs@block_description) {
-    expect_true(isSymmetric(result@guideGIs@data[,, replicate_name]))
+  expect_false(result@metadata$retain_directional)
+  expect_s4_class(result@aggregatedGuideGIs, "gRNA_GI")
+  for (replicate_name in result@aggregatedGuideGIs@block_description) {
+    expect_true(isSymmetric(result@aggregatedGuideGIs@data[,, replicate_name]))
   }
   expect_identical(dim(result@guideLFCs@data), dim(result@guideGIs@data))
   expect_identical(
@@ -446,7 +455,19 @@ test_that("GIScores creates a position-agnostic symmetric multiplex screen", {
     input$GI[input$query_gene == "G1" & input$library_gene == "G2"],
     input$GI[input$query_gene == "G2" & input$library_gene == "G1"]
   ))
-  expect_equal(result@guideGIs@data["G1", "G2", 1], expected)
+  expect_equal(
+    result@guideGIs@data["G1", "G2", 1],
+    input$GI[input$query_gene == "G1" & input$library_gene == "G2"]
+  )
+  expect_equal(result@aggregatedGuideGIs@data["G1", "G2", 1], expected)
+
+  retained <- GIScores(
+    input,
+    pos_agnostic = TRUE,
+    retain_directional = TRUE,
+    block_layer = "guide_pair"
+  )
+  expect_true(retained@metadata$retain_directional)
 })
 
 test_that("GIScores creates a global position-agnostic pair matrix", {
@@ -468,18 +489,19 @@ test_that("GIScores creates a global position-agnostic pair matrix", {
     result@metadata$symmetric_analysis_method,
     "global_preaverage"
   )
-  expect_identical(result@guideGIs@space, "gene_pair")
+  expect_identical(result@guideGIs@space, c("query_gene", "library_gene"))
+  expect_identical(result@aggregatedGuideGIs@space, "gene_pair")
   expect_equal(
-    rownames(result@guideGIs@data),
+    rownames(result@aggregatedGuideGIs@data),
     result@screen_attr$unique_pairs
   )
   expect_equal(
-    ncol(result@guideGIs@data),
-    length(result@guideGIs@block_description)
+    ncol(result@aggregatedGuideGIs@data),
+    length(result@aggregatedGuideGIs@block_description)
   )
   expect_equal(
-    length(result@guideGIs@blocks),
-    ncol(result@guideGIs@data)
+    length(result@aggregatedGuideGIs@blocks),
+    ncol(result@aggregatedGuideGIs@data)
   )
 
   expected <- mean(c(
@@ -487,7 +509,7 @@ test_that("GIScores creates a global position-agnostic pair matrix", {
     input$GI[input$query_gene == "G2" & input$library_gene == "G1"]
   ))
 
-  expect_equal(result@guideGIs@data["G1;G2", 1L], expected)
+  expect_equal(result@aggregatedGuideGIs@data["G1;G2", 1L], expected)
   expect_identical(result@guideLFCs@space, result@guideGIs@space)
   expect_identical(dim(result@guideLFCs@data), dim(result@guideGIs@data))
   expect_identical(

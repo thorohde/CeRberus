@@ -61,12 +61,26 @@ setGeneric("geneGIs<-", function(x, value) standardGeneric("geneGIs<-"))
 setGeneric("guideGIs", function(x) standardGeneric("guideGIs"))
 setGeneric("guideGIs<-", function(x, value) standardGeneric("guideGIs<-"))
 
+setGeneric("aggregatedGuideGIs", function(x) {
+  standardGeneric("aggregatedGuideGIs")
+})
+setGeneric("aggregatedGuideGIs<-", function(x, value) {
+  standardGeneric("aggregatedGuideGIs<-")
+})
+
 setGeneric("guideLFCs", function(x) standardGeneric("guideLFCs"))
 setGeneric("guideLFCs<-", function(x, value) standardGeneric("guideLFCs<-"))
 
 setGeneric("limma_models", function(x) standardGeneric("limma_models"))
 setGeneric("limma_models<-", function(x, value) {
   standardGeneric("limma_models<-")
+})
+
+setGeneric("aggregatedLimmaModels", function(x) {
+  standardGeneric("aggregatedLimmaModels")
+})
+setGeneric("aggregatedLimmaModels<-", function(x, value) {
+  standardGeneric("aggregatedLimmaModels<-")
 })
 
 setGeneric("screen_attr", function(x) standardGeneric("screen_attr"))

@@ -258,8 +258,10 @@ test_that("screen_report identifies screen classes and counts model strategies",
   global_fit <- limma::lmFit(matrix(c(1, 2, 3, 4), nrow = 2L))
   global_screen <- make_screen_for_report(
     class = "PosAgnMultiplexScreen",
-    limma_models = global_fit
+    limma_models = list()
   )
+  global_screen@aggregatedGuideGIs <- global_screen@guideGIs
+  global_screen@aggregatedLimmaModels <- global_fit
   global_screen@metadata$symmetric_analysis_method <- "global_preaverage"
   cases <- list(
     FixedPairScreen = list(
@@ -309,6 +311,23 @@ test_that("screen_report identifies screen classes and counts model strategies",
       info = class
     )
   })
+})
+
+test_that("screen_report exposes position-agnostic multiple-testing scopes", {
+  multiple_testing <- list(
+    method = "BH",
+    directional = list(retained = TRUE, scope = "within_query_gene"),
+    aggregated = list(scope = "balanced_fdr")
+  )
+  screen <- make_screen_for_report(
+    class = "PosAgnMultiplexScreen",
+    metadata = list(multiple_testing = multiple_testing)
+  ) |>
+    add_screen_report_results()
+
+  report <- screen_report(screen, print = FALSE)
+
+  expect_identical(report$results$multiple_testing, multiple_testing)
 })
 
 test_that("screen_report summarizes results for every supported screen class", {

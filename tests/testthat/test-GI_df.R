@@ -191,7 +191,16 @@ test_that("gi_df returns symmetrized data for position-agnostic multiplex screen
     GI = c(0.4, -0.5),
     GI_z = c(1.2, -1.4),
     pval = c(0.01, 0.02),
-    FDR = c(0.03, 0.04)
+    FDR = c(0.03, 0.04),
+    GI_ab = c(0.3, -0.4),
+    pval_ab = c(0.02, 0.03),
+    FDR_ab = c(0.04, 0.05),
+    GI_ba = c(0.5, -0.6),
+    pval_ba = c(0.04, 0.05),
+    FDR_ba = c(0.06, 0.07),
+    GI_aggregated = c(0.4, -0.5),
+    pval_aggregated = c(0.01, 0.02),
+    FDR_aggregated = c(0.03, 0.04)
   )
   screen <- make_screen_for_gi_df(
     "PosAgnMultiplexScreen",
@@ -203,6 +212,9 @@ test_that("gi_df returns symmetrized data for position-agnostic multiplex screen
 
   expect_s3_class(result, "data.table")
   expect_equal(result, symmGeneGIs)
+  expect_equal(result$GI, result$GI_aggregated)
+  expect_equal(result$pval, result$pval_aggregated)
+  expect_equal(result$FDR, result$FDR_aggregated)
 })
 
 test_that("gi_df appends stored NTC annotations for every result shape", {

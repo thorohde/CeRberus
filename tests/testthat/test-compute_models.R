@@ -23,7 +23,9 @@ make_compute_models_screen <- function(
   dupCorrelation,
   screen_attr = methods::new("ScreenDesign"),
   metadata = list(),
-  symmGeneGIs = data.table::data.table()
+  symmGeneGIs = data.table::data.table(),
+  aggregatedGuideGIs = guideGIs,
+  aggregatedLimmaModels = list()
 ) {
   args <- list(
     Class = class,
@@ -44,6 +46,8 @@ make_compute_models_screen <- function(
   )
 
   if (identical(class, "PosAgnMultiplexScreen")) {
+    args$aggregatedGuideGIs <- aggregatedGuideGIs
+    args$aggregatedLimmaModels <- aggregatedLimmaModels
     args$symmGeneGIs <- symmGeneGIs
   }
 
@@ -191,10 +195,14 @@ test_that("compute_models fits one global model for global_preaverage screens", 
   result <- compute_models(screen)
 
   expect_s4_class(result, "PosAgnMultiplexScreen")
-  expect_true(inherits(result@limma_models, "MArrayLM"))
-  expect_equal(rownames(result@limma_models$coefficients), rownames(data))
-  expect_equal(nrow(result@limma_models$coefficients), nrow(data))
-  expect_equal(nrow(result@limma_models$p.value), nrow(data))
+  expect_length(result@limma_models, 0L)
+  expect_true(inherits(result@aggregatedLimmaModels, "MArrayLM"))
+  expect_equal(
+    rownames(result@aggregatedLimmaModels$coefficients),
+    rownames(data)
+  )
+  expect_equal(nrow(result@aggregatedLimmaModels$coefficients), nrow(data))
+  expect_equal(nrow(result@aggregatedLimmaModels$p.value), nrow(data))
 })
 
 
@@ -218,8 +226,42 @@ test_that("compute_models retains per-query models for preaverage screens", {
   result <- compute_models(screen)
 
   expect_s4_class(result, "PosAgnMultiplexScreen")
+  expect_length(result@limma_models, 0L)
+  expect_named(result@aggregatedLimmaModels, c("Q1", "Q2"))
+  expect_true(all(purrr::map_lgl(
+    result@aggregatedLimmaModels,
+    inherits,
+    "MArrayLM"
+  )))
+})
+
+test_that("compute_models retains directional models only on request", {
+  data <- make_multiplex_model_array()
+  guideGIs <- make_gRNA_GI_for_compute_models(
+    data = data,
+    space = c("query_gene", "library_gene")
+  )
+  screen <- make_compute_models_screen(
+    class = "PosAgnMultiplexScreen",
+    guideGIs = guideGIs,
+    dupCorrelation = c(Q1 = 0.05, Q2 = 0.1),
+    screen_attr = make_screen_design(
+      query_genes = c("Q1", "Q2"),
+      library_genes = c("L1", "L2", "L3")
+    ),
+    metadata = list(retain_directional = TRUE)
+  )
+
+  result <- compute_models(screen)
+
   expect_named(result@limma_models, c("Q1", "Q2"))
+  expect_named(result@aggregatedLimmaModels, c("Q1", "Q2"))
   expect_true(all(purrr::map_lgl(result@limma_models, inherits, "MArrayLM")))
+  expect_true(all(purrr::map_lgl(
+    result@aggregatedLimmaModels,
+    inherits,
+    "MArrayLM"
+  )))
 })
 
 test_that("compute_models stores failed multiplex query models and warns", {

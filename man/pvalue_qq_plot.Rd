@@ -37,7 +37,7 @@ needed.}
 \item{caption}{Optional caption prepended to the genomic inflation summary.}
 }
 \value{
-The modified \code{ScreenBase} object.
+The modified \code{PosAgnMultiplexScreen} object.
 }
 \description{
 Creates a Q-Q plot from gene-pair p-values and stores the plot, plotting

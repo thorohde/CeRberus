@@ -77,6 +77,7 @@ with_mocked_full_run_pipeline <- function(
   calls$pos_agnostic <- NULL
   calls$symmetric_analysis_method <- NULL
   calls$non_targeting_controls <- NULL
+  calls$retain_directional <- NULL
   calls$collect_verbose <- NULL
   calls$plot_path <- NULL
   calls$plot_verbose <- NULL
@@ -93,6 +94,7 @@ with_mocked_full_run_pipeline <- function(
       pos_agnostic,
       symmetric_analysis_method = "preaverage",
       non_targeting_controls = NULL,
+      retain_directional = FALSE,
       verbose = FALSE
     ) {
       if (!is.null(inspect_output_directory)) {
@@ -107,6 +109,7 @@ with_mocked_full_run_pipeline <- function(
       calls$pos_agnostic <- pos_agnostic
       calls$symmetric_analysis_method <- symmetric_analysis_method
       calls$non_targeting_controls <- non_targeting_controls
+      calls$retain_directional <- retain_directional
       calls$collect_verbose <- verbose
       list(
         default_guide_pair_used = make_full_run_screen(
@@ -207,7 +210,8 @@ test_that("full_run reads supported score files and forwards pipeline options", 
       verbose = TRUE,
       screen_type = "fixed_pair",
       pos_agnostic = TRUE,
-      symmetric_analysis_method = "preaverage"
+      symmetric_analysis_method = "preaverage",
+      retain_directional = TRUE
     )
     calls <- new.env(parent = emptyenv())
 
@@ -227,6 +231,7 @@ test_that("full_run reads supported score files and forwards pipeline options", 
       "preaverage",
       info = extension
     )
+    expect_true(calls$retain_directional, info = extension)
     expect_true(calls$collect_verbose, info = extension)
     expect_equal(calls$fdr_method, "bonferroni", info = extension)
     expect_null(calls$plot_verbose, info = extension)
@@ -298,15 +303,16 @@ test_that("full_run preserves output directories when overwrite is disabled", {
   })
 })
 
-test_that("full_run empties the output directory before overwriting", {
-  scores_file <- tempfile(fileext = ".csv")
+test_that("full_run removes previous outputs and preserves other output files", {
   output_directory <- tempfile("full-run-output-")
-  yaml_fpath <- tempfile(fileext = ".yaml")
+  yaml_fpath <- file.path(output_directory, "instructions.yaml")
+  scores_file <- file.path(output_directory, "scores.csv")
   dir.create(file.path(output_directory, "nested"), recursive = TRUE)
   file.create(
     file.path(output_directory, "stale.csv"),
     file.path(output_directory, ".hidden"),
-    file.path(output_directory, "nested", "stale.txt")
+    file.path(output_directory, "nested", "stale.txt"),
+    file.path(output_directory, "CeRberus_error.log")
   )
   data.table::fwrite(make_full_run_scores(), scores_file)
   write_full_run_instructions(
@@ -323,50 +329,20 @@ test_that("full_run empties the output directory before overwriting", {
     inspect_output_directory = output_directory
   )
 
-  expect_identical(calls$output_contents_at_collection, character())
-  expect_false(file.exists(file.path(output_directory, "stale.csv")))
-  expect_false(file.exists(file.path(output_directory, ".hidden")))
-  expect_false(dir.exists(file.path(output_directory, "nested")))
+  expect_setequal(
+    calls$output_contents_at_collection,
+    c("scores.csv", "instructions.yaml", "nested", "stale.csv", ".hidden")
+  )
+  expect_true(file.exists(scores_file))
+  expect_true(file.exists(yaml_fpath))
+  expect_true(file.exists(file.path(output_directory, "stale.csv")))
+  expect_true(file.exists(file.path(output_directory, ".hidden")))
+  expect_true(file.exists(file.path(output_directory, "nested", "stale.txt")))
+  expect_false(file.exists(file.path(output_directory, "CeRberus_error.log")))
   expect_true(file.exists(file.path(
     output_directory,
     "GI_scores_default_guide_pair_used.csv"
   )))
-})
-
-test_that("full_run refuses to delete input files inside the output directory", {
-  output_directory <- tempfile("full-run-output-")
-  yaml_fpath <- tempfile(fileext = ".yaml")
-  dir.create(output_directory)
-  scores_file <- file.path(output_directory, "scores.csv")
-  data.table::fwrite(make_full_run_scores(), scores_file)
-  write_full_run_instructions(
-    yaml_fpath,
-    scores_file = scores_file,
-    output_directory = output_directory,
-    overwrite_output = TRUE
-  )
-
-  expect_error(full_run(yaml_fpath), "contains: scores_file", fixed = TRUE)
-  expect_true(file.exists(scores_file))
-
-  second_output_directory <- tempfile("full-run-output-")
-  dir.create(second_output_directory)
-  second_yaml_fpath <- file.path(second_output_directory, "instructions.yaml")
-  scores_file <- tempfile(fileext = ".csv")
-  data.table::fwrite(make_full_run_scores(), scores_file)
-  write_full_run_instructions(
-    second_yaml_fpath,
-    scores_file = scores_file,
-    output_directory = second_output_directory,
-    overwrite_output = TRUE
-  )
-
-  expect_error(
-    full_run(second_yaml_fpath),
-    "contains: instruction_file",
-    fixed = TRUE
-  )
-  expect_true(file.exists(second_yaml_fpath))
 })
 
 test_that("full_run refuses to empty a filesystem root", {

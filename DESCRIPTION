@@ -28,29 +28,28 @@ Collate:
     'full_run.R'
     'generics.R'
     'globals.R'
-    'utils_ntc.R'
     'methods_gRNA_GI.R'
     'methods_gRNA_LFC.R'
-    'methods_ScreenDesign.R'
     'methods_ScreenBase.R'
     'methods_ScreenBase_screen_report.R'
+    'methods_ScreenDesign.R'
     'normalize_readcounts.R'
     'remove_PCs.R'
     'sort_gene_pairs.R'
+    'utils_ntc.R'
     'utils_pipeline_config.R'
     'utils_plots.R'
     'utils_symmetry.R'
     'z_transform.R'
+Config/roxygen2/version: 8.1.0
 Imports: 
     abind,
     data.table,
+    dplyr,
     ggplot2,
     limma,
     methods,
     purrr,
     reshape2,
-    stats,
     stringr,
-    utils,
     yaml
-Config/roxygen2/version: 8.1.0

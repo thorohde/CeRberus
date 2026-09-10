@@ -57,8 +57,8 @@ setMethod(
   "flatten_guide_gis",
   signature = signature(.x = "gRNA_GI"),
   function(.x) {
-    .x@use_blocks <- .x@block_layer != "" &
-      length(.x@block_layer) > 0 &
+    .x@use_blocks <- length(.x@block_layer) == 1L &&
+      nzchar(.x@block_layer) &&
       length(setdiff(.x@replicates, .x@block_layer)) != 0
 
     .f <- as.formula(paste0(
@@ -73,7 +73,12 @@ setMethod(
 
     .x@block_description <- dimnames(.x@data)[[length(.x@space) + 1]]
 
-    if (length(.x@blocks) != 1 && !identical(.x@blocks, "none")) {
+    if (
+      length(.x@block_layer) == 1L &&
+        nzchar(.x@block_layer) &&
+        length(.x@blocks) != 1L &&
+        !identical(.x@blocks, "none")
+    ) {
       .x@blocks <- c(
         guide_pair = "(g\\d+)",
         bio_rep = "(b\\d+)",

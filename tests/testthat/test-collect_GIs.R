@@ -34,6 +34,8 @@ make_collect_screen <- function(
   screen_attr = methods::new("ScreenDesign"),
   metadata = list(),
   symmGeneGIs = data.table::data.table(),
+  aggregatedGuideGIs = guideGIs,
+  aggregatedLimmaModels = limma_models,
   guideLFCs = methods::new(
     "gRNA_LFC",
     data = array(numeric(), dim = 0),
@@ -55,6 +57,8 @@ make_collect_screen <- function(
   )
 
   if (identical(class, "PosAgnMultiplexScreen")) {
+    args$aggregatedGuideGIs <- aggregatedGuideGIs
+    args$aggregatedLimmaModels <- aggregatedLimmaModels
     args$symmGeneGIs <- symmGeneGIs
   }
 
@@ -281,12 +285,126 @@ test_that("collect_gis creates symmetrized output for position-agnostic multiple
     result@symmGeneGIs$FDR,
     balanced_fdr(
       pairs = c("A;B", "A;C", "B;C"),
-      pval_array = result@geneGIs[,, "pval"],
+      pval_array = matrix(
+        c(0.50, 0.03, 0.05, 0.01, 0.50, 0.06, 0.02, 0.04, 0.50),
+        nrow = 3L,
+        dimnames = list(c("A", "B", "C"), c("A", "B", "C"))
+      ),
       fdr_method = "BH"
     )
   )
+  expect_length(result@geneGIs, 0L)
   expect_identical(result@metadata$fdr_method, "BH")
+  expect_identical(
+    result@metadata$multiple_testing$aggregated$scope,
+    "balanced_fdr"
+  )
   expect_equal(result@symmGeneGIs$GI_z, z_transform(c(0.2, 0.4, 0.5)))
+})
+
+test_that("collect_gis retains canonical directional and aggregate results", {
+  guide_data <- make_multiplex_collect_data()
+  directional_models <- list(
+    A = make_collect_model(c("A", "B", "C"), c(0, 0.2, 0.4), c(0.50, 0.01, 0.02)),
+    B = make_collect_model(c("A", "B", "C"), c(0.3, 0, 0.5), c(0.03, 0.50, 0.04)),
+    C = make_collect_model(c("A", "B", "C"), c(0.6, 0.7, 0), c(0.05, 0.06, 0.50))
+  )
+  aggregate_models <- list(
+    A = make_collect_model(c("A", "B", "C"), c(0, 0.21, 0.41), c(0.50, 0.11, 0.12)),
+    B = make_collect_model(c("A", "B", "C"), c(0.31, 0, 0.51), c(0.13, 0.50, 0.14)),
+    C = make_collect_model(c("A", "B", "C"), c(0.61, 0.71, 0), c(0.15, 0.16, 0.50))
+  )
+  screen <- make_collect_screen(
+    class = "PosAgnMultiplexScreen",
+    guideGIs = make_collect_guideGIs(
+      guide_data,
+      space = c("query_gene", "library_gene")
+    ),
+    limma_models = directional_models,
+    aggregatedLimmaModels = aggregate_models,
+    screen_attr = make_screen_design(
+      query_genes = c("A", "B", "C"),
+      library_genes = c("A", "B", "C"),
+      all_pairs = c("A;B", "A;C", "B;C")
+    ),
+    metadata = list(retain_directional = TRUE)
+  )
+
+  result <- collect_gis(screen, fdr_method = "BH")
+
+  expect_equal(result@symmGeneGIs$GI_ab, c(0.2, 0.4, 0.5))
+  expect_equal(result@symmGeneGIs$GI_ba, c(0.3, 0.6, 0.7))
+  expect_equal(result@symmGeneGIs$GI_aggregated, c(0.21, 0.41, 0.51))
+  expect_equal(result@symmGeneGIs$GI, result@symmGeneGIs$GI_aggregated)
+  expect_equal(result@symmGeneGIs$pval, result@symmGeneGIs$pval_aggregated)
+  expect_equal(result@symmGeneGIs$FDR, result@symmGeneGIs$FDR_aggregated)
+  expect_equal(
+    result@symmGeneGIs$FDR_ab,
+    c(
+      stats::p.adjust(c(0.50, 0.01, 0.02), method = "BH")[2L],
+      stats::p.adjust(c(0.50, 0.01, 0.02), method = "BH")[3L],
+      stats::p.adjust(c(0.03, 0.50, 0.04), method = "BH")[3L]
+    )
+  )
+  expect_equal(
+    result@symmGeneGIs$FDR_ba,
+    c(
+      stats::p.adjust(c(0.03, 0.50, 0.04), method = "BH")[1L],
+      stats::p.adjust(c(0.05, 0.06, 0.50), method = "BH")[1L],
+      stats::p.adjust(c(0.05, 0.06, 0.50), method = "BH")[2L]
+    )
+  )
+  expect_equal(
+    result@symmGeneGIs$FDR_aggregated,
+    balanced_fdr(
+      pairs = c("A;B", "A;C", "B;C"),
+      pval_array = matrix(
+        c(0.50, 0.13, 0.15, 0.11, 0.50, 0.16, 0.12, 0.14, 0.50),
+        nrow = 3L,
+        dimnames = list(c("A", "B", "C"), c("A", "B", "C"))
+      ),
+      fdr_method = "BH"
+    )
+  )
+  expect_equal(dim(result@geneGIs), c(3L, 3L, 3L))
+  expect_true(result@metadata$multiple_testing$directional$retained)
+})
+
+test_that("collect_gis preserves aggregate results when a directional fit fails", {
+  guide_data <- make_multiplex_collect_data()
+  directional_models <- list(
+    A = make_collect_model(c("A", "B", "C"), c(0, 0.2, 0.4), c(0.50, 0.01, 0.02)),
+    B = NULL,
+    C = make_collect_model(c("A", "B", "C"), c(0.6, 0.7, 0), c(0.05, 0.06, 0.50))
+  )
+  aggregate_models <- directional_models
+  aggregate_models$B <- make_collect_model(
+    c("A", "B", "C"),
+    c(0.3, 0, 0.5),
+    c(0.03, 0.50, 0.04)
+  )
+  screen <- make_collect_screen(
+    class = "PosAgnMultiplexScreen",
+    guideGIs = make_collect_guideGIs(
+      guide_data,
+      space = c("query_gene", "library_gene")
+    ),
+    limma_models = directional_models,
+    aggregatedLimmaModels = aggregate_models,
+    screen_attr = make_screen_design(
+      query_genes = c("A", "B", "C"),
+      library_genes = c("A", "B", "C"),
+      all_pairs = c("A;B", "A;C", "B;C")
+    ),
+    metadata = list(retain_directional = TRUE)
+  )
+
+  result <- collect_gis(screen)
+
+  expect_true(is.na(result@symmGeneGIs[gene_pair == "A;B", GI_ba]))
+  expect_true(is.na(result@symmGeneGIs[gene_pair == "B;C", GI_ab]))
+  expect_true(is.finite(result@symmGeneGIs[gene_pair == "A;B", GI]))
+  expect_true(is.finite(result@symmGeneGIs[gene_pair == "B;C", GI]))
 })
 
 
@@ -343,11 +461,11 @@ test_that("collect_gis applies one global FDR correction in canonical pair order
   expect_equal(result@symmGeneGIs$FDR, expected_fdr)
   expect_equal(result@symmGeneGIs$GI_z, z_transform(coefficients))
 
-  expect_equal(rownames(result@geneGIs), pairs)
-  expect_equal(colnames(result@geneGIs), c("GI", "pval", "FDR"))
-  expect_equal(unname(result@geneGIs[, "GI"]), coefficients)
-  expect_equal(unname(result@geneGIs[, "pval"]), pvalues)
-  expect_equal(unname(result@geneGIs[, "FDR"]), expected_fdr)
+  expect_length(result@geneGIs, 0L)
+  expect_identical(
+    result@metadata$multiple_testing$aggregated$scope,
+    "global_unordered_pairs"
+  )
 })
 
 test_that("position-agnostic output merges positional main effects equally", {

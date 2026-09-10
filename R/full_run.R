@@ -8,10 +8,10 @@
 #'   `return_output = TRUE`; otherwise `NULL`.
 #'
 #' @details
-#' When `overwrite_output = TRUE`, `full_run()` clears existing contents from
-#' `output_directory` before starting the analysis and then writes the outputs
-#' from the current run. The scores and instruction files must be located
-#' outside `output_directory`. When `overwrite_output = FALSE`, existing
+#' When `overwrite_output = TRUE`, `full_run()` removes outputs from previous
+#' CeRberus runs before starting the analysis and then writes outputs from the
+#' current run. Other files in `output_directory`, including the scores and
+#' instruction files, are preserved. When `overwrite_output = FALSE`, existing
 #' directory contents are preserved and no output files are written.
 #'
 #' The pipeline writes one combined `screen_report.yaml` file. It records the
@@ -45,35 +45,6 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
       )
     }
 
-    .output_path <- normalizePath(
-      .output_dir,
-      winslash = "/",
-      mustWork = FALSE
-    )
-    .protected_paths <- vapply(
-      c(scores_file = instr$scores_file, instruction_file = yaml_fpath),
-      normalizePath,
-      character(1),
-      winslash = "/",
-      mustWork = TRUE
-    )
-
-    if (.Platform$OS.type == "windows") {
-      .output_path <- tolower(.output_path)
-      .protected_paths <- tolower(.protected_paths)
-    }
-
-    .protected_inside_output <- .protected_paths == .output_path |
-      startsWith(.protected_paths, paste0(.output_path, "/"))
-    if (any(.protected_inside_output)) {
-      stop(
-        "Refusing to empty output_directory because it contains: ",
-        paste(names(.protected_paths)[.protected_inside_output], collapse = ", "),
-        ".",
-        call. = FALSE
-      )
-    }
-
     if (file.exists(.output_dir) && !dir.exists(.output_dir)) {
       stop("output_directory exists but is not a directory.", call. = FALSE)
     }
@@ -85,9 +56,21 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
         full.names = TRUE,
         no.. = TRUE
       )
-      if (length(.output_contents) > 0L &&
-        unlink(.output_contents, recursive = TRUE, force = TRUE) != 0L) {
-        stop("Failed to empty output_directory.", call. = FALSE)
+      .managed_outputs <- basename(.output_contents)[
+        basename(.output_contents) %in% c(
+          "all_GI_objects.rds",
+          "duplicateCorrelationPlot.png",
+          "screen_report.yaml",
+          "CeRberus.log",
+          "CeRberus_error.log"
+        ) |
+          grepl("^GI_scores_.*\\.csv$", basename(.output_contents)) |
+          grepl("^pvalueQQPlot_.*\\.png$", basename(.output_contents))
+      ]
+      .managed_paths <- file.path(.output_dir, .managed_outputs)
+      if (length(.managed_paths) > 0L &&
+        unlink(.managed_paths, recursive = TRUE, force = TRUE) != 0L) {
+        stop("Failed to remove previous CeRberus outputs.", call. = FALSE)
       }
     }
   }
@@ -199,6 +182,7 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
         pos_agnostic = instr$pos_agnostic,
         symmetric_analysis_method = instr$symmetric_analysis_method,
         non_targeting_controls = instr$non_targeting_controls,
+        retain_directional = instr$retain_directional,
         verbose = instr$verbose
       )
 

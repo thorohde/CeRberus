@@ -204,25 +204,40 @@ test_that("compute_dup_correlation for ScreenBase stores the guide-level duplica
 })
 
 
-test_that("global_preaverage computes one duplicate correlation over all pairs", {
+test_that("global_preaverage computes directional and aggregate duplicate correlations", {
   screen <- GIScores(
     make_global_dupCorrelation_scores(),
     pos_agnostic = TRUE,
     symmetric_analysis_method = "global_preaverage",
     block_layer = "guide_pair"
   )
-  expected_data <- screen@guideGIs@data
-  expected_blocks <- screen@guideGIs@blocks
+  directional_data <- screen@guideGIs@data
+  directional_blocks <- screen@guideGIs@blocks
+  aggregate_data <- screen@aggregatedGuideGIs@data
+  aggregate_blocks <- screen@aggregatedGuideGIs@blocks
+  directional_correlations <- stats::setNames(
+    seq_along(rownames(directional_data)) / 100,
+    rownames(directional_data)
+  )
 
   mocked <- with_mocked_duplicateCorrelation(
     compute_dup_correlation(screen),
-    correlations = list(0.321)
+    correlations = as.list(c(directional_correlations, 0.321))
   )
 
   expect_s4_class(mocked$result, "PosAgnMultiplexScreen")
-  expect_equal(mocked$result@dupCorrelation, 0.321)
-  expect_length(mocked$calls, 1L)
-  expect_equal(mocked$calls[[1L]]$object, expected_data)
-  expect_equal(mocked$calls[[1L]]$block, expected_blocks)
-  expect_null(mocked$calls[[1L]]$ndups)
+  expect_equal(mocked$result@dupCorrelation, directional_correlations)
+  expect_equal(mocked$result@metadata$aggregated_dupCorrelation, 0.321)
+  expect_length(mocked$calls, length(directional_correlations) + 1L)
+
+  purrr::iwalk(rownames(directional_data), function(query, index) {
+    expect_equal(mocked$calls[[index]]$object, directional_data[query, , ])
+    expect_equal(mocked$calls[[index]]$block, directional_blocks)
+    expect_null(mocked$calls[[index]]$ndups)
+  })
+
+  aggregate_index <- length(directional_correlations) + 1L
+  expect_equal(mocked$calls[[aggregate_index]]$object, aggregate_data)
+  expect_equal(mocked$calls[[aggregate_index]]$block, aggregate_blocks)
+  expect_null(mocked$calls[[aggregate_index]]$ndups)
 })

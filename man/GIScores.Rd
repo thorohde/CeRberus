@@ -19,7 +19,9 @@ GIScores(
   symmetric_analysis_method = "preaverage",
   verbose = FALSE,
   screen_type = c("auto", "fixed_pair", "multiplex"),
-  lfc_col = NULL
+  lfc_col = NULL,
+  non_targeting_controls = NULL,
+  retain_directional = FALSE
 )
 }
 \arguments{
@@ -71,6 +73,17 @@ If \code{NULL}, a column named \code{LFC} is used when present. If no such colum
 present, the returned object's guide-level LFC container remains empty.
 Supplied LFCs also trigger automatic positional gene main-effect
 computation for every screen design.}
+
+\item{non_targeting_controls}{Optional character vector of non-targeting
+control gene identifiers. These are retained in the screen metadata for
+downstream result labeling and p-value calibration.}
+
+\item{retain_directional}{Logical. For position-agnostic multiplex screens,
+if \code{TRUE}, also fit and retain directional results for both orientations of
+each unordered gene pair. The default, \code{FALSE}, retains only aggregate
+model results. Directional FDR values are adjusted within query genes;
+aggregate FDR values use \code{balanced_fdr()} for \code{preaverage} and one global
+\code{p.adjust()} across unordered pairs for \code{global_preaverage}.}
 }
 \value{
 An S4 object inheriting from \code{ScreenBase}, typically a
@@ -94,4 +107,8 @@ results instead contain \code{gene1_main_effect} and \code{gene2_main_effect}, b
 the equal mean of each gene's query and library effects. These columns can be
 used to construct covariates for downstream procedures such as IHW; CeRberus
 continues to apply the requested standard \code{p.adjust()} method internally.
+
+Position-agnostic output always preserves aggregate \code{GI}, \code{pval}, and \code{FDR}
+columns. With \code{retain_directional = TRUE}, it also includes directional
+\verb{*_ab} and \verb{*_ba} columns and explicit \verb{*_aggregated} aliases.
 }

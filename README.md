@@ -158,10 +158,11 @@ The YAML instruction file controls the pipeline run.
 | parameter | description | default |
 |---|---|---|
 | `FDR` | Multiple-testing correction method. Currently supported: `BH`, `bonferroni` | `BH` |
-| `overwrite_output` | Whether to clear `output_directory` before analysis and write outputs from the current run | `TRUE` |
+| `overwrite_output` | Whether to remove outputs from previous CeRberus runs before analysis and write outputs from the current run | `TRUE` |
 | `screen_type` | Screen structure: `auto`, `fixed_pair`, or `multiplex` | `auto` |
 | `pos_agnostic` | Average both orientations for position-agnostic multiplex analysis | `FALSE` |
 | `symmetric_analysis_method` | Position-agnostic strategy: `preaverage` or `global_preaverage` | `preaverage` |
+| `retain_directional` | For position-agnostic multiplex runs, additionally fit and export `A -> B` and `B -> A` results alongside the aggregate result | `FALSE` |
 | `keep_all_configurations` | Keep all tested replicate/blocking configurations instead of only the selected one | `FALSE` |
 | `verbose` | Print additional progress information and screen summaries | `FALSE` |
 
@@ -175,9 +176,18 @@ overwrite_output: true
 screen_type: "auto"
 pos_agnostic: false
 symmetric_analysis_method: "preaverage"
+retain_directional: false
 keep_all_configurations: false
 verbose: false
 ```
+
+With `pos_agnostic: true`, the default output contains one aggregate result per
+unordered pair. Set `retain_directional: true` to additionally export
+`*_ab` and `*_ba` directional columns and explicit `*_aggregated` columns;
+the legacy `GI`, `pval`, and `FDR` columns remain aggregate aliases. Directional
+FDR values are adjusted within query genes. Aggregate FDR uses `balanced_fdr()`
+with `preaverage`, or one global correction across unordered pairs with
+`global_preaverage`.
 
 ## Input data format
 
@@ -232,10 +242,10 @@ CeRberus follows this general procedure:
 
 ## Output
 
-When `overwrite_output = TRUE`, CeRberus clears all existing contents from
-`output_directory` before starting the analysis and writes the outputs from the
-current run. The scores file and YAML instruction file must be located outside
-`output_directory`. Outputs can include:
+When `overwrite_output = TRUE`, CeRberus removes outputs from previous
+CeRberus runs before starting the analysis and writes outputs from the current
+run. Other files in `output_directory`, including the scores file and YAML
+instruction file, are preserved. Outputs can include:
 
 - `all_GI_objects.rds` — intermediate CeRberus screen objects before final selection
 - `duplicateCorrelationPlot.png` — duplicate-correlation summary plot

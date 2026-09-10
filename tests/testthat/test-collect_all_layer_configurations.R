@@ -32,6 +32,7 @@ with_mocked_GIScores <- function(code, calls = new.env(parent = emptyenv())) {
       pos_agnostic = FALSE,
       symmetric_analysis_method = "preaverage",
       non_targeting_controls = NULL,
+      retain_directional = FALSE,
       verbose = FALSE,
       ...
     ) {
@@ -43,6 +44,7 @@ with_mocked_GIScores <- function(code, calls = new.env(parent = emptyenv())) {
         pos_agnostic = pos_agnostic,
         symmetric_analysis_method = symmetric_analysis_method,
         non_targeting_controls = non_targeting_controls,
+        retain_directional = retain_directional,
         verbose = verbose
       )
 
@@ -53,6 +55,7 @@ with_mocked_GIScores <- function(code, calls = new.env(parent = emptyenv())) {
         pos_agnostic = pos_agnostic,
         symmetric_analysis_method = symmetric_analysis_method,
         non_targeting_controls = non_targeting_controls,
+        retain_directional = retain_directional,
         verbose = verbose
       )
     },
@@ -134,6 +137,21 @@ test_that("collect_all_layer_configurations propagates non-targeting controls", 
     calls$args,
     ~ identical(.x$non_targeting_controls, c("NTC_1", "NTC_2"))
   )))
+})
+
+test_that("collect_all_layer_configurations propagates directional retention", {
+  scores <- make_layer_configuration_scores(include = "guide_pair")
+  calls <- new.env(parent = emptyenv())
+
+  with_mocked_GIScores(
+    CeRberus:::collect_all_layer_configurations(
+      scores,
+      retain_directional = TRUE
+    ),
+    calls = calls
+  )
+
+  expect_true(all(purrr::map_lgl(calls$args, "retain_directional")))
 })
 
 test_that("collect_all_layer_configurations respects requested use layers and ignores absent columns", {

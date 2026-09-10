@@ -20,10 +20,10 @@ A named list of retained CeRberus screen objects when
 Run the full GI analysis pipeline
 }
 \details{
-When \code{overwrite_output = TRUE}, \code{full_run()} clears existing contents from
-\code{output_directory} before starting the analysis and then writes the outputs
-from the current run. The scores and instruction files must be located
-outside \code{output_directory}. When \code{overwrite_output = FALSE}, existing
+When \code{overwrite_output = TRUE}, \code{full_run()} removes outputs from previous
+CeRberus runs before starting the analysis and then writes outputs from the
+current run. Other files in \code{output_directory}, including the scores and
+instruction files, are preserved. When \code{overwrite_output = FALSE}, existing
 directory contents are preserved and no output files are written.
 
 The pipeline writes one combined \code{screen_report.yaml} file. It records the

@@ -67,6 +67,38 @@ setMethod("guideGIs<-", "ScreenBase", function(x, value) {
 
 #####
 
+setMethod("aggregatedGuideGIs", "ScreenBase", function(x) {
+  stop(
+    "aggregatedGuideGIs is only available for PosAgnMultiplexScreen objects. ",
+    "Run with pos_agnostic = TRUE first.",
+    call. = FALSE
+  )
+})
+
+#####
+
+setMethod("aggregatedGuideGIs<-", "ScreenBase", function(x, value) {
+  stop(
+    "aggregatedGuideGIs can only be assigned for PosAgnMultiplexScreen objects.",
+    call. = FALSE
+  )
+})
+
+#####
+
+setMethod("aggregatedGuideGIs", "PosAgnMultiplexScreen", function(x) {
+  slot(x, "aggregatedGuideGIs")
+})
+
+#####
+
+setMethod("aggregatedGuideGIs<-", "PosAgnMultiplexScreen", function(x, value) {
+  slot(x, "aggregatedGuideGIs") <- value
+  x
+})
+
+#####
+
 setMethod("guideLFCs", "ScreenBase", function(x) {
   return(slot(x, "guideLFCs"))
 })
@@ -90,6 +122,42 @@ setMethod("limma_models<-", "ScreenBase", function(x, value) {
   slot(x, "limma_models") <- value
   return(x)
 })
+
+#####
+
+setMethod("aggregatedLimmaModels", "ScreenBase", function(x) {
+  stop(
+    "aggregatedLimmaModels is only available for PosAgnMultiplexScreen objects. ",
+    "Run with pos_agnostic = TRUE first.",
+    call. = FALSE
+  )
+})
+
+#####
+
+setMethod("aggregatedLimmaModels<-", "ScreenBase", function(x, value) {
+  stop(
+    "aggregatedLimmaModels can only be assigned for PosAgnMultiplexScreen objects.",
+    call. = FALSE
+  )
+})
+
+#####
+
+setMethod("aggregatedLimmaModels", "PosAgnMultiplexScreen", function(x) {
+  slot(x, "aggregatedLimmaModels")
+})
+
+#####
+
+setMethod(
+  "aggregatedLimmaModels<-",
+  "PosAgnMultiplexScreen",
+  function(x, value) {
+    slot(x, "aggregatedLimmaModels") <- value
+    x
+  }
+)
 
 #####
 
@@ -405,6 +473,20 @@ setMethod(
 #####
 
 setMethod(
+  "compute_dup_correlation",
+  signature = signature(.x = "PosAgnMultiplexScreen"),
+  function(.x) {
+    .x <- methods::callNextMethod(.x)
+    .x@metadata$aggregated_dupCorrelation <- compute_dup_correlation(
+      .x@aggregatedGuideGIs
+    )
+    return(.x)
+  }
+)
+
+#####
+
+setMethod(
   "compute_models",
   signature = signature(gi_obj = "FixedPairScreen"),
   function(gi_obj) {
@@ -462,9 +544,42 @@ setMethod(
   signature = signature(gi_obj = "PosAgnMultiplexScreen"),
   function(gi_obj) {
     symmetric_analysis_method <- get_symmetric_analysis_method(gi_obj)
+    retain_directional <- isTRUE(gi_obj@metadata$retain_directional)
+    aggregate_dupcor <- gi_obj@metadata$aggregated_dupCorrelation
+
+    if (is.null(aggregate_dupcor)) {
+      aggregate_dupcor <- compute_dup_correlation(gi_obj@aggregatedGuideGIs)
+      gi_obj@metadata$aggregated_dupCorrelation <- aggregate_dupcor
+    }
+
+    if (retain_directional) {
+      gi_obj <- methods::callNextMethod(gi_obj)
+    }
 
     if (identical(symmetric_analysis_method, "preaverage")) {
-      return(methods::callNextMethod(gi_obj))
+      output <- gi_obj@screen_attr$query_genes |>
+        set_names() |>
+        map(safely(\(.g) {
+          limma::lmFit(
+            object = gi_obj@aggregatedGuideGIs@data[
+              .g,
+              gi_obj@screen_attr$library_genes,
+            ],
+            block = gi_obj@aggregatedGuideGIs@blocks,
+            correlation = aggregate_dupcor[[.g]]
+          ) |>
+            limma::eBayes()
+        }))
+
+      gi_obj@aggregatedLimmaModels <- map(output, "result")
+      gi_obj@errors$aggregated_query_genes_not_usable <- map(
+        output,
+        "result"
+      ) |>
+        keep(is.null) |>
+        names()
+      gi_obj@errors$aggregated_GI_computation_errors <- map(output, "error")
+      return(gi_obj)
     }
 
     if (!identical(symmetric_analysis_method, "global_preaverage")) {
@@ -475,7 +590,7 @@ setMethod(
       )
     }
 
-    if (length(dim(gi_obj@guideGIs@data)) != 2L) {
+    if (length(dim(gi_obj@aggregatedGuideGIs@data)) != 2L) {
       stop(
         "global_preaverage requires a pair-by-observation guide-level matrix.",
         call. = FALSE
@@ -484,7 +599,7 @@ setMethod(
 
     if (
       !identical(
-        rownames(gi_obj@guideGIs@data),
+        rownames(gi_obj@aggregatedGuideGIs@data),
         gi_obj@screen_attr$unique_pairs
       )
     ) {
@@ -494,7 +609,7 @@ setMethod(
       )
     }
 
-    if (length(gi_obj@dupCorrelation) != 1L) {
+    if (length(aggregate_dupcor) != 1L) {
       stop(
         "global_preaverage requires one global duplicate-correlation estimate.",
         call. = FALSE
@@ -502,8 +617,9 @@ setMethod(
     }
 
     if (
-      isTRUE(gi_obj@guideGIs@use_blocks) &&
-        length(gi_obj@guideGIs@blocks) != ncol(gi_obj@guideGIs@data)
+      isTRUE(gi_obj@aggregatedGuideGIs@use_blocks) &&
+        length(gi_obj@aggregatedGuideGIs@blocks) !=
+          ncol(gi_obj@aggregatedGuideGIs@data)
     ) {
       stop(
         "The number of block assignments does not match the global model columns.",
@@ -511,10 +627,10 @@ setMethod(
       )
     }
 
-    gi_obj@limma_models <- limma::lmFit(
-      object = gi_obj@guideGIs@data,
-      block = gi_obj@guideGIs@blocks,
-      correlation = gi_obj@dupCorrelation
+    gi_obj@aggregatedLimmaModels <- limma::lmFit(
+      object = gi_obj@aggregatedGuideGIs@data,
+      block = gi_obj@aggregatedGuideGIs@blocks,
+      correlation = aggregate_dupcor
     ) |>
       limma::eBayes()
 
@@ -622,9 +738,35 @@ setMethod(
     gi_obj@metadata$fdr_method <- fdr_method
 
     symmetric_analysis_method <- get_symmetric_analysis_method(gi_obj)
+    retain_directional <- isTRUE(gi_obj@metadata$retain_directional)
 
     if (identical(symmetric_analysis_method, "preaverage")) {
-      gi_obj <- methods::callNextMethod(gi_obj, fdr_method = fdr_method)
+      if (retain_directional) {
+        gi_obj <- methods::callNextMethod(gi_obj, fdr_method = fdr_method)
+      }
+
+      aggregate_gene_gis <- gi_obj@aggregatedLimmaModels |>
+        imap(\(.m, .y) {
+          .x <- data.frame(
+            library_gene = gi_obj@screen_attr$library_genes,
+            query_gene = .y
+          )
+          if (is.null(.m)) {
+            .x$GI <- NA
+            .x$pval <- NA
+          } else {
+            .x$GI <- .m$coefficients[, 1]
+            .x$pval <- .m$p.value[, 1]
+          }
+          .x
+        }) |>
+        data.table::rbindlist(fill = TRUE) |>
+        data.table::melt.data.table(measure.vars = c("GI", "pval")) |>
+        reshape2::acast(
+          formula = as.formula("query_gene ~ library_gene ~ variable"),
+          value.var = "value",
+          drop = FALSE
+        )
 
       .x <- data.table(gene_pair = gi_obj@screen_attr$unique_pairs)
 
@@ -633,20 +775,20 @@ setMethod(
       .x[,
         GI := gather_symmetric_scores(
           pairs = gene_pair,
-          .arr = gi_obj@geneGIs[,, "GI"]
+          .arr = aggregate_gene_gis[,, "GI"]
         )
       ]
       .x[, GI_z := z_transform(GI)]
       .x[,
         pval := gather_symmetric_scores(
           pairs = gene_pair,
-          .arr = gi_obj@geneGIs[,, "pval"]
+          .arr = aggregate_gene_gis[,, "pval"]
         )
       ]
       .x[,
         FDR := balanced_fdr(
           pairs = gene_pair,
-          pval_array = gi_obj@geneGIs[,, "pval"],
+          pval_array = aggregate_gene_gis[,, "pval"],
           fdr_method = fdr_method
         )
       ]
@@ -687,8 +829,44 @@ setMethod(
         )
       }
 
+      if (retain_directional) {
+        .x[, `:=`(
+          GI_ab = gather_symmetric_scores(gene_pair, gi_obj@geneGIs[,, "GI"]),
+          pval_ab = gather_symmetric_scores(
+            gene_pair,
+            gi_obj@geneGIs[,, "pval"]
+          ),
+          FDR_ab = gather_symmetric_scores(gene_pair, gi_obj@geneGIs[,, "FDR"]),
+          GI_ba = purrr::map2_dbl(
+            library_gene,
+            query_gene,
+            \(.a, .b) gi_obj@geneGIs[.a, .b, "GI"]
+          ),
+          pval_ba = purrr::map2_dbl(
+            library_gene,
+            query_gene,
+            \(.a, .b) gi_obj@geneGIs[.a, .b, "pval"]
+          ),
+          FDR_ba = purrr::map2_dbl(
+            library_gene,
+            query_gene,
+            \(.a, .b) gi_obj@geneGIs[.a, .b, "FDR"]
+          ),
+          GI_aggregated = GI,
+          pval_aggregated = pval,
+          FDR_aggregated = FDR
+        )]
+      }
+
       gi_obj@symmGeneGIs <- .x
-      gi_obj@metadata$multiple_testing <- list(method = fdr_method)
+      gi_obj@metadata$multiple_testing <- list(
+        method = fdr_method,
+        directional = list(
+          retained = retain_directional,
+          scope = "within_query_gene"
+        ),
+        aggregated = list(scope = "balanced_fdr")
+      )
       gi_obj <- store_ntc_pair_annotations(gi_obj)
 
       return(gi_obj)
@@ -702,7 +880,11 @@ setMethod(
       )
     }
 
-    model_pairs <- rownames(gi_obj@limma_models$coefficients)
+    if (retain_directional) {
+      gi_obj <- methods::callNextMethod(gi_obj, fdr_method = fdr_method)
+    }
+
+    model_pairs <- rownames(gi_obj@aggregatedLimmaModels$coefficients)
     expected_pairs <- gi_obj@screen_attr$unique_pairs
 
     if (!identical(model_pairs, expected_pairs)) {
@@ -712,17 +894,9 @@ setMethod(
       )
     }
 
-    gi <- gi_obj@limma_models$coefficients[, 1L]
-    pval <- gi_obj@limma_models$p.value[, 1L]
+    gi <- gi_obj@aggregatedLimmaModels$coefficients[, 1L]
+    pval <- gi_obj@aggregatedLimmaModels$p.value[, 1L]
     fdr <- stats::p.adjust(pval, method = fdr_method)
-
-    gi_obj@geneGIs <- cbind(
-      GI = as.numeric(gi),
-      pval = as.numeric(pval),
-      FDR = as.numeric(fdr)
-    )
-
-    rownames(gi_obj@geneGIs) <- model_pairs
 
     gi_obj@symmGeneGIs <- data.table::data.table(
       gene_pair = model_pairs,
@@ -733,6 +907,32 @@ setMethod(
       pval = as.numeric(pval),
       FDR = as.numeric(fdr)
     )
+
+    if (retain_directional) {
+      gi_obj@symmGeneGIs[, `:=`(
+        GI_ab = gather_symmetric_scores(gene_pair, gi_obj@geneGIs[,, "GI"]),
+        pval_ab = gather_symmetric_scores(gene_pair, gi_obj@geneGIs[,, "pval"]),
+        FDR_ab = gather_symmetric_scores(gene_pair, gi_obj@geneGIs[,, "FDR"]),
+        GI_ba = purrr::map2_dbl(
+          library_gene,
+          query_gene,
+          \(.a, .b) gi_obj@geneGIs[.a, .b, "GI"]
+        ),
+        pval_ba = purrr::map2_dbl(
+          library_gene,
+          query_gene,
+          \(.a, .b) gi_obj@geneGIs[.a, .b, "pval"]
+        ),
+        FDR_ba = purrr::map2_dbl(
+          library_gene,
+          query_gene,
+          \(.a, .b) gi_obj@geneGIs[.a, .b, "FDR"]
+        ),
+        GI_aggregated = GI,
+        pval_aggregated = pval,
+        FDR_aggregated = FDR
+      )]
+    }
 
     if (
       length(gi_obj@guideLFCs@query_main_effects) > 0L &&
@@ -769,7 +969,14 @@ setMethod(
         )
       )
     }
-    gi_obj@metadata$multiple_testing <- list(method = fdr_method)
+    gi_obj@metadata$multiple_testing <- list(
+      method = fdr_method,
+      directional = list(
+        retained = retain_directional,
+        scope = "within_query_gene"
+      ),
+      aggregated = list(scope = "global_unordered_pairs")
+    )
     gi_obj <- store_ntc_pair_annotations(gi_obj)
 
     return(gi_obj)
