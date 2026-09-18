@@ -142,6 +142,11 @@ result <- full_run("input_yaml_file.yaml")
 
 By default, `full_run()` returns the selected CeRberus screen object configuration as a named list. If `return_output = FALSE`, it returns `NULL` after running the pipeline.
 
+`full_run()` warns when the absolute mean of the input guide-level `GI` scores
+exceeds `gi_mean_threshold` (default `0.2`). Set this function argument to a
+different non-negative threshold when appropriate; the warning does not alter
+or recenter the input scores.
+
 ## YAML instruction file
 
 The YAML instruction file controls the pipeline run.

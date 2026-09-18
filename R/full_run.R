@@ -3,6 +3,8 @@
 #' @param yaml_fpath Path to a YAML instruction file.
 #' @param return_output Logical scalar. If `TRUE`, return the retained screen
 #'   configurations. If `FALSE`, return `NULL` after completing the pipeline.
+#' @param gi_mean_threshold Non-negative numeric scalar. Warn when the absolute
+#'   mean input guide-level GI score exceeds this value.
 #'
 #' @return A named list of retained CeRberus screen objects when
 #'   `return_output = TRUE`; otherwise `NULL`.
@@ -23,11 +25,20 @@
 
 #####
 
-full_run <- function(yaml_fpath, return_output = TRUE) {
+full_run <- function(
+  yaml_fpath,
+  return_output = TRUE,
+  gi_mean_threshold = 0.2
+) {
   stopifnot(
     "return_output must be TRUE or FALSE." = is.logical(return_output) &&
       length(return_output) == 1L &&
-      !is.na(return_output)
+      !is.na(return_output),
+    "gi_mean_threshold must be a finite, non-negative numeric scalar." =
+      is.numeric(gi_mean_threshold) &&
+      length(gi_mean_threshold) == 1L &&
+      is.finite(gi_mean_threshold) &&
+      gi_mean_threshold >= 0
   )
 
   instr <- read_instructions(yaml_fpath)
@@ -174,6 +185,20 @@ full_run <- function(yaml_fpath, return_output = TRUE) {
           call. = FALSE
         )
       )
+
+      .gi_mean <- mean(.data$GI, na.rm = TRUE)
+      if (is.finite(.gi_mean) && abs(.gi_mean) > gi_mean_threshold) {
+        warning(
+          "The mean input guide-level GI score is ",
+          signif(.gi_mean, 4),
+          " (absolute mean ",
+          signif(abs(.gi_mean), 4),
+          "), which exceeds gi_mean_threshold (",
+          gi_mean_threshold,
+          "). A global GI-score offset can inflate downstream significant hits.",
+          call. = FALSE
+        )
+      }
 
       .stage <- "construct_configurations"
       .data <- collect_all_layer_configurations(

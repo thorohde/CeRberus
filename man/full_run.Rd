@@ -4,13 +4,16 @@
 \alias{full_run}
 \title{Run the full GI analysis pipeline}
 \usage{
-full_run(yaml_fpath, return_output = TRUE)
+full_run(yaml_fpath, return_output = TRUE, gi_mean_threshold = 0.2)
 }
 \arguments{
 \item{yaml_fpath}{Path to a YAML instruction file.}
 
 \item{return_output}{Logical scalar. If \code{TRUE}, return the retained screen
 configurations. If \code{FALSE}, return \code{NULL} after completing the pipeline.}
+
+\item{gi_mean_threshold}{Non-negative numeric scalar. Warn when the absolute
+mean input guide-level GI score exceeds this value.}
 }
 \value{
 A named list of retained CeRberus screen objects when

@@ -240,6 +240,40 @@ test_that("full_run reads supported score files and forwards pipeline options", 
   })
 })
 
+test_that("full_run warns about shifted input GI scores", {
+  scores_file <- tempfile(fileext = ".csv")
+  output_directory <- tempfile("full-run-output-")
+  yaml_fpath <- tempfile(fileext = ".yaml")
+  shifted_scores <- make_full_run_scores()
+  shifted_scores$GI <- shifted_scores$GI + 0.3
+  data.table::fwrite(shifted_scores, scores_file)
+  write_full_run_instructions(
+    yaml_fpath,
+    scores_file = scores_file,
+    output_directory = output_directory,
+    overwrite_output = FALSE
+  )
+
+  expect_warning(
+    with_mocked_full_run_pipeline(full_run(yaml_fpath)),
+    "absolute mean.*exceeds gi_mean_threshold"
+  )
+  expect_no_warning(
+    with_mocked_full_run_pipeline(
+      full_run(yaml_fpath, gi_mean_threshold = 0.3)
+    )
+  )
+
+  shifted_scores$GI <- 0.2
+  data.table::fwrite(shifted_scores, scores_file)
+  expect_no_warning(with_mocked_full_run_pipeline(full_run(yaml_fpath)))
+
+  expect_error(
+    full_run(yaml_fpath, gi_mean_threshold = -0.1),
+    "gi_mean_threshold must be a finite, non-negative numeric scalar"
+  )
+})
+
 test_that("full_run forwards YAML non-targeting controls", {
   scores_file <- tempfile(fileext = ".csv")
   output_directory <- tempfile("full-run-output-")
