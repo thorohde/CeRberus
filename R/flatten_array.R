@@ -30,7 +30,7 @@
 
 #####
 
-flatten_array <- \(x, dnames, value_name = "value") {
+flatten_array <- \(x, dnames, value_name = "value", na.rm = FALSE) {
   stopifnot("Please provide an array!" = !is.null(dim(x)))
 
   if (is.null(dimnames(x))) {
@@ -45,9 +45,19 @@ flatten_array <- \(x, dnames, value_name = "value") {
       x,
       responseName = value_name
     ))
+
+    # as.data.frame.table() does not have an na.rm argument,
+    # so apply it explicitly for consistent behaviour.
+    if (na.rm) {
+      output <- output[!is.na(output[[value_name]])]
+    }
   } else {
     # 3D+ arrays use the native data.table array melting
-    output <- data.table::as.data.table(x, value.name = value_name)
+    output <- data.table::as.data.table(
+      x,
+      value.name = value_name,
+      na.rm = na.rm
+    )
   }
 
   if (!missing(dnames)) {
