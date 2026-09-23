@@ -346,7 +346,7 @@ test_that("screen_report summarizes results for every supported screen class", {
       screen_report(print = FALSE)
 
     expected_tested_pairs <- if (identical(class, "MultiplexScreen")) {
-      4L
+      5L
     } else {
       5L
     }

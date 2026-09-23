@@ -73,7 +73,10 @@ read_instructions <- function(yaml_fpath) {
   )
 
   if (!"screen_type" %in% names(instr)) {
-    instr$screen_type <- "auto"
+    stop(
+      "screen_type is required and must be one of: 'auto', 'fixed_pair', or 'multiplex'.",
+      call. = FALSE
+    )
   }
 
   if (!"non_targeting_controls" %in% names(instr)) {

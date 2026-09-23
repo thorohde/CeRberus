@@ -387,12 +387,12 @@ test_that("GIScores preserves the legacy positional argument order", {
 test_that("GIScores stores non-targeting controls in metadata", {
   result <- GIScores(
     make_fixed_pair_scores(),
-    non_targeting_controls = c("NTC_1", "NTC_2")
+    non_targeting_controls = c("A", "C")
   )
 
   expect_identical(
     result@metadata$non_targeting_controls,
-    c("NTC_1", "NTC_2")
+    c("A", "C")
   )
 })
 

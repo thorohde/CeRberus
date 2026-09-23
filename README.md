@@ -157,6 +157,7 @@ The YAML instruction file controls the pipeline run.
 |---|---|
 | `scores_file` | Path to a guide-level GI score file in `.csv` or `.rds` format |
 | `output_directory` | Directory where CeRberus writes outputs |
+| `screen_type` | Required screen structure: `auto`, `fixed_pair`, or `multiplex`. `auto` explicitly requests inference. |
 
 ### Optional fields
 
@@ -164,7 +165,6 @@ The YAML instruction file controls the pipeline run.
 |---|---|---|
 | `FDR` | Multiple-testing correction method. Currently supported: `BH`, `bonferroni` | `BH` |
 | `overwrite_output` | Whether to remove outputs from previous CeRberus runs before analysis and write outputs from the current run | `TRUE` |
-| `screen_type` | Screen structure: `auto`, `fixed_pair`, or `multiplex` | `auto` |
 | `pos_agnostic` | Average both orientations for position-agnostic multiplex analysis | `FALSE` |
 | `symmetric_analysis_method` | Position-agnostic strategy: `preaverage` or `global_preaverage` | `preaverage` |
 | `retain_directional` | For position-agnostic multiplex runs, additionally fit and export `A -> B` and `B -> A` results alongside the aggregate result | `FALSE` |
@@ -231,7 +231,7 @@ If needed, column names can be customized when using `GIScores()` directly.
 CeRberus follows this general procedure:
 
 1. **Determine screen type**
-   With `screen_type: "auto"`, CeRberus infers whether the data represent a fixed-pair or multiplex screen. Set `screen_type` explicitly to override that decision when experimental knowledge should take precedence.
+   `screen_type` must be supplied. With `screen_type: "auto"`, CeRberus infers whether the data represent a fixed-pair or multiplex screen; use `fixed_pair` or `multiplex` to override that decision.
 
 2. **Generate alternative replicate/blocking configurations**  
    CeRberus tests different ways of using or collapsing `tech_rep`, `bio_rep`, and `guide_pair` layers.

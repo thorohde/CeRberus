@@ -2,13 +2,15 @@ write_full_run_instructions <- function(
   path,
   scores_file,
   output_directory,
+  screen_type = "auto",
   ...
 ) {
   yaml::write_yaml(
     c(
       list(
         scores_file = scores_file,
-        output_directory = output_directory
+        output_directory = output_directory,
+        screen_type = screen_type
       ),
       list(...)
     ),
@@ -188,6 +190,28 @@ with_mocked_full_run_pipeline <- function(
 
   force(code)
 }
+
+test_that("full_run stops before output cleanup when screen_type is missing", {
+  scores_file <- tempfile(fileext = ".csv")
+  output_directory <- tempfile("full-run-output-")
+  yaml_fpath <- tempfile(fileext = ".yaml")
+  sentinel <- file.path(output_directory, "preserve-me.txt")
+
+  dir.create(output_directory)
+  file.create(sentinel)
+  data.table::fwrite(make_full_run_scores(), scores_file)
+  yaml::write_yaml(
+    list(
+      scores_file = scores_file,
+      output_directory = output_directory,
+      overwrite_output = TRUE
+    ),
+    file = yaml_fpath
+  )
+
+  expect_error(full_run(yaml_fpath), "screen_type is required")
+  expect_true(file.exists(sentinel))
+})
 
 test_that("full_run reads supported score files and forwards pipeline options", {
   writers <- list(

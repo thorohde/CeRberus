@@ -1,9 +1,16 @@
-write_instruction_file <- function(path, scores_file, output_directory, ...) {
+write_instruction_file <- function(
+  path,
+  scores_file,
+  output_directory,
+  screen_type = "auto",
+  ...
+) {
   yaml::write_yaml(
     c(
       list(
         scores_file = scores_file,
-        output_directory = output_directory
+        output_directory = output_directory,
+        screen_type = screen_type
       ),
       list(...)
     ),
@@ -197,7 +204,7 @@ test_that("read_instructions defaults invalid or missing FDR to BH", {
   expect_equal(read_instructions(yaml_fpath)$FDR, "BH")
 })
 
-test_that("read_instructions preserves position-agnostic pipeline defaults", {
+test_that("read_instructions preserves non-screen pipeline defaults", {
   scores_file <- tempfile(fileext = ".csv")
   output_directory <- tempdir()
   yaml_fpath <- tempfile(fileext = ".yaml")
@@ -212,10 +219,29 @@ test_that("read_instructions preserves position-agnostic pipeline defaults", {
   result <- read_instructions(yaml_fpath)
 
   expect_false(result$pos_agnostic)
-  expect_identical(result$screen_type, "auto")
   expect_identical(result$symmetric_analysis_method, "preaverage")
   expect_false(result$retain_directional)
   expect_false(result$keep_all_configurations)
+})
+
+test_that("read_instructions requires screen_type", {
+  scores_file <- tempfile(fileext = ".csv")
+  output_directory <- tempdir()
+  yaml_fpath <- tempfile(fileext = ".yaml")
+  file.create(scores_file)
+
+  yaml::write_yaml(
+    list(
+      scores_file = scores_file,
+      output_directory = output_directory
+    ),
+    file = yaml_fpath
+  )
+
+  expect_error(
+    read_instructions(yaml_fpath),
+    "screen_type is required"
+  )
 })
 
 test_that("read_instructions validates explicit screen types", {
